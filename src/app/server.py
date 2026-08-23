@@ -270,13 +270,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
+        path = self.path.split("?", 1)[0]  # tolerate cache-buster query strings
+        if path in ("/", "/index.html"):
             try:
                 with open(INDEX_PATH, "r", encoding="utf-8") as f:
                     self._send(200, f.read(), "text/html; charset=utf-8")
             except FileNotFoundError:
                 self._send(404, "index.html not found", "text/plain")
-        elif self.path == "/health":
+        elif path == "/health":
             self._send(200, json.dumps({"ok": True}))
         else:
             self._send(404, "Not found", "text/plain")
