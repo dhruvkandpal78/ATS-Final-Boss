@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "shield",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["src/app/server.py"],
+      "port": 8000
+    },
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "streamlit", "run", "src/app/dashboard.py", "--server.headless=true", "--server.port=8501", "--server.fileWatcherType=none"],
+      "port": 8501
+    }
+  ]
+}
