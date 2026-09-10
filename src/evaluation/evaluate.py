@@ -107,6 +107,17 @@ def run_evaluation():
     mod_a.calibrate(df_val, percentile=95.0)
     mod_c.calibrate(df_val, percentile=95.0)
     
+    # Save calibrated thresholds to config
+    import json
+    config_dir = os.path.join(os.path.dirname(__file__), "..", "..", "configs")
+    os.makedirs(config_dir, exist_ok=True)
+    with open(os.path.join(config_dir, "thresholds.json"), "w") as f:
+        json.dump({
+            "mod_a_threshold": float(mod_a.threshold),
+            "mod_c_variance_threshold": float(mod_c.variance_threshold)
+        }, f, indent=4)
+    logger.info("Saved calibrated thresholds to configs/thresholds.json")
+    
     # 4. Extract Features
     logger.info("--- FEATURE EXTRACTION PHASE ---")
     logger.info("Processing Validation Set...")
@@ -149,7 +160,7 @@ def run_evaluation():
     acc_drops = []
     
     # Take a subset of Type-A and Type-D (the text-based attacks)
-    adv_test = test_df[test_df['attack_type'].isin(['TYPE_A', 'TYPE_D'])]
+    adv_test = df_test[df_test['attack_type'].isin(['TYPE_A', 'TYPE_D'])]
     n_samples = min(30, len(adv_test))
     subset_df = adv_test.sample(n_samples, random_state=42)
     
@@ -182,14 +193,13 @@ def run_evaluation():
             c_sc = mod_c.predict(mutated_text)['anomaly_score']
             
             feat = pd.DataFrame([{"Module_A_Score": a_sc, "Module_B_Score": b_sc, "Module_C_Score": c_sc}])
-            feat_scaled = scaler.transform(feat)
-            is_attack = meta_clf.predict(feat_scaled)[0]
+            is_attack = meta_clf.predict(feat)[0]
             
             y_true_budg.append(1) # We know these are adversarial
             y_pred_budg.append(int(is_attack))
             
         # Add some clean samples to compute real F1 at this budget
-        clean_test = test_df[test_df['is_adversarial'] == 0]
+        clean_test = df_test[df_test['is_adversarial'] == 0]
         n_clean = min(30, len(clean_test))
         clean_sub = clean_test.sample(n_clean, random_state=42)
         
@@ -201,8 +211,7 @@ def run_evaluation():
             c_sc = mod_c.predict(row['text'])['anomaly_score']
             
             feat = pd.DataFrame([{"Module_A_Score": a_sc, "Module_B_Score": b_sc, "Module_C_Score": c_sc}])
-            feat_scaled = scaler.transform(feat)
-            is_attack = meta_clf.predict(feat_scaled)[0]
+            is_attack = meta_clf.predict(feat)[0]
             
             y_pred_budg.append(int(is_attack))
             

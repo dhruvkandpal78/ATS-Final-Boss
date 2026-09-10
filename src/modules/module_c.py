@@ -102,31 +102,33 @@ class SemanticCoherenceScorer:
     def predict(self, text: str) -> dict:
         """
         Predicts if a resume text exhibits anomalous semantic blurring OR
-        carries a direct-instruction prompt injection.
+        carries a direct-instruction prompt injection. Returns explicit sub-scores
+        for transparency.
         """
         if self.variance_threshold is None:
             raise ValueError("Module C must be calibrated before prediction.")
 
         scores = self._score_coherence(text)
         variance = scores['variance']
-        is_anomalous = variance > self.variance_threshold
+        is_variance_anomalous = variance > self.variance_threshold
 
-        # Normalize score
-        anomaly_score = min(1.0, variance / (self.variance_threshold * 2) if self.variance_threshold > 0 else 0)
+        # Normalize variance score
+        semantic_score = min(1.0, variance / (self.variance_threshold * 2) if self.variance_threshold > 0 else 0)
 
-        # Direct-instruction injection override: a resume containing imperative
-        # "ignore previous instructions" style overrides is semantically
-        # incoherent by construction and must be surfaced even when the sliding
-        # window variance stays low (e.g. a short footer injection).
+        # Direct-instruction injection check
         n_cues = self._injection_signal(text)
-        if n_cues > 0:
-            anomaly_score = max(anomaly_score, min(1.0, 0.85 + 0.05 * n_cues))
-            is_anomalous = True
+        injection_score = min(1.0, n_cues * 0.5)  # E.g., 2 cues = 1.0
+        
+        # Combine them for the unified anomaly score, but also expose them separately
+        anomaly_score = max(semantic_score, injection_score)
+        is_anomalous = is_variance_anomalous or (n_cues > 0)
 
         return {
             "status": "success",
             "variance": variance,
             "mean_similarity": scores['mean_similarity'],
+            "semantic_score": semantic_score,
+            "injection_score": injection_score,
             "anomaly_score": anomaly_score,
             "injection_cues": n_cues,
             "is_flagged": bool(is_anomalous)

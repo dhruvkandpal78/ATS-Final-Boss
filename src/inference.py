@@ -38,14 +38,22 @@ def load_pipeline(models_dir):
         print(colored("[ERROR] Trained models not found. Run evaluate.py first.", "red"))
         sys.exit(1)
         
-    # We initialize the modules with hardcoded thresholds representing the 
-    # 95th percentile from our validation run to simulate a deployed system.
-    # In a true prod system, these would be saved in a config JSON.
+    import json
+    config_dir = os.path.join(os.path.dirname(__file__), "..", "configs")
+    try:
+        with open(os.path.join(config_dir, "thresholds.json"), "r") as f:
+            thresholds = json.load(f)
+        with open(os.path.join(config_dir, "model_config.json"), "r") as f:
+            model_cfg = json.load(f)
+    except FileNotFoundError:
+        print(colored("[ERROR] Config files missing. Run evaluate.py to generate them.", "red"))
+        sys.exit(1)
+
     mod_a = KeywordDensityDetector()
-    mod_a.threshold = 0.08  # Example learned threshold
+    mod_a.threshold = thresholds.get("mod_a_threshold", 0.08)
     
-    mod_c = SemanticCoherenceScorer(model_name='all-MiniLM-L6-v2', window_size=2)
-    mod_c.variance_threshold = 0.015 # Example learned threshold
+    mod_c = SemanticCoherenceScorer(model_name=model_cfg.get("embedding_model", "all-MiniLM-L6-v2"), window_size=2)
+    mod_c.variance_threshold = thresholds.get("mod_c_variance_threshold", 0.015)
     
     mod_b = PDFForensicsDetector()
     
@@ -67,7 +75,17 @@ def run_inference(file_path: str):
     if is_pdf:
         b_res = mod_b.analyze_pdf(file_path)
         b_score = b_res.get('anomaly_score', 0.0)
-        # We would also extract text here, but for demo we simulate text if it's a PDF
+        
+        # Actually extract text from the PDF
+        import fitz
+        try:
+            doc = fitz.open(file_path)
+            text_content = " ".join(page.get_text() for page in doc)
+            doc.close()
+        except Exception as e:
+            print(colored(f"[ERROR] Failed to extract text from PDF: {e}", "red"))
+            text_content = ""
+            
         print(colored("  -> PDF structural analysis complete.", "green"))
     else:
         # Load text file
@@ -78,10 +96,9 @@ def run_inference(file_path: str):
         
     print(f"  -> Structural Anomaly Score: {b_score:.4f}")
 
-    # For the text-based modules, if it was a PDF, we'd need PyMuPDF to extract text.
-    # For this demo, if text_content is empty, we just put dummy text.
-    if not text_content:
-        text_content = "Experienced software engineer with python and java. Python java python java."
+    if not text_content.strip():
+        print(colored("[WARNING] No text extracted. Using empty string.", "yellow"))
+        text_content = " "
         
     # 2. Module A (Keyword Density)
     print(colored("\n[Module A] Executing Statistical Density Analysis...", "blue"))

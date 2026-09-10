@@ -1,0 +1,486 @@
+ATS FINAL BOSS
+Planned Changes for the 10/10 Version
+A practical upgrade plan focused on correctness, stronger experiments, security, and professionalism
+Project
+ATS Final Boss — Adversarial Resume Screening Defense
+Current approach
+Keep the existing A/B/C detector architecture and improve it
+Main objective
+Move from a strong prototype to a reliable, defensible capstone
+Guiding principle
+Improve the existing system; do not rebuild it unnecessarily
+1. Overall Goal
+The goal is not to rebuild ATS Final Boss from scratch. The project already has a strong central idea: detect manipulated resumes before they reach an ATS or an LLM-based screener, using multiple signals and then combine those signals into one final decision.
+The upgrade strategy is:
+Keep the good architecture, fix the weaknesses, strengthen the experiments, and make the results trustworthy.
+2. What Will Stay the Same
+The main architecture and the project's identity will remain:
+Resume
+   ↓
+Module A ─┐
+Module B ─┼──> Meta Classifier ──> Final Result
+Module C ─┘
+                    ↓
+              Explanation
+                    ↓
+                 Web App
+Module A — Keyword Analysis: detects unusual repetition and keyword stuffing.
+Module B — PDF Analysis: detects suspicious PDF structures such as hidden or extremely small text.
+Module C — Semantic Analysis: detects semantic anomalies and prompt-injection-style instructions.
+Meta-Classifier: combines the three module signals.
+Explainability: shows why a resume was flagged.
+Adaptive Attacker: tests how easily the detector can be bypassed.
+Existing Web Application: the current cinematic UI and live demonstrations remain.
+3. Change #1 — Create One Common Detection Pipeline
+Current issue
+Different parts of the project currently perform the detection process slightly differently. For example, the web application and command-line path do not always handle model inputs in exactly the same way.
+What we will do
+Input Resume
+     ↓
+Clean / prepare input
+     ↓
+Module A
+     ↓
+Module B
+     ↓
+Module C
+     ↓
+Combine results
+     ↓
+Final decision
+     ↓
+Explanation
+A single pipeline will be used by the web app, command-line tool, evaluation code, and tests.
+Why
+There should be one official way to analyze a resume. This removes inconsistencies and makes the system easier to maintain.
+4. Change #2 — Fix Existing Bugs and Inconsistencies
+Before adding new capabilities, all existing functionality must be made reliable.
+Fix incorrect variable names and broken evaluation references.
+Fix model/scaler usage so every inference path uses the same preprocessing.
+Fix inconsistent thresholds and feature ordering.
+Fix file path assumptions and import problems.
+Remove duplicated inference logic and dead code.
+Update comments and documentation that no longer match the implementation.
+Regenerate stale results so the published numbers match the current code.
+Target: everything that is already supposed to work should actually work.
+5. Change #3 — Move Important Settings Into Configuration
+Important settings such as detection thresholds, model paths, model names, random seeds, and limits should not be hidden inside source code.
+configs/
+├── model_config.json
+├── thresholds.json
+└── experiment_config.yaml
+This gives the project one visible place for important settings and makes experiments easier to reproduce.
+6. Change #4 — Make Module A Smarter
+Module A currently relies heavily on exact keyword counting. We will keep the same purpose but make the detector better at recognizing real-world variations.
+Normalize capitalization and punctuation.
+Handle common aliases and abbreviations.
+Recognize cases such as AWS vs. Amazon Web Services and K8s vs. Kubernetes.
+Measure repeated keyword frequency, concentration, and unusual repetition patterns.
+Use section-aware analysis where useful.
+Keep the detector deterministic and independently testable.
+The aim is to detect unnatural keyword stuffing, not simply count occurrences of the word "Python".
+7. Change #5 — Make PDF Forensics More Real
+Module B is an important part of the project, but some advertised PDF checks are currently limited or partially implemented. The upgrade should make the implementation match the claims.
+Detect very small text.
+Detect zero-size or suspicious bounding boxes.
+Detect text placed outside the normal page area.
+Detect invisible text where technically possible.
+Investigate hidden PDF layers / Optional Content Groups where feasible.
+Improve transparency and text-color analysis where the PDF format exposes enough information.
+Use context when deciding whether white text is suspicious.
+Important: white text by itself is not malicious. White text on a dark background can be legitimate; white text on a matching white background is more suspicious.
+Real malicious PDF test fixtures should be created instead of relying only on synthetic text markers.
+8. Change #6 — Make Module C More Meaningful
+MiniLM can remain the semantic backbone if experiments continue to justify it.
+Improve semantic coherence analysis.
+Consider section-level consistency.
+Use embedding-based anomaly signals where useful.
+Keep prompt-injection detection as an explicit signal.
+Separate normal semantic anomalies from direct instructions to an AI system.
+This makes the output easier to explain: the system can distinguish between content that is semantically unusual and content that is actively trying to control the screener.
+9. Change #7 — Prove That the Final Model Is Actually Better
+Using a more complicated model does not automatically make the project better. The final ensemble must be justified by experiments.
+Module A only
+Module B only
+Module C only
+Simple combination
+Logistic Regression
+Random Forest
+XGBoost
+Final Stacking Model
+Compare:
+Precision
+Recall
+F1 score
+ROC-AUC
+PR-AUC
+The final model should be selected because it performs well under a fair test procedure, not because stacking sounds more advanced.
+10. Change #8 — Add an Ablation Study
+An ablation study simply means removing parts of the system and seeing what changes.
+A
+B
+C
+A + B
+A + C
+B + C
+A + B + C
+This will show what each module actually contributes and whether the complete combination is worth the extra complexity.
+11. Change #9 — Test Different Types of Attacks Separately
+Type A — Keyword stuffing
+Type B — Hidden PDF text
+Type C — Irrelevant technical jargon
+Type D — Prompt injection and obfuscated attacks
+Instead of publishing only one overall score, report performance for each attack type so the project's strengths and weaknesses are visible.
+12. Change #10 — Make the Dataset Stronger
+Keep the existing synthetic generation, but broaden the evaluation.
+Synthetic attacks — generated automatically.
+Human-designed attacks — realistic examples written manually.
+Unseen attack styles — attack patterns not used to build the model.
+Clean resumes — legitimate resumes with natural variation.
+This reduces the risk that the model simply learns the patterns produced by its own attack generator.
+13. Change #11 — Check for Data Leakage
+Before trusting the metrics, check for exact duplicates, repeated templates, repeated attack payloads, and near-duplicate examples between development and test data.
+The final report should only make a 'no leakage' claim after an actual automated check has been run.
+14. Change #12 — Make the Train / Validation / Test Process Stricter
+TRAIN
+  ↓
+Learn model and preprocessing
+VALIDATION
+  ↓
+Choose settings and thresholds
+TEST
+  ↓
+Final evaluation only
+The test set should remain untouched until the final evaluation.
+15. Change #13 — Choose the Final Detection Threshold Properly
+A threshold of 0.5 is common, but it is not automatically the best choice for an adversarial detector.
+0.10   0.20   0.30   0.40   0.50   0.60   0.70   0.80   0.90
+Measure:
+Precision
+Recall
+F1
+False positives
+False negatives
+Select the final threshold deliberately based on the project's goals and the cost of missing an attack versus incorrectly flagging a clean resume.
+16. Change #14 — Investigate Why the Model Misses Attacks
+The existing model has better precision than recall. This means that many flagged attacks are correct, but the detector still misses a meaningful number of attacks.
+Review false positives: clean resumes that were incorrectly flagged.
+Review false negatives: attacks that were missed.
+Identify which module failed for representative cases.
+Document the likely reason for the failure.
+Use the findings to guide improvements rather than simply chasing a higher score.
+results/
+  error_analysis/
+    false_positives.md
+    false_negatives.md
+    representative_cases.json
+17. Change #15 — Add Real Adversarial Robustness Testing
+Because ATS Final Boss is an adversarial-defense project, the detector should also be tested against attempts to bypass it.
+Synonym and wording changes
+Spacing and punctuation changes
+Unicode tricks
+Keyword fragmentation
+Keyword relocation
+Semantic camouflage
+Prompt obfuscation
+Different PDF hiding techniques
+Measure:
+Detection rate
+Evasion rate
+Attack strength
+Number of changes needed
+Iterations required
+18. Change #16 — Improve the Adaptive Attacker Experiment
+The existing adaptive attacker can remain, but its results should become a real experiment.
+Normal fixed threshold
+vs
+Randomized threshold
+vs
+Moving-target defense
+Measure:
+How often the attacker succeeds
+How many attempts are required
+How much the attack must change
+Computation cost
+This turns the adaptive attacker from a visual demonstration into measurable security evidence.
+19. Change #17 — Improve the Fairness Analysis
+Keep the existing fairness audit, but make its meaning precise.
+False-positive rate
+False-negative rate
+True-positive rate
+Selection rate
+Precision
+Recall
+Disparity ratio
+Group sizes
+Clearly identify when a subgroup variable is only a proxy. Do not describe the system as legally compliant merely because it includes a Four-Fifths-style calculation.
+20. Change #18 — Improve Explainability
+The current sentence-level explanation should be retained and made easier to understand.
+Attack Probability: 91%
+Main reasons:
+1. Prompt injection detected
+2. Unusual keyword repetition
+3. Suspicious PDF structure
+Suspicious sentence:
+"Ignore previous instructions..."
+Recommended action:
+Block before ATS / LLM ranking
+The explanation should connect the final verdict to evidence from the modules. If leave-one-out attribution is used, describe it accurately as leave-one-out attribution rather than exact SHAP.
+21. Change #19 — Add Proper Testing
+Create automated tests for all major components.
+Module A tests
+Module B tests
+Module C tests
+Meta-classifier tests
+Common inference tests
+API tests
+PDF handling tests
+Adversarial attack tests
+Include both normal and malicious examples so future changes do not silently break the detector.
+22. Change #20 — Add GitHub Actions
+Every push or pull request should automatically perform basic project checks.
+Install dependencies
+      ↓
+Run tests
+      ↓
+Run quality checks
+      ↓
+Report success / failure
+This is a small change with a large professionalism benefit.
+23. Change #21 — Improve Dependency Management
+Make the software environment predictable by documenting or locking important versions, including Python, major libraries, and the embedding model.
+Separate development-only tools from runtime dependencies where useful.
+24. Change #22 — Improve Model File Management
+results/models/
+  meta_classifier.pkl
+  scaler.pkl
+  model_metadata.json
+  SHA256SUMS
+Metadata should include:
+Model version
+Dataset version
+Feature order
+Thresholds
+Training seed
+Training date
+Document clearly that serialized model files must be trusted before they are loaded.
+25. Change #23 — Improve API Security
+The lightweight server can remain, but the API should be hardened against obvious misuse.
+Limit request size.
+Limit uploaded PDF size.
+Validate input before processing.
+Use safe temporary-file handling.
+Use appropriate HTTP error codes.
+Return safe user-facing error messages.
+Add reasonable resource limits.
+Do not leak internal file paths or stack traces.
+The project should not have obvious basic security problems while presenting itself as a security project.
+26. Change #24 — Make Error Messages Safer
+Users should receive useful messages without seeing internal implementation details. Technical debugging information can remain in internal logs.
+27. Change #25 — Clean Up the Codebase
+Remove unused code and imports.
+Improve naming.
+Improve type hints and docstrings.
+Reduce duplicated logic.
+Reduce unnecessary global state.
+Make functions easier to test.
+Keep the existing architecture unless there is a clear technical reason to change it.
+28. Change #26 — Add a Research Report
+Create a clear research-style document covering:
+Problem
+Threat Model
+Dataset
+Attack Types
+System Architecture
+Detection Methods
+Model Training
+Evaluation
+Baselines
+Ablation
+Robustness
+Fairness
+Error Analysis
+Limitations
+Future Work
+29. Change #27 — Improve the README
+The existing README is already a strength. Keep its identity, but make it more evidence-driven.
+Clear problem statement
+Architecture diagram
+Benchmark results
+Ablation results
+Attack-specific results
+Robustness results
+Limitations
+Setup and testing instructions
+Reproducibility instructions
+Every published metric should come from the latest verified experiment.
+30. Change #28 — Improve the Architecture Diagram
+                  Resume
+                    ↓
+             Secure Input Layer
+                    ↓
+        ┌───────────┼───────────┐
+        ↓           ↓           ↓
+   Module A     Module B     Module C
+   Keywords     PDF          Semantic
+        └───────────┼───────────┘
+                    ↓
+              Feature Scaling
+                    ↓
+             Meta Classifier
+                    ↓
+              Final Decision
+               ↙         ↘
+          Verdict      Explanation
+31. Change #29 — Improve the Existing UI Without Rebuilding It
+The current cinematic interface is already one of the project's strongest parts. Keep it.
+Improve the result view so it clearly shows the evidence behind the decision.
+ADVERSARIAL RESUME DETECTED
+Probability: 91.3%
+Why?
+HIGH  Prompt injection
+HIGH  Keyword stuffing
+MED   Semantic mismatch
+The frontend should consume real backend results wherever it claims to show actual analysis.
+32. Change #30 — Clearly Separate Demonstrations From Real Results
+Simulations are completely acceptable for a capstone demonstration. They simply need to be labeled clearly so the UI never implies that a simulated event is a measured experimental result.
+Use "Real Analysis" for actual backend analysis.
+Use "Simulation" or "Demonstration" for illustrative behavior.
+33. Final Project Structure
+ATS-Final-Boss/
+│
+├── README.md
+├── RESEARCH.md
+├── LICENSE
+│
+├── configs/
+│
+├── src/
+│   ├── modules/
+│   │   ├── module_a.py
+│   │   ├── module_b.py
+│   │   └── module_c.py
+│   │
+│   ├── models/
+│   │   └── meta_classifier.py
+│   │
+│   ├── pipeline/
+│   │   ├── inference.py
+│   │   ├── preprocessing.py
+│   │   └── config.py
+│   │
+│   ├── evaluation/
+│   │   ├── evaluate.py
+│   │   ├── ablation.py
+│   │   ├── robustness.py
+│   │   ├── fairness.py
+│   │   └── error_analysis.py
+│   │
+│   └── app/
+│       ├── server.py
+│       └── index.html
+│
+├── tests/
+│
+├── results/
+│   ├── metrics/
+│   ├── reports/
+│   ├── plots/
+│   ├── models/
+│   └── error_analysis/
+│
+└── .github/
+    └── workflows/
+This is a refinement of the current project structure, not a completely different application.
+34. What We Are NOT Planning To Do
+No blockchain.
+No unnecessary cloud infrastructure.
+No microservices.
+No Kubernetes.
+No vector database unless a real requirement appears.
+No random AI agents.
+No unnecessary LLM APIs.
+No completely new frontend.
+No completely new ML architecture.
+More technology does not automatically mean a better capstone. The goal is better evidence, not a longer list of tools.
+35. Definition of the 10/10 Version
+The system runs correctly.
+CLI, API, and evaluation use the same inference logic.
+The ML system is compared with meaningful baselines.
+An ablation study proves what the modules contribute.
+Attack types are evaluated separately.
+The detector is tested against attempts to bypass it.
+The dataset and split strategy are reproducible and leakage-checked.
+The results can be reproduced.
+The system explains why it flagged a resume.
+Fairness analysis is responsible and accurately scoped.
+The software has tests and CI.
+The API has basic security hardening.
+The documentation matches the implementation.
+The existing cinematic demo remains polished.
+36. Core Philosophy
+The project does not need to become a completely different project. The current architecture is already a good foundation.
+Current Project
+      ↓
+Fix correctness problems
+      ↓
+Strengthen the detection modules
+      ↓
+Strengthen the dataset
+      ↓
+Add proper experiments
+      ↓
+Test robustness
+      ↓
+Add testing + CI
+      ↓
+Improve reproducibility
+      ↓
+Connect results properly to UI
+      ↓
+10/10 Capstone
+In one sentence: 
+We are not replacing the ATS Final Boss architecture; we are turning the existing architecture into a more rigorous, reliable, and professionally engineered version of itself.
+37. Recommended Priority Order
+The changes should be completed in this order:
+Priority
+Phase
+Purpose
+P0
+Audit + Core Correctness
+Find and fix current bugs and inconsistencies.
+P1
+Reproducibility Foundation
+Lock down dataset, splits, configuration, and model artifacts.
+P2
+Detection Modules
+Strengthen A, B, and C without replacing the architecture.
+P3
+Model Benchmarking
+Compare the ensemble with simpler baselines.
+P4
+Ablation + Attack Evaluation
+Prove what each module contributes and where it works.
+P5
+Robustness + Adaptive Attacker
+Measure how easily the detector can be bypassed.
+P6
+Threshold + Error Analysis
+Understand false positives and false negatives.
+P7
+Fairness + Explainability
+Make decisions easier to understand and claims more responsible.
+P8
+Testing + CI + API Hardening
+Make the project behave like reliable software.
+P9
+Research Docs + README
+Document the evidence clearly.
+P10
+UI Polish
+Connect the existing cinematic UI to the strengthened backend.
+P11
+Final Red-Team Review
+Try to break the finished project before submission.
+Success condition: 
+Do not call the project 10/10 simply because every planned item was attempted. The final rating should depend on whether the implementation, evidence, and documentation all agree.
