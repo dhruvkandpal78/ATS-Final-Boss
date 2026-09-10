@@ -189,6 +189,17 @@ class EnsembleMetaClassifier:
             pickle.dump(self.scaler, f)
         logger.info(f"Model and scaler saved to {output_dir}")
 
+    def load_model(self, model_dir: str):
+        """Loads the trained model and scaler."""
+        model_path = os.path.join(model_dir, "meta_classifier.pkl")
+        scaler_path = os.path.join(model_dir, "scaler.pkl")
+        
+        with open(model_path, 'rb') as f:
+            self.model = pickle.load(f)
+        with open(scaler_path, 'rb') as f:
+            self.scaler = pickle.load(f)
+        logger.info(f"Model and scaler loaded from {model_dir}")
+
 
 if __name__ == "__main__":
     pass
