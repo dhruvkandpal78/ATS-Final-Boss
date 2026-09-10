@@ -64,6 +64,12 @@ def _score(text, b_score, pdf_details=None):
     is_attack = bool(META_CLF.predict(scaled)[0])
     proba = float(META_CLF.predict_proba(scaled)[0][1])
 
+    # Rule-Based Override: The Meta-Classifier optimizes heavily for Precision and 
+    # sometimes ignores rare explicit prompt injections. If we have a hard signal, override it.
+    if c_res.get("injection_cues", 0) > 0 or b_score >= 0.9:
+        is_attack = True
+        proba = max(proba, 0.95)
+
     attribution = MOD_C.explain_sentences(text)
     all_sentences = attribution.get("sentences", [])
     # Keep the attribution UI legible on long documents: surface every flagged
