@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 import os
 import logging
+import random
 from tqdm import tqdm
 import sys
 
@@ -38,10 +39,12 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "results")
 # ---------------------------------------------------------------------------
 # Module B Simulator (For CSV Data)
 # ---------------------------------------------------------------------------
-def simulate_module_b(text: str) -> float:
+def simulate_module_b_proxy(text: str) -> float:
     """
-    Simulates the PyMuPDF structural forensic detector (Module B) for the CSV dataset.
-    Returns 1.0 if the hidden text simulation marker is present, else 0.0.
+    PROXY ONLY: detects the synthetic Type-B marker used at data-generation
+    time ([HIDDEN_TEXT_START]...[HIDDEN_TEXT_END]). Does NOT measure real PDF
+    structural forensics. See module_b.py / PDFForensicsDetector for the real
+    detector, which is evaluated separately in eval_module_b_standalone.py.
     """
     if not isinstance(text, str):
         return 0.0
@@ -66,8 +69,8 @@ def extract_features(df: pd.DataFrame, mod_a: KeywordDensityDetector, mod_c: Sem
         a_res = mod_a.predict(text)
         a_score = a_res['anomaly_score']
         
-        # Module B Score (Simulated)
-        b_score = simulate_module_b(text)
+        # Module B Score (Simulated — PROXY ONLY, see docstring)
+        b_score = simulate_module_b_proxy(text)
         
         # Module C Score
         c_res = mod_c.predict(text)
@@ -140,17 +143,80 @@ def run_evaluation():
     }
     plot_roc_curves(y_test, proba_dict, os.path.join(RESULTS_DIR, "plots", "roc_curves.png"))
     
-    # 7. Adaptive Adversary Degradation (Simulated)
-    # In a full implementation, we'd iteratively replace words and re-score. 
-    # Here we simulate the degradation curve characteristic of combined models vs single models.
+    # 7. Adaptive Adversary Degradation (Real Eval)
+    logger.info("Running Adaptive Adversary Degradation (subsampled to 30 for runtime)...")
     sub_pcts = [0, 10, 20, 30, 40, 50]
-    acc_drops = [metrics['f1'], 
-                 metrics['f1'] * 0.95, 
-                 metrics['f1'] * 0.88, 
-                 metrics['f1'] * 0.75, 
-                 metrics['f1'] * 0.50, 
-                 metrics['f1'] * 0.20]
-                 
+    acc_drops = []
+    
+    # Take a subset of Type-A and Type-D (the text-based attacks)
+    adv_test = test_df[test_df['attack_type'].isin(['TYPE_A', 'TYPE_D'])]
+    n_samples = min(30, len(adv_test))
+    subset_df = adv_test.sample(n_samples, random_state=42)
+    
+    for budget in sub_pcts:
+        if budget == 0:
+            acc_drops.append(metrics['f1'])
+            continue
+            
+        y_true_budg = []
+        y_pred_budg = []
+        
+        for idx, row in subset_df.iterrows():
+            text = row['text']
+            words = text.split()
+            n_replace = int(len(words) * (budget / 100.0))
+            
+            # Simple substitution attack: replace keywords with harmless generic words
+            # to evade density detection, while trying to keep semantics.
+            # We simulate this by replacing random words with generic tokens.
+            if n_replace > 0:
+                replace_indices = random.sample(range(len(words)), min(n_replace, len(words)))
+                for i in replace_indices:
+                    words[i] = "experience" # generic benign word
+            
+            mutated_text = " ".join(words)
+            
+            # Re-score
+            a_sc = mod_a.predict(mutated_text)['anomaly_score']
+            b_sc = simulate_module_b_proxy(mutated_text)
+            c_sc = mod_c.predict(mutated_text)['anomaly_score']
+            
+            feat = pd.DataFrame([{"Module_A_Score": a_sc, "Module_B_Score": b_sc, "Module_C_Score": c_sc}])
+            feat_scaled = scaler.transform(feat)
+            is_attack = meta_clf.predict(feat_scaled)[0]
+            
+            y_true_budg.append(1) # We know these are adversarial
+            y_pred_budg.append(int(is_attack))
+            
+        # Add some clean samples to compute real F1 at this budget
+        clean_test = test_df[test_df['is_adversarial'] == 0]
+        n_clean = min(30, len(clean_test))
+        clean_sub = clean_test.sample(n_clean, random_state=42)
+        
+        for idx, row in clean_sub.iterrows():
+            y_true_budg.append(0)
+            
+            a_sc = mod_a.predict(row['text'])['anomaly_score']
+            b_sc = simulate_module_b_proxy(row['text'])
+            c_sc = mod_c.predict(row['text'])['anomaly_score']
+            
+            feat = pd.DataFrame([{"Module_A_Score": a_sc, "Module_B_Score": b_sc, "Module_C_Score": c_sc}])
+            feat_scaled = scaler.transform(feat)
+            is_attack = meta_clf.predict(feat_scaled)[0]
+            
+            y_pred_budg.append(int(is_attack))
+            
+        # Calc F1
+        tp = sum(1 for yt, yp in zip(y_true_budg, y_pred_budg) if yt == 1 and yp == 1)
+        fp = sum(1 for yt, yp in zip(y_true_budg, y_pred_budg) if yt == 0 and yp == 1)
+        fn = sum(1 for yt, yp in zip(y_true_budg, y_pred_budg) if yt == 1 and yp == 0)
+        
+        prec = tp / (tp + fp) if (tp + fp) > 0 else 0
+        rec = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1_budg = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0
+        
+        acc_drops.append(f1_budg)
+        
     plot_degradation_curve(sub_pcts, acc_drops, os.path.join(RESULTS_DIR, "plots", "degradation_curve.png"))
     
     logger.info("=" * 60)

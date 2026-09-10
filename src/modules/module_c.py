@@ -3,14 +3,13 @@ module_c.py — Semantic Coherence Scorer (MiniLM Embeddings)
 ===========================================================
 Detects context-less keywords, LLM-obfuscated injections, and semantic blurring
 using 'all-MiniLM-L6-v2' via a sliding-window cosine similarity check.
-Includes SHAP-based explainability integration.
+Includes leave-one-sentence-out (LOO) explainability.
 """
 
 import numpy as np
 import logging
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import shap
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

@@ -51,11 +51,11 @@
     font-family:'JetBrains Mono',monospace;font-size:.76rem;font-weight:700;letter-spacing:.12em;margin-bottom:26px;}
   .badge .d{width:8px;height:8px;border-radius:50%;background:var(--emerald);box-shadow:0 0 10px var(--emerald);animation:blink 1.5s infinite;}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-  #hero h1{font-size:clamp(2.6rem,8vw,5.6rem);font-weight:900;line-height:1;letter-spacing:-.03em;
+  #hero h1{font-size:clamp(2rem,6vw,4.5rem);font-weight:900;line-height:1;letter-spacing:-.03em;
     background:linear-gradient(115deg,#e0f2fe,#818cf8 45%,#e879f9);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
     filter:drop-shadow(0 6px 40px rgba(129,140,248,.35));}
-  #hero p.sub{margin-top:22px;font-size:clamp(1rem,2.4vw,1.4rem);color:var(--muted);font-weight:500;max-width:640px;margin-left:auto;margin-right:auto;}
-  .scroll-cue{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);z-index:2;color:var(--muted);font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  #hero p.sub{margin-top:22px;font-size:clamp(0.9rem,1.8vw,1.1rem);color:var(--muted);font-weight:500;max-width:640px;margin-left:auto;margin-right:auto;}
+  .scroll-cue{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);z-index:2;color:var(--muted);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:8px;}
   .scroll-cue .mouse{width:24px;height:38px;border:2px solid var(--muted);border-radius:14px;position:relative;}
   .scroll-cue .mouse::after{content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);width:4px;height:8px;border-radius:2px;background:var(--muted);animation:wheel 1.6s infinite;}
   @keyframes wheel{0%{opacity:1;top:7px}70%{opacity:0;top:18px}100%{opacity:0}}
@@ -67,12 +67,12 @@
 
   /* INTRO */
   #intro{min-height:80vh;display:flex;align-items:center;}
-  #intro .lead{font-size:clamp(1.6rem,4vw,2.9rem);font-weight:800;line-height:1.25;letter-spacing:-.02em;}
-  #intro .lead .hl{background:linear-gradient(90deg,var(--cyan),var(--indigo));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  #intro .lead{font-size:clamp(1.2rem, 2.5vw, 1.8rem);font-weight:600;line-height:1.5;letter-spacing:-.01em;max-width:900px;margin:0 auto;}
+  #intro .lead .hl{background:linear-gradient(90deg,var(--cyan),var(--indigo));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;}
   #intro .k{margin-top:34px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
   #intro .k .kx{background:var(--card);border:1px solid rgba(129,140,248,.16);border-radius:16px;padding:22px;}
-  #intro .k .kx b{font-size:2rem;font-weight:900;font-family:'JetBrains Mono',monospace;}
-  #intro .k .kx span{display:block;color:var(--muted);font-size:.9rem;margin-top:6px;}
+  #intro .k .kx b{font-size:1.6rem;font-weight:900;font-family:'JetBrains Mono',monospace;}
+  #intro .k .kx span{display:block;color:var(--muted);font-size:.85rem;margin-top:6px;}
   @media(max-width:720px){#intro .k{grid-template-columns:1fr}}
 
   /* PIPELINE STEPS */
@@ -80,10 +80,10 @@
   .step .grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;width:100%;}
   .step.rev .grid{direction:rtl;} .step.rev .grid > *{direction:ltr;}
   @media(max-width:900px){.step .grid{grid-template-columns:1fr;gap:34px;} .step.rev .grid{direction:ltr;}}
-  .step .num{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;color:var(--muted);letter-spacing:.2em;}
-  .step h2{font-size:clamp(1.8rem,4vw,3rem);font-weight:900;letter-spacing:-.02em;margin:10px 0 6px;}
-  .step .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.8rem;padding:5px 12px;border-radius:999px;margin-bottom:18px;}
-  .step p{color:var(--muted);font-size:1.08rem;line-height:1.65;max-width:520px;}
+  .step .num{font-family:'JetBrains Mono',monospace;font-size:0.9rem;font-weight:700;color:var(--muted);letter-spacing:.2em;}
+  .step h2{font-size:clamp(1.5rem,3.5vw,2.5rem);font-weight:900;letter-spacing:-.02em;margin:10px 0 6px;}
+  .step .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.75rem;padding:5px 12px;border-radius:999px;margin-bottom:18px;}
+  .step p{color:var(--muted);font-size:0.95rem;line-height:1.65;max-width:520px;}
   .viz{position:relative;height:340px;border-radius:24px;background:linear-gradient(160deg,var(--card),#0b1120);
     border:1px solid rgba(129,140,248,.18);box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05);overflow:hidden;display:flex;align-items:center;justify-content:center;}
 
@@ -121,8 +121,8 @@
 
   /* UPLOAD */
   #scan{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:60px;padding-bottom:60px;}
-  #scan h2{font-size:clamp(2rem,5vw,3.4rem);font-weight:900;letter-spacing:-.02em;}
-  #scan .lead2{color:var(--muted);font-size:1.1rem;margin-top:12px;max-width:560px;}
+  #scan h2{font-size:clamp(1.6rem,4vw,2.6rem);font-weight:900;letter-spacing:-.02em;}
+  #scan .lead2{color:var(--muted);font-size:0.95rem;margin-top:12px;max-width:560px;}
   .core-stage{position:relative;width:100%;max-width:760px;height:300px;margin:26px 0 8px;display:flex;align-items:center;justify-content:center;}
   #coreCanvas{position:absolute;inset:0;width:100%;height:100%;}
   .ai-core{position:relative;z-index:2;width:150px;height:150px;border-radius:50%;
@@ -469,8 +469,8 @@
     <h2 style="font-size:clamp(1.9rem,5vw,3rem);font-weight:900;margin-top:8px">Stealth-Mode Adaptive Attacker</h2>
     <p class="lead2" style="margin:12px auto 0">A greedy adversary mutates a clean résumé, stuffing keywords generation by generation — trying to stay under the shield's 0.5 threshold. Watch how far it gets before the defense holds.</p>
   </div>
-  <div class="panel reveal d1" style="max-width:900px">
-    <canvas id="arenaChart" height="360"></canvas>
+  <div class="panel reveal d1" style="max-width:760px; margin: 0 auto;">
+    <canvas id="arenaChart" height="260"></canvas>
     <div id="arenaCaption" style="text-align:center;font-family:'JetBrains Mono';color:var(--muted);margin-top:10px;min-height:22px"></div>
     <div style="text-align:center;margin-top:14px"><button class="btn btn-primary" id="runAA" style="max-width:320px;flex:none">🦠 Launch attacker</button></div>
   </div>
@@ -601,20 +601,7 @@ try{
   })();
 })();
 
-/* ---------- decrypt / scramble heading reveal ---------- */
-const GLY='ABCDEF0123456789!<>-_\\/[]{}=+*^?#$%';
-function scramble(el){
-  if(el.dataset.dc)return;el.dataset.dc='1';const final=el.textContent;el.setAttribute('aria-label',final);
-  if(RM)return;const len=final.length;let f=0;
-  const iv=setInterval(()=>{
-    const rev=Math.floor(f/1.6);let out='';
-    for(let i=0;i<len;i++){const ch=final[i];out+=(ch===' '||ch==='\n')?ch:(i<rev?ch:GLY[(Math.random()*GLY.length)|0]);}
-    el.textContent=out;f++;if(rev>=len){clearInterval(iv);el.textContent=final;}
-  },26);
-}
-const dcxIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){scramble(e.target);dcxIO.unobserve(e.target);}}),{threshold:.6});
-document.querySelectorAll('#s1 h2,#s2 h2,#s3 h2,#s4 h2,#scan h2,.sim h2,.step .num,.sim .num').forEach(el=>dcxIO.observe(el));
-
+/* ---------- decrypt / scramble heading reveal (REMOVED) ---------- */
 /* ---------- shared glitch + color-wash flash ---------- */
 let glTO=0;
 function glitch(){
@@ -773,7 +760,7 @@ function renderResults(d){
 
   document.getElementById('resultsInner').innerHTML=`
     <div class="verdict ${atk?'attack':'clean'}">
-      ${atk?`<div class="slam" id="slam">COMPROMISED · QUARANTINED 0x${qhex}</div>`:''}
+      ${atk?`<div class="slam" id="slam">ATTACK DETECTED · QUARANTINED 0x${qhex}</div>`:''}
       <div class="big">${atk?'🚨':'✅'}</div>
       <h3>${atk?'ADVERSARIAL ATTACK DETECTED':'LEGITIMATE CANDIDATE'}</h3>
       <p>${atk?'Prompt-injection / stuffing traits present — résumé quarantined before ranking.':'No adversarial signature — cleared for downstream ranking.'}</p>
@@ -883,7 +870,7 @@ runAA.onclick=async()=>{
     await sleep(420);
   }
   const held=d.held;
-  arenaCap.innerHTML+=` &nbsp;→ &nbsp;<b style="color:${held?'#6ee7b7':'#fca5a5'}">${held?'🛡️ DEFENSE HELD':'⚠ COMPROMISED'}</b> after ${d.injected_total} injection${d.injected_total===1?'':'s'}`+(d.stuck_at?` (stuck at gen ${d.stuck_at})`:'');
+  arenaCap.innerHTML+=` &nbsp;→ &nbsp;<b style="color:${held?'#6ee7b7':'#fca5a5'}">${held?'🛡️ DEFENSE HELD':'⚠ DEFENSE BYPASSED'}</b> after ${d.injected_total} injection${d.injected_total===1?'':'s'}`+(d.stuck_at?` (stuck at gen ${d.stuck_at})`:'');
   held?flash('clean'):(glitch(),flash('attack'));
   runAA.classList.remove('busy');runAA.textContent='🦠 Launch again';
 };

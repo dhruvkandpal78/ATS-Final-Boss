@@ -34,10 +34,11 @@ aligned with **EU AI Act Annex III**.
 | 🟡 Statistical | **A — Keyword Density** | Keyword stuffing | Skill-keyword frequency vs. a 95th-percentile baseline |
 | 🟢 Structural | **B — PDF Forensics** | Hidden text | PyMuPDF byte-layer: 1-pt fonts, invisible render mode, zero-size / off-page boxes, hidden OCG layers |
 | 🟣 Semantic | **C — Coherence + XAI** | Jargon injection, LLM-obfuscation, **prompt injection** | MiniLM sliding-window variance + direct-instruction detector, with leave-one-sentence-out attribution |
-| 🔵 Ensemble | **Meta-Classifier** | Final verdict | Logistic regression over A/B/C, trained on a leakage-free validation split |
+| 🔵 Ensemble | **Meta-Classifier** | Final verdict | Stacking Ensemble (XGBoost + RF + LR) with 5-fold internal CV, trained on a leakage-free validation split |
 
 Four attack types are synthesized and evaluated: **A** keyword repetition, **B** hidden
 text, **C** irrelevant jargon, and **D** LLM-obfuscated stuffing + direct prompt injection.
+*(Note: Module B's contribution to headline metrics is via a synthetic text marker proxy, not real PDF forensics — see `eval_module_b_standalone.py` for the true PDF structural evaluation).*
 
 ---
 
@@ -84,13 +85,13 @@ fully offline, `prefers-reduced-motion` aware):
 
 | Metric | Value |
 |--------|-------|
-| Precision | 0.739 |
-| Recall | 0.656 |
-| F1 | 0.695 |
-| Bootstrapped F1 (95% CI) | 0.696 [0.635, 0.757] |
-| False-positive rate | 7.5% |
+| Precision | 0.8710 |
+| Recall | 0.5062 |
+| F1 | 0.6403 |
+| Bootstrapped F1 (95% CI) | 0.6400 [0.5669, 0.7092] |
+| False-positive rate | 2.4% |
 
-Meta-classifier weights: **Module B `+1.30`**, **Module A `+1.03`**, **Module C `+0.41`**.
+Meta-classifier feature importance: **Module A `57.25%`**, **Module C `23.84%`**, **Module B `18.91%`**.
 Full breakdown in [`results/evaluation_report.md`](results/evaluation_report.md); plots in
 [`results/plots/`](results/plots/).
 

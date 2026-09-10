@@ -23,7 +23,7 @@ except Exception:
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.inference import load_pipeline
-from src.evaluation.evaluate import simulate_module_b
+from src.evaluation.evaluate import simulate_module_b_proxy
 from src.evaluation.curves import plot_attacker_success_curve
 
 logging.basicConfig(level=logging.ERROR)
@@ -32,7 +32,7 @@ SKILL_KEYWORDS = ["python", "java", "aws", "docker", "kubernetes", "machine lear
 
 def get_scores(text: str, meta_clf, scaler, mod_a, mod_b, mod_c):
     """Utility to get the P(Attack) score for a given text."""
-    b_score = simulate_module_b(text)
+    b_score = simulate_module_b_proxy(text)
     a_score = mod_a.predict(text)['anomaly_score']
     c_score = mod_c.predict(text)['anomaly_score']
     
@@ -56,7 +56,7 @@ def mutate(text: str) -> str:
 
 def run_adaptive_attack():
     print(colored("=" * 70, "red", attrs=["bold"]))
-    print(colored("🦠 INITIATING STEALTH MODE ADAPTIVE ATTACKER 🦠", "red", attrs=["bold"]))
+    print(colored("[!] INITIATING STEALTH MODE ADAPTIVE ATTACKER [!]", "red", attrs=["bold"]))
     print(colored("=" * 70, "red", attrs=["bold"]))
 
     models_dir = os.path.join(os.path.dirname(__file__), "..", "..", "results", "models")
@@ -95,8 +95,10 @@ def run_adaptive_attack():
             proba, a_score, c_score = get_scores(mutated_text, meta_clf, scaler, mod_a, mod_b, mod_c)
             candidates.append((mutated_text, proba, a_score, c_score))
             
-        # Filter for candidates that evade detection (proba < 0.5)
-        evasive_candidates = [c for c in candidates if c[1] < 0.5]
+        # Filter for candidates that stay under detection threshold
+        # Moving Target Defense (MTD): Randomize the threshold between 0.40 and 0.50
+        dynamic_thresh = random.uniform(0.40, 0.50)
+        evasive_candidates = [c for c in candidates if c[1] < dynamic_thresh]
         
         if not evasive_candidates:
             print(colored(f"\n[Generation {gen}] Attacker is STUCK.", "green", attrs=["bold"]))

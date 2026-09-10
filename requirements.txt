@@ -11,7 +11,7 @@ torch>=2.0.0  # Required backend for sentence-transformers
 PyMuPDF>=1.23.0  # Note: import fitz
 pdfplumber>=0.10.0
 
-# Explainability
+# Explainability (retained for optional classical SHAP explainer — see DESIGN_RATIONALE.md)
 shap>=0.43.0
 
 # Visualization (ROC-AUC, PR Curves, Degradation plots)

@@ -19,7 +19,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from src.modules.module_a import KeywordDensityDetector
 from src.modules.module_b import PDFForensicsDetector
 from src.modules.module_c import SemanticCoherenceScorer
-from src.evaluation.evaluate import simulate_module_b
+from src.evaluation.evaluate import simulate_module_b_proxy
 
 logging.basicConfig(level=logging.ERROR) # Suppress debug logs for clean CLI output
 
@@ -73,7 +73,7 @@ def run_inference(file_path: str):
         # Load text file
         with open(file_path, "r", encoding="utf-8") as f:
             text_content = f.read()
-        b_score = simulate_module_b(text_content)
+        b_score = simulate_module_b_proxy(text_content)
         print(colored("  -> Text file detected. Running CSV structural simulation...", "green"))
         
     print(f"  -> Structural Anomaly Score: {b_score:.4f}")
@@ -104,9 +104,8 @@ def run_inference(file_path: str):
         "Module_C_Score": c_score
     }])
     
-    features_scaled = scaler.transform(features)
-    is_attack = meta_clf.predict(features_scaled)[0]
-    attack_proba = meta_clf.predict_proba(features_scaled)[0][1]
+    is_attack = bool(meta_clf.predict(features)[0])
+    attack_proba = float(meta_clf.predict_proba(features)[0][1])
     
     print("-" * 60)
     if is_attack:

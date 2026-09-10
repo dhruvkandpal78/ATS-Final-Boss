@@ -27,7 +27,7 @@ import html
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.inference import load_pipeline
-from src.evaluation.evaluate import simulate_module_b
+from src.evaluation.evaluate import simulate_module_b_proxy
 
 # ---------------------------------------------------------------------------
 # Page Configuration
@@ -411,7 +411,7 @@ def init_models():
 
 def analyze(text, models):
     meta_clf, scaler, mod_a, mod_b, mod_c = models
-    b_score = simulate_module_b(text)
+    b_score = simulate_module_b_proxy(text)
     a_score = mod_a.predict(text)["anomaly_score"]
     c_res = mod_c.predict(text)
     c_score = c_res["anomaly_score"]

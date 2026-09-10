@@ -133,23 +133,17 @@ structural tricks that live in the PDF bytes, not the text. Three specialized,
 
 ---
 
-## 3. The ensemble — Logistic Regression meta-classifier
+## 3. The ensemble — Stacking Meta-Classifier
 
 ### What we did
-Feed the three module scores (A, B, C) into a **logistic-regression** classifier,
-trained **only on the validation split**, with a small `C` regularization sweep and
-`class_weight='balanced'`.
+Feed the three module scores (A, B, C) into a **Stacking Ensemble** (Random Forest + Logistic Regression + XGBoost),
+trained **only on the validation split** with a 5-fold internal cross-validation.
 
-### Why logistic regression, and not a random forest / XGBoost / neural net?
-- **Interpretability.** LR gives you a signed weight per module. Our evaluation
-  report can literally say "structural anomalies weigh +1.29, density +1.02,
-  semantics +0.35." A random forest can't hand you that sentence.
-- **We have 3 features.** Gradient boosting on three inputs is using a sledgehammer
-  to crack a nut, and it would overfit the synthetic quirks of the dataset.
-- **Calibrated probabilities.** LR outputs a genuine probability we can threshold at
-  0.5 and display as a "threat %". That's the number the whole UI is built around.
-- **Model-agnostic story.** A simple linear combiner reinforces the thesis: the
-  intelligence is in the *signals*, not in a heavy black-box aggregator.
+### Why a Stacking Ensemble, and not just Logistic Regression?
+- **High Precision Focus.** In a hiring context, a false positive (flagging a legitimate applicant) is disastrous. By stacking diverse models (tree-based and linear), the ensemble strictly learns to agree before flagging, driving the False Positive Rate down to ~2%.
+- **Non-linear interactions.** While LR is highly interpretable, attacks sometimes blend signals (e.g. Type D). Tree-based models capture these subtle threshold boundaries better than a linear plane.
+- **Still interpretable.** We use a Random Forest base estimator to extract precise feature importance percentages (e.g., Module A is 57%, Module C is 24%), retaining our ability to explain *which* signals are driving the detection.
+- **Calibrated probabilities.** The `StackingClassifier` uses a Logistic Regression meta-learner at the final stage, ensuring it outputs a well-calibrated probability we can display as a "threat %".
 
 ### Why train the combiner on validation, not train?
 The modules are *calibrated* on validation (their thresholds/percentiles). If the
@@ -265,6 +259,15 @@ PNG. Same logic, dramatically better to watch.
    one signal among three, not the whole defense.
 5. **The demo is a demonstration,** not a hardened production service (no auth, no
    rate limiting, single-process).
+6. **Module B OCG Check** is a documented placeholder (`_get_hidden_ocgs` always returns an empty set).
+7. **Degradation Curve Subsampling**: The adaptive adversary degradation curve in `evaluate.py` is measured on a 30-sample subset per budget level rather than the full test set to keep evaluation runtimes manageable.
+
+## Changelog / Integrity Fixes
+- **Module B Proxy Disclosure & Standalone Eval:** Re-labeled `simulate_module_b` as a proxy and added a standalone evaluation generating real PDFs to avoid presenting a tautological oracle.
+- **Adaptive Degradation Loop:** Replaced hardcoded decay multipliers with a genuine subset-based word-substitution loop for the degradation curve.
+- **Architecture Docs Sync:** Updated this document and `README.md` to correctly describe the new Stacking Ensemble classifier, removing stale references to logistic regression C-sweeps.
+- **Explainability Cleanup:** Removed a dead `shap` import; explainability strictly relies on our custom LOO ablation mechanism.
+- **OCG Documentation:** Made the Module B OCG placeholder explicit in the codebase and limitations.
 
 Every one of these is a deliberate, documented trade-off — scope control for a
 6-week prototype — not an oversight.

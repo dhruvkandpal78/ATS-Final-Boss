@@ -76,14 +76,22 @@ class PDFForensicsDetector:
 
     def _get_hidden_ocgs(self, doc: fitz.Document) -> set:
         """
-        Identifies Optional Content Groups (OCGs) that have visibility explicitly set to OFF.
+        PLACEHOLDER: Identifies Optional Content Groups (OCGs) that have
+        visibility explicitly set to OFF.
+
+        NOTE: This method currently always returns an empty set — OCG-based
+        hidden-text detection is NOT yet implemented. A résumé hidden via
+        Optional Content Groups will not be flagged by this check today.
+        A real implementation would parse the /OCProperties catalog entry
+        (/OFF array) and check span OCG membership against that set.
+        See DESIGN_RATIONALE.md "Honest limitations" for details.
         """
         hidden_ocgs = set()
         try:
             ocg_list = doc.get_ocgs()
             for ocg in ocg_list:
-                # In PyMuPDF, we can check state if available. Simplified heuristic here.
-                # A robust implementation would parse the PDF catalog dictionary for OCG states.
+                # TODO: implement real OCG visibility check via
+                # doc.get_layer(config=0) / /OCProperties /OFF array parsing
                 pass 
         except Exception:
             pass
