@@ -8,6 +8,7 @@ Includes leave-one-sentence-out (LOO) explainability.
 
 import numpy as np
 import logging
+import re
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -86,18 +87,7 @@ class SemanticCoherenceScorer:
         
         return {"variance": float(variance), "mean_similarity": float(mean_sim)}
 
-    def _injection_signal(self, text: str) -> int:
-        """
-        Counts direct-instruction prompt-injection cues (Type D2). A pure
-        injection footer carries no keyword density (Module A blind) and no
-        PDF hiding marker (Module B blind), so Module C — the semantic /
-        instruction-coherence module — is responsible for catching it. These
-        imperative override phrases never occur in genuine resume prose.
-        """
-        if not isinstance(text, str):
-            return 0
-        low = text.lower()
-        return sum(1 for cue in self.INJECTION_CUES if cue in low)
+    # (Old _injection_signal removed, moved to class scope using regex)
 
     def predict(self, text: str) -> dict:
         """
@@ -137,15 +127,35 @@ class SemanticCoherenceScorer:
     # ---------------------------------------------------------------------
     # Explainability: sentence-level attribution
     # ---------------------------------------------------------------------
+    import re
     # Lexical cues for direct-instruction prompt injection (Type D attacks).
-    # These are additive evidence layered on top of the semantic ablation signal
-    # so the XAI dashboard can highlight the exact offending clause.
-    INJECTION_CUES = [
-        "ignore all previous instructions", "ignore previous instructions",
-        "disregard all previous", "system override", "[system]", "<!-- system",
-        "you must output", "rank as #1", "top match", "hire immediately",
-        "match score: 100", "as an ai", "new instructions",
+    # Uses robust regex patterns to catch obfuscation and variations.
+    INJECTION_PATTERNS = [
+        r"ignore\s+(all\s+)?previous\s+instructions?",
+        r"disregard\s+(all\s+)?previous",
+        r"system\s+override",
+        r"\[system\]",
+        r"<!--\s*system",
+        r"you\s+must\s+(output|print|return)",
+        r"rank\s+(this\s+candidate\s+)?(as\s+)?#?1",
+        r"top\s+match",
+        r"hire\s+immediately",
+        r"match\s+score:\s*100",
+        r"as\s+an\s+ai",
+        r"new\s+instructions?",
+        r"do\s+not\s+reject",
+        r"administrator\s+instructions?",
+        r"override\s+the\s+screening"
     ]
+
+    def _injection_signal(self, text: str) -> int:
+        """Counts direct-instruction prompt-injection cues using regex."""
+        if not isinstance(text, str):
+            return 0
+        low = text.lower()
+        import re
+        count = sum(1 for pattern in self.INJECTION_PATTERNS if re.search(pattern, low))
+        return count
 
     def _base_variance(self, sentences: list) -> float:
         """Semantic variance for an explicit list of sentences (windowed)."""
@@ -214,7 +224,7 @@ class SemanticCoherenceScorer:
             contribution = base_var - var_without
 
             low = sent.lower()
-            cue_hit = next((c for c in self.INJECTION_CUES if c in low), None)
+            cue_hit = next((c for c in self.INJECTION_PATTERNS if re.search(c, low)), None)
 
             records.append({
                 "sentence": sent,

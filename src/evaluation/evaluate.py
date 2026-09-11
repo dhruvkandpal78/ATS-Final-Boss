@@ -55,34 +55,49 @@ def simulate_module_b_proxy(text: str) -> float:
 # ---------------------------------------------------------------------------
 # Feature Extraction Runner
 # ---------------------------------------------------------------------------
+# Global variables for worker processes
+_worker_mod_a = None
+_worker_mod_c = None
+
+def _init_worker():
+    global _worker_mod_a, _worker_mod_c
+    from src.modules.module_a import KeywordDensityDetector
+    from src.modules.module_c import SemanticCoherenceScorer
+    _worker_mod_a = KeywordDensityDetector()
+    _worker_mod_c = SemanticCoherenceScorer(model_name='all-MiniLM-L6-v2', window_size=2)
+
+def _process_row(args):
+    idx, text, mod_a_thresh, mod_c_thresh = args
+    global _worker_mod_a, _worker_mod_c
+    
+    _worker_mod_a.threshold = mod_a_thresh
+    _worker_mod_c.variance_threshold = mod_c_thresh
+    
+    a_res = _worker_mod_a.predict(text)
+    b_score = simulate_module_b_proxy(text)
+    c_res = _worker_mod_c.predict(text)
+    
+    return {
+        "Module_A_Score": a_res['anomaly_score'],
+        "Module_B_Score": b_score,
+        "Module_C_Score": c_res['anomaly_score']
+    }
+
 def extract_features(df: pd.DataFrame, mod_a: KeywordDensityDetector, mod_c: SemanticCoherenceScorer) -> pd.DataFrame:
     """
-    Extracts module anomaly scores to serve as features for the meta-classifier.
+    Extracts module anomaly scores in parallel to serve as features for the meta-classifier.
     """
-    features = []
+    import concurrent.futures
+    import multiprocessing
     
-    logger.info(f"Extracting features for {len(df)} samples...")
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc="Extracting"):
-        text = row['text']
+    logger.info(f"Extracting features for {len(df)} samples using {multiprocessing.cpu_count()} cores...")
+    
+    args_list = [(idx, row['text'], mod_a.threshold, mod_c.variance_threshold) for idx, row in df.iterrows()]
+    
+    with concurrent.futures.ProcessPoolExecutor(initializer=_init_worker) as executor:
+        results = list(tqdm(executor.map(_process_row, args_list), total=len(df), desc="Extracting"))
         
-        # Module A Score
-        a_res = mod_a.predict(text)
-        a_score = a_res['anomaly_score']
-        
-        # Module B Score (Simulated — PROXY ONLY, see docstring)
-        b_score = simulate_module_b_proxy(text)
-        
-        # Module C Score
-        c_res = mod_c.predict(text)
-        c_score = c_res['anomaly_score']
-        
-        features.append({
-            "Module_A_Score": a_score,
-            "Module_B_Score": b_score,
-            "Module_C_Score": c_score
-        })
-        
-    return pd.DataFrame(features)
+    return pd.DataFrame(results)
 
 # ---------------------------------------------------------------------------
 # Main Evaluation Pipeline

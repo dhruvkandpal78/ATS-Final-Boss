@@ -61,10 +61,10 @@ def run_experiments():
     y_test = df_test['is_adversarial'].values
     
     logger.info("Running Benchmark Experiment...")
-    # 1. Single Modules (using calibrated thresholds as decision boundaries)
-    y_pred_A = (X_test['Module_A_Score'] > mod_a.threshold).astype(int)
+    # 1. Single Modules (using 0.5 decision boundary since extracted features are normalized)
+    y_pred_A = (X_test['Module_A_Score'] > 0.5).astype(int)
     y_pred_B = (X_test['Module_B_Score'] > 0.5).astype(int)
-    y_pred_C = (X_test['Module_C_Score'] > mod_c.variance_threshold).astype(int)
+    y_pred_C = (X_test['Module_C_Score'] > 0.5).astype(int)
     
     # 2. Simple Fusion (Logical OR)
     y_pred_fusion = ((y_pred_A == 1) | (y_pred_B == 1) | (y_pred_C == 1)).astype(int)
@@ -77,7 +77,7 @@ def run_experiments():
     
     benchmark_results = {
         "Module A (Keywords)": calc_metrics(y_test, y_pred_A, X_test['Module_A_Score'].values),
-        "Module B (Forensics)": calc_metrics(y_test, y_pred_B, X_test['Module_B_Score'].values),
+        "Module B (PDF/Text Proxy)": calc_metrics(y_test, y_pred_B, X_test['Module_B_Score'].values),
         "Module C (Semantics)": calc_metrics(y_test, y_pred_C, X_test['Module_C_Score'].values),
         "Simple Fusion (OR)": calc_metrics(y_test, y_pred_fusion),
         "Stacking Ensemble": calc_metrics(y_test, y_pred_meta, y_prob_meta)
@@ -92,10 +92,10 @@ def run_experiments():
         return calc_metrics(y_test, preds, probs)
         
     ablation_results = {
-        "A (Keywords Only)": train_eval_ablation(['Module_A_Score']),
-        "A + B (Keywords + Forensics)": train_eval_ablation(['Module_A_Score', 'Module_B_Score']),
-        "A + C (Keywords + Semantics)": train_eval_ablation(['Module_A_Score', 'Module_C_Score']),
-        "A + B + C (Full Ensemble)": benchmark_results["Stacking Ensemble"] # Just reuse the full model
+        "LR (A: Keywords Only)": train_eval_ablation(['Module_A_Score']),
+        "LR (A + B: Keywords + Forensics)": train_eval_ablation(['Module_A_Score', 'Module_B_Score']),
+        "LR (A + C: Keywords + Semantics)": train_eval_ablation(['Module_A_Score', 'Module_C_Score']),
+        "LR (A + B + C: Full Proxy Features)": train_eval_ablation(['Module_A_Score', 'Module_B_Score', 'Module_C_Score'])
     }
     
     logger.info("Running Attack-Type Evaluation...")
