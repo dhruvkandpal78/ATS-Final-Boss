@@ -10,7 +10,8 @@ We assume a "Grey Box" attacker:
 * The attacker can embed direct prompt injections to attack downstream LLMs.
 
 ## Dataset
-We utilized a synthetic dataset of 6,555 resume samples (clean and adversarial) built using Faker and localized to represent diverse demographic profiles, ensuring we can test fairness.
+We utilized a synthetic dataset of 6,555 resume samples (clean and adversarial) built using Faker and localized to represent diverse demographic profiles, ensuring we can test fairness. 
+Additionally, an optional **LLM-Generated Adversarial Variant** (`llm_adversarial_resumes.csv`) can be dynamically created using the Anthropic API (`claude-3-5-sonnet`). This provides a secondary, highly linguistically varied adversarial source to evaluate model generalization, balancing the deterministic nature (and zero cost) of the template-based generator against the expensive but realistic LLM-generated attacks.
 
 ## Architecture
 The system operates as a Stacking Ensemble over three specialized modules:
@@ -38,3 +39,9 @@ By implementing **Moving Target Defense (MTD)**—jittering the final decision t
 * PyMuPDF dictionary parsing does not catch raw PDF stream manipulation (e.g., deeply obfuscated Text Rendering Mode 3 operations).
 * The semantic model (`MiniLM`) is English-only and does not handle multi-lingual resumes well.
 * Future work should incorporate robust multi-lingual embeddings.
+
+## Related Work
+* **Adversarial Attacks in NLP:** General textual adversarial attacks often utilize synonym substitution or formatting tricks. Jin et al. (2020) in *Is BERT Really Robust? A Strong Baseline for Natural Language Attack on Text Classification and Entailment* (TextFooler) demonstrates how language models can be fooled by semantically preserving perturbations, akin to our Type C semantic blurring.
+* **ATS Gaming & Keyword Stuffing:** Academic literature on ATS gaming is sparse, largely due to the proprietary nature of commercial ATS systems (e.g., Workday, Taleo). However, industry analyses from platforms like Jobscan (e.g., \"How to Beat the ATS\") routinely discuss white-text steganography and skill-section stuffing, motivating our Module A and B defenses.
+* **Prompt Injections & LLM Defenses:** With the rise of LLM-based evaluators, direct prompt injections have become a critical threat. Perez et al. (2022) in *Ignore Previous Prompt: Attack Techniques For Language Models* and Greshake et al. (2023) in *Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection* formalize the exact Type D attacks simulated in our dataset, where context windows are hijacked by adversarial instructions.
+* **PDF Steganography:** Hiding text within PDFs (Type B attacks) exploits the PDF rendering specification. Zhong et al. (2020) and various cybersecurity whitepapers on PDF malware analysis highlight the use of zero-width fonts, off-page rendering coordinates, and matching foreground/background colors (Text Rendering Mode 3) to embed hidden payloads that parsers extract but humans cannot see.
