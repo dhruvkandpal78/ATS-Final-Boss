@@ -42,7 +42,7 @@ def evaluate_on_dataframe(df, mod_a, mod_c, meta_clf):
     y_prob_meta = meta_clf.predict_proba(X[ml_features])
     
     y_pred_hybrid = y_pred_meta.copy()
-    y_prob_hybrid = y_prob_meta.copy()
+    y_prob_hybrid = y_prob_meta[:, 1].copy()
     
     for i, row in X.reset_index(drop=True).iterrows():
         if row['Injection_Cues'] > 0 or row['Module_B_Score'] >= 0.9:

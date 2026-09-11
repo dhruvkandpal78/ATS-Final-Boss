@@ -140,7 +140,10 @@ class KeywordDensityDetector:
         is_anomalous = score > self.threshold
         
         # Normalize score between 0 and 1
-        normalized = min(1.0, score / (self.threshold * 2) if self.threshold > 0 else 0)
+        if self.threshold > 0:
+            normalized = min(1.0, score / (self.threshold * 2))
+        else:
+            normalized = 1.0 if score > 0 else 0.0
         
         return {
             "status": "success",
