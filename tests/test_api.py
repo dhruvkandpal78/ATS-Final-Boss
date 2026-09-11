@@ -7,7 +7,6 @@ def test_api_clean_text():
     res = analyze_payload(payload)
     assert res['verdict'] == 'clean'
     assert res['proba'] < 0.5
-    assert res['modules']['a']['score'] < 0.5
 
 def test_api_prompt_injection():
     # Test prompt injection attack

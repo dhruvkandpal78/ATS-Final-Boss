@@ -38,10 +38,10 @@ Uses sliding-window embedding analysis (`all-MiniLM-L6-v2`) to detect abrupt top
 The system was evaluated against a held-out dataset of legitimate resumes and adversarial attacks. We utilized a rigorous split and an apples-to-apples ablation study.
 
 **Key Findings:**
-* **Precision over Recall**: The Stacking Ensemble correctly optimizes for Precision (96.00%) to ensure clean resumes aren't falsely flagged, achieving an F1 score of 45.71%. 
-* **The Noise Trade-off**: Because Module A (Keywords) inherently triggers false positives on highly-technical legitimate resumes, the Meta-Classifier learns to suppress it unless confirmed by B or C. This causes Type A attack recall to drop to 0%, proving the difficulty of purely statistical keyword defense.
-* **Module B is Highly Effective**: Structural and text-proxy Module B features achieved 100% Precision and 100% detection rate on Type B attacks.
-* **Ablation Proof**: Removing any single module from the Logistic Regression baseline (A+B+C) degrades the F1 score or destabilizes the ROC-AUC, proving all three modules contribute uniquely to the defense shield.
+* **The Stacking Conservatism**: The Stacking Ensemble (ML-Only) became highly conservative, optimizing heavily for Precision (100%) to ensure clean resumes aren't falsely flagged, but suffering a catastrophic drop in Recall (25.00%). It effectively learned to rely solely on the high-confidence structural signals from Module B.
+* **Hybrid System Superiority**: By layering explicit rules (Module C prompt injection cues and high-confidence Module B scores) on top of the ML predictions, the **Hybrid System** improved Recall to 35.63% while maintaining 95.00% Precision. This proves that for rare, explicit attacks like prompt injections, rule-based overrides successfully catch what conservative ML misses.
+* **Logistic Regression Baseline**: The simple Logistic Regression (A+B+C) achieved a much more balanced trade-off (Precision 44.78%, Recall 56.25%, F1 0.4986) than the complex Stacking Ensemble, suggesting that the non-linear models overfit the validation set's class imbalance.
+* **Module A Threshold Collapse**: During objective-based F1 calibration, Module A's optimal raw threshold was pushed to 0.000, which subsequently caused its internal normalizer to zero-out its outputs. This highlights a critical limitation in automated normalization layers when dealing with sparse text distributions.
 
 *(See `results/reports/experiments_summary.md` for exact numeric metrics).*
 

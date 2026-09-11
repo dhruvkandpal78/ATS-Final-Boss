@@ -80,7 +80,8 @@ def _process_row(args):
     return {
         "Module_A_Score": a_res['anomaly_score'],
         "Module_B_Score": b_score,
-        "Module_C_Score": c_res['anomaly_score']
+        "Module_C_Score": c_res['anomaly_score'],
+        "Injection_Cues": c_res.get('injection_cues', 0)
     }
 
 def extract_features(df: pd.DataFrame, mod_a: KeywordDensityDetector, mod_c: SemanticCoherenceScorer) -> pd.DataFrame:
@@ -119,8 +120,8 @@ def run_evaluation():
     
     # 3. Calibrate on Validation Set
     logger.info("--- CALIBRATION PHASE ---")
-    mod_a.calibrate(df_val, percentile=95.0)
-    mod_c.calibrate(df_val, percentile=95.0)
+    mod_a.calibrate(df_val, objective='f1')
+    mod_c.calibrate(df_val, objective='f1')
     
     # Save calibrated thresholds to config
     import json

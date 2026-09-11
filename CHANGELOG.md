@@ -46,3 +46,12 @@ This document tracks the step-by-step evolution of the ATS Final Boss project, f
 ## Phase 5: Final Metrics Validation (Current)
 **State:** Running the optimized, multi-core `run_experiments.py` script to generate pristine, unfabricated metrics. The final results will reflect the true performance of the hardened architecture.
 **Reason for Iteration:** The final step to complete the capstone lifecycle: running the true, hardened pipeline against the dataset and documenting the final, scientifically generated results into the `results/` folder and `README.md`.
+
+## Phase 6: E2E Methodology and Calibration Hardening (Current)
+**Changes Made:**
+1. **Objective-Based Calibration:** Replaced the arbitrary 95th-percentile threshold configuration with a validation-set F1-maximization search for both Module A and Module C. The system now optimizes for defense utility rather than statistical percentiles.
+2. **Module A Math Fix:** Fixed a major bug where multi-word keywords added 0-index positions, which artificially deflated the positional variance (concentration) metric. Module A now maps keywords to true positional indices via regex word boundary matching.
+3. **Dataset Realism:** Improved the data injector to add commas, bulk formatting, and single-keyword repetition to Type A. Added diverse prompt injection payloads to Type D.
+4. **Hybrid System Evaluation:** Modified the testing scripts and meta-classifier architecture to formally decouple ML-only predictions from Hybrid (ML + Rules) predictions, clarifying exactly which layer stops prompt injections.
+5. **Ablation Transparency:** Added a standard LogisticRegression(A+B+C) baseline to the main benchmark to explicitly prove whether the Stacking Ensemble is justified over a simpler model.
+**Reason for Iteration:** Statistical rigor. Thresholds chosen without a defined objective are academically indefensible. Furthermore, the math error in Module A actively hindered detection of multi-word skill stuffing. By validating the ML vs Hybrid approach, we provide full transparency into how prompt injections are actually caught in a production environment.

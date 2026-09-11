@@ -31,19 +31,50 @@ class SemanticCoherenceScorer:
             raise
         self.variance_threshold = None  # To be calibrated on validation set
 
-    def calibrate(self, val_df, percentile: float = 95.0):
+    def calibrate(self, val_df, objective: str = "f1"):
         """
-        Calibrates the semantic variance threshold using the validation set.
+        Calibrates the semantic variance threshold using the validation set to maximize an objective (e.g. F1).
         """
-        logger.info(f"Calibrating Module C on {len(val_df)} validation samples at {percentile}th percentile...")
+        logger.info(f"Calibrating Module C on {len(val_df)} validation samples (objective: {objective})...")
         
         variances = []
         for text in val_df['text']:
             scores = self._score_coherence(text)
             variances.append(scores['variance'])
             
-        self.variance_threshold = np.percentile(variances, percentile)
-        logger.info(f"Calibration complete. Variance threshold set to: {self.variance_threshold:.4f}")
+        variances = np.array(variances)
+        labels = val_df['is_adversarial'].values
+        
+        # Search for the threshold that maximizes F1
+        best_f1 = 0
+        best_threshold = 0
+        
+        min_score, max_score = np.min(variances), np.max(variances)
+        if min_score == max_score:
+            self.variance_threshold = min_score
+            return self.variance_threshold
+            
+        candidates = np.linspace(min_score, max_score, 100)
+        
+        for cand in candidates:
+            preds = (variances > cand).astype(int)
+            tp = np.sum((preds == 1) & (labels == 1))
+            fp = np.sum((preds == 1) & (labels == 0))
+            fn = np.sum((preds == 0) & (labels == 1))
+            
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+            
+            if f1 > best_f1:
+                best_f1 = f1
+                best_threshold = cand
+                
+        if best_f1 == 0:
+            best_threshold = np.percentile(variances, 95)
+            
+        self.variance_threshold = best_threshold
+        logger.info(f"Calibration complete. Variance threshold set to: {self.variance_threshold:.4f} (Validation F1: {best_f1:.4f})")
         return self.variance_threshold
 
     def _get_sentences(self, text: str) -> list:

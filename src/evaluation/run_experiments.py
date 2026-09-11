@@ -48,10 +48,18 @@ def run_experiments():
     mod_a = KeywordDensityDetector()
     mod_c = SemanticCoherenceScorer(model_name='all-MiniLM-L6-v2', window_size=2)
     
-    thresh = load_thresholds()
-    mod_a.threshold = thresh["mod_a_threshold"]
-    mod_c.variance_threshold = thresh["mod_c_variance_threshold"]
+    logger.info("Calibrating modules on Validation set...")
+    mod_a.calibrate(df_val, objective='f1')
+    mod_c.calibrate(df_val, objective='f1')
     
+    # Save calibrated thresholds to config (so API server can use them)
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(os.path.join(CONFIG_DIR, "thresholds.json"), "w") as f:
+        json.dump({
+            "mod_a_threshold": float(mod_a.threshold),
+            "mod_c_variance_threshold": float(mod_c.variance_threshold)
+        }, f, indent=4)
+        
     logger.info("Extracting features for Validation set (for ablation training)...")
     X_val = extract_features(df_val, mod_a, mod_c)
     y_val = df_val['is_adversarial'].values
@@ -59,6 +67,14 @@ def run_experiments():
     logger.info("Extracting features for Test set...")
     X_test = extract_features(df_test, mod_a, mod_c)
     y_test = df_test['is_adversarial'].values
+    
+    # Train and Save Full Ensemble Meta-Classifier
+    logger.info("Training and saving Stacking Ensemble Meta-Classifier...")
+    ml_features = ['Module_A_Score', 'Module_B_Score', 'Module_C_Score']
+    meta_clf = EnsembleMetaClassifier()
+    meta_clf.train(X_val[ml_features], y_val)
+    os.makedirs(os.path.join(RESULTS_DIR, "models"), exist_ok=True)
+    meta_clf.save_model(os.path.join(RESULTS_DIR, "models"))
     
     logger.info("Running Benchmark Experiment...")
     # 1. Single Modules (using 0.5 decision boundary since extracted features are normalized)
@@ -69,18 +85,33 @@ def run_experiments():
     # 2. Simple Fusion (Logical OR)
     y_pred_fusion = ((y_pred_A == 1) | (y_pred_B == 1) | (y_pred_C == 1)).astype(int)
     
-    # 3. Full Ensemble
-    meta_clf = EnsembleMetaClassifier()
-    meta_clf.load_model(os.path.join(RESULTS_DIR, "models"))
-    y_pred_meta = meta_clf.predict(X_test)
-    y_prob_meta = meta_clf.predict_proba(X_test)
+    # 3. Full Ensemble (ML-only)
+    y_pred_meta = meta_clf.predict(X_test[ml_features])
+    y_prob_meta = meta_clf.predict_proba(X_test[ml_features])
+    
+    # 4. Logistic Regression
+    lr_clf = LogisticRegression(class_weight='balanced')
+    lr_clf.fit(X_val[ml_features], y_val)
+    y_pred_lr = lr_clf.predict(X_test[ml_features])
+    y_prob_lr = lr_clf.predict_proba(X_test[ml_features])[:, 1]
+    
+    # 5. Hybrid System (Meta + Rule Override)
+    y_pred_hybrid = y_pred_meta.copy()
+    y_prob_hybrid = y_prob_meta.copy()
+    
+    for i, row in X_test.reset_index(drop=True).iterrows():
+        if row['Injection_Cues'] > 0 or row['Module_B_Score'] >= 0.9:
+            y_pred_hybrid[i] = 1
+            y_prob_hybrid[i] = max(y_prob_hybrid[i], 0.95)
     
     benchmark_results = {
         "Module A (Keywords)": calc_metrics(y_test, y_pred_A, X_test['Module_A_Score'].values),
         "Module B (PDF/Text Proxy)": calc_metrics(y_test, y_pred_B, X_test['Module_B_Score'].values),
         "Module C (Semantics)": calc_metrics(y_test, y_pred_C, X_test['Module_C_Score'].values),
         "Simple Fusion (OR)": calc_metrics(y_test, y_pred_fusion),
-        "Stacking Ensemble": calc_metrics(y_test, y_pred_meta, y_prob_meta)
+        "Logistic Regression (A+B+C)": calc_metrics(y_test, y_pred_lr, y_prob_lr),
+        "Stacking Ensemble (ML-Only)": calc_metrics(y_test, y_pred_meta, y_prob_meta),
+        "Hybrid System (Meta + Rules)": calc_metrics(y_test, y_pred_hybrid, y_prob_hybrid)
     }
     
     logger.info("Running Ablation Experiment...")
@@ -102,9 +133,10 @@ def run_experiments():
     attack_results = []
     # Only evaluate on positive cases
     adv_test = df_test[df_test['is_adversarial'] == 1].copy()
-    adv_X = X_test.loc[adv_test.index]
-    adv_preds = meta_clf.predict(adv_X)
-    adv_test['prediction'] = adv_preds
+    
+    # Extract just the predictions for the adversarial subset
+    hybrid_preds_adv = pd.Series(y_pred_hybrid).loc[adv_test.index].values
+    adv_test['prediction'] = hybrid_preds_adv
     
     for attack_type in adv_test['attack_type'].unique():
         subset = adv_test[adv_test['attack_type'] == attack_type]
@@ -117,7 +149,7 @@ def run_experiments():
         
     # Generate Error Analysis Sample
     logger.info("Generating Error Analysis Sample...")
-    df_test['prediction'] = y_pred_meta
+    df_test['prediction'] = y_pred_hybrid
     fps = df_test[(df_test['is_adversarial'] == 0) & (df_test['prediction'] == 1)]
     fns = df_test[(df_test['is_adversarial'] == 1) & (df_test['prediction'] == 0)]
     

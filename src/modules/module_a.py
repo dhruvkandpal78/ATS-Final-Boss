@@ -33,51 +33,82 @@ class KeywordDensityDetector:
             
         self.threshold = None  # To be calibrated on the validation set
 
-    def calibrate(self, val_df: pd.DataFrame, percentile: float = 95.0):
+    def calibrate(self, val_df: pd.DataFrame, objective: str = "f1"):
         """
-        Calibrates the density threshold using the validation set.
+        Calibrates the density threshold using the validation set to maximize an objective (e.g. F1).
         """
-        logger.info(f"Calibrating Module A on {len(val_df)} validation samples at {percentile}th percentile...")
+        logger.info(f"Calibrating Module A on {len(val_df)} validation samples (objective: {objective})...")
         
         # Calculate scores for all validation samples
-        scores = val_df['text'].apply(lambda t: self._calculate_metrics(t)['score'])
-        self.threshold = np.percentile(scores, percentile)
+        scores = val_df['text'].apply(lambda t: self._calculate_metrics(t)['score']).values
+        labels = val_df['is_adversarial'].values
         
-        logger.info(f"Calibration complete. Threshold set to: {self.threshold:.4f}")
+        # Search for the threshold that maximizes F1
+        best_f1 = 0
+        best_threshold = 0
+        
+        # Test 100 candidate thresholds between min and max score
+        min_score, max_score = np.min(scores), np.max(scores)
+        if min_score == max_score:
+            self.threshold = min_score
+            return self.threshold
+            
+        candidates = np.linspace(min_score, max_score, 100)
+        
+        for cand in candidates:
+            preds = (scores > cand).astype(int)
+            # Calculate F1 manually to avoid sklearn dependency overhead here
+            tp = np.sum((preds == 1) & (labels == 1))
+            fp = np.sum((preds == 1) & (labels == 0))
+            fn = np.sum((preds == 0) & (labels == 1))
+            
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+            
+            if f1 > best_f1:
+                best_f1 = f1
+                best_threshold = cand
+                
+        # Fallback if no threshold yields a good F1 (e.g. all 0s)
+        if best_f1 == 0:
+            best_threshold = np.percentile(scores, 95)
+            
+        self.threshold = best_threshold
+        logger.info(f"Calibration complete. Threshold set to: {self.threshold:.4f} (Validation F1: {best_f1:.4f})")
         return self.threshold
 
     def _calculate_metrics(self, text: str) -> dict:
         """
         Calculates keyword frequency and concentration (clustering).
         """
-        if not isinstance(text, str) or len(text.split()) == 0:
+        if not isinstance(text, str) or len(text.strip()) == 0:
             return {"density": 0.0, "concentration": 0.0, "score": 0.0}
             
         text_lower = text.lower()
-        import string
-        # Strip punctuation
-        text_clean = text_lower.translate(str.maketrans('', '', string.punctuation))
         
-        # Replace aliases
+        # Replace aliases with standard forms for consistency
         for alias, std in self.keyword_aliases.items():
-            text_clean = text_clean.replace(alias, std)
+            text_lower = text_lower.replace(alias, std)
             
-        words = text_clean.split()
-        total_words = len(words)
-        
-        # Count keyword occurrences and track their positions
+        total_words = len(text_lower.split())
+        if total_words == 0:
+            return {"density": 0.0, "concentration": 0.0, "score": 0.0}
+            
+        # Count keyword occurrences and track their actual token positions
+        import re
         kw_positions = []
-        for i, word in enumerate(words):
-            if word in self.keywords:
-                kw_positions.append(i)
-                
-        # Also check multi-word keywords
-        for mw_kw in [k for k in self.keywords if ' ' in k]:
-            # Simple count for multi-word without tracking precise pos
-            kw_positions.extend([0] * text_clean.count(mw_kw))
+        for kw in self.keywords:
+            # Use regex boundaries to match exact keywords or multi-word phrases
+            pattern = r'\b' + re.escape(kw) + r'\b'
+            for match in re.finditer(pattern, text_lower):
+                # Count the number of spaces before this match to approximate word index
+                prefix = text_lower[:match.start()]
+                word_idx = prefix.count(' ')
+                kw_positions.append(word_idx)
                 
         kw_count = len(kw_positions)
-        density = kw_count / total_words if total_words > 0 else 0
+        density = kw_count / total_words
         
         # Calculate concentration (how clumped the keywords are)
         # Low variance in positions = highly clumped = suspicious
@@ -87,10 +118,12 @@ class KeywordDensityDetector:
             gaps = [kw_positions[i+1] - kw_positions[i] for i in range(len(kw_positions)-1)]
             # If average gap is very small compared to text length, it's concentrated
             avg_gap = sum(gaps) / len(gaps)
-            if avg_gap < (total_words / 20): # Highly dense section
+            # Normal technical resumes have keywords spread naturally. Attackers clump them.
+            if avg_gap < (total_words / 20):
                 concentration = 1.0 - (avg_gap / (total_words / 20))
                 
-        # Combine density and concentration for a smarter anomaly score
+        # Normalization: If density is extremely high (e.g. 50% of the resume is keywords)
+        # cap it so it doesn't skew.
         combined_score = density + (concentration * 0.05)
         
         return {"density": density, "concentration": concentration, "score": combined_score}
