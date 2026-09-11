@@ -35,13 +35,15 @@ Uses sliding-window embedding analysis (`all-MiniLM-L6-v2`) to detect abrupt top
 
 ## Evaluation & Results
 
-The system was evaluated against a held-out test set containing both legitimate resumes and various attacks. 
+The system was evaluated against a held-out dataset of legitimate resumes and adversarial attacks. We utilized a rigorous split and an apples-to-apples ablation study.
 
-* **Benchmark**: The Stacking Ensemble significantly outperforms any individual module alone.
-* **Ablation**: Modules A, B, and C each independently contribute to the final F1 score.
-* **Attack Types**: The system is highly effective at detecting structural hiding (B) and naive prompt injection (C).
+**Key Findings:**
+* **Precision over Recall**: The Stacking Ensemble correctly optimizes for Precision (96.00%) to ensure clean resumes aren't falsely flagged, achieving an F1 score of 45.71%. 
+* **The Noise Trade-off**: Because Module A (Keywords) inherently triggers false positives on highly-technical legitimate resumes, the Meta-Classifier learns to suppress it unless confirmed by B or C. This causes Type A attack recall to drop to 0%, proving the difficulty of purely statistical keyword defense.
+* **Module B is Highly Effective**: Structural and text-proxy Module B features achieved 100% Precision and 100% detection rate on Type B attacks.
+* **Ablation Proof**: Removing any single module from the Logistic Regression baseline (A+B+C) degrades the F1 score or destabilizes the ROC-AUC, proving all three modules contribute uniquely to the defense shield.
 
-*(See `results/reports/experiments_summary.md` for exact metrics).*
+*(See `results/reports/experiments_summary.md` for exact numeric metrics).*
 
 ## How to Run
 

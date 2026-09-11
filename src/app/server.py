@@ -302,14 +302,31 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         handler = self.ROUTES.get(self.path)
         if handler is None:
-            self._send(404, "Not found", "text/plain")
+            self._send(404, json.dumps({"error": "Not found"}))
             return
+            
         try:
             length = int(self.headers.get("Content-Length", 0))
-            payload = json.loads(self.rfile.read(length) or b"{}")
+            if length > 5 * 1024 * 1024:  # 5 MB limit
+                self._send(413, json.dumps({"error": "Payload too large (max 5MB)"}))
+                return
+                
+            raw_data = self.rfile.read(length)
+            
+            try:
+                payload = json.loads(raw_data or b"{}")
+            except json.JSONDecodeError:
+                self._send(400, json.dumps({"error": "Invalid JSON payload"}))
+                return
+                
+            # If requesting PDF analysis but missing files
+            if self.path == "/analyze" and "filename" in payload and not payload.get("b64"):
+                self._send(422, json.dumps({"error": "Missing base64 PDF data"}))
+                return
+                
             self._send(200, json.dumps(handler(payload)))
-        except Exception as e:  # never 500 silently — surface to the UI
-            self._send(200, json.dumps({"error": str(e)}))
+        except Exception as e:
+            self._send(500, json.dumps({"error": str(e)}))
 
 
 def main():
