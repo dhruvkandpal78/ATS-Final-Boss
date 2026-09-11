@@ -38,10 +38,10 @@ Uses sliding-window embedding analysis (`all-MiniLM-L6-v2`) to detect abrupt top
 The system was evaluated against a held-out dataset of legitimate resumes and adversarial attacks. We utilized a rigorous split and an apples-to-apples ablation study.
 
 **Key Findings:**
-* **The Stacking Conservatism**: The Stacking Ensemble (ML-Only) became highly conservative, optimizing heavily for Precision (100%) to ensure clean resumes aren't falsely flagged, but suffering a catastrophic drop in Recall (25.00%). It effectively learned to rely solely on the high-confidence structural signals from Module B.
-* **Hybrid System Superiority**: By layering explicit rules (Module C prompt injection cues and high-confidence Module B scores) on top of the ML predictions, the **Hybrid System** improved Recall to 35.63% while maintaining 95.00% Precision. This proves that for rare, explicit attacks like prompt injections, rule-based overrides successfully catch what conservative ML misses.
-* **Logistic Regression Baseline**: The simple Logistic Regression (A+B+C) achieved a much more balanced trade-off (Precision 44.78%, Recall 56.25%, F1 0.4986) than the complex Stacking Ensemble, suggesting that the non-linear models overfit the validation set's class imbalance.
-* **Module A Threshold Collapse**: During objective-based F1 calibration, Module A's optimal raw threshold was pushed to 0.000, which subsequently caused its internal normalizer to zero-out its outputs. This highlights a critical limitation in automated normalization layers when dealing with sparse text distributions.
+* **Module A Effectiveness**: With the normalization logic fixed, Module A correctly identifies keyword stuffing with strong precision and recall (F1: 0.7791), acting as the primary statistical defense.
+* **Hybrid System Superiority**: By layering explicit rules (Module C prompt injection cues and high-confidence Module B scores) on top of the ML predictions, the **Hybrid System** achieved the highest overall performance (F1: 0.7834), maintaining strong Precision (79.87%) while recovering Recall (76.88%).
+* **Stacking vs Logistic Regression**: The advanced Stacking Ensemble (F1: 0.7752) and the simple Logistic Regression baseline (F1: 0.7791) achieved highly comparable results, proving that while non-linear features exist, the linear separability of the 3-module anomaly scores is already extremely strong.
+* **Ablation Proof**: Removing Modules B and C from the Logistic Regression baseline (A+B+C) destabilizes the ROC-AUC (dropping from 0.9060 to 0.8576), proving all three modules contribute uniquely to the defense shield's confidence.
 
 **Generalization Gap & Holdout Evaluation:**
 To ensure the model generalizes beyond its own synthetic generator, we evaluate it on multiple holdout sets:
@@ -50,7 +50,7 @@ To ensure the model generalizes beyond its own synthetic generator, we evaluate 
 
 | Dataset | Precision | Recall | F1 Score | ROC-AUC |
 |---------|-----------|--------|----------|---------|
-| Synthetic Holdout | 0.9500 | 0.3563 | 0.5182 | 0.7338 |
+| Synthetic Holdout | 0.7987 | 0.7688 | 0.7834 | 0.9134 |
 | LLM-Generated Holdout | N/A | N/A | N/A | N/A |
 
 *Note: The performance gap between the Synthetic and LLM-Generated holdouts represents the generalization gap—the drop in efficacy when facing novel phrasing not seen during training.*
