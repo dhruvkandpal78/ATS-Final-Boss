@@ -41,6 +41,7 @@ def calc_metrics(y_true, y_pred, y_prob=None):
 
 def run_experiments():
     logger.info("Loading splits...")
+    df_train = pd.read_csv(os.path.join(SPLITS_DIR, "train.csv"))
     df_val = pd.read_csv(os.path.join(SPLITS_DIR, "val.csv"))
     df_test = pd.read_csv(os.path.join(SPLITS_DIR, "test.csv"))
     
@@ -60,9 +61,9 @@ def run_experiments():
             "mod_c_variance_threshold": float(mod_c.variance_threshold)
         }, f, indent=4)
         
-    logger.info("Extracting features for Validation set (for ablation training)...")
-    X_val = extract_features(df_val, mod_a, mod_c)
-    y_val = df_val['is_adversarial'].values
+    logger.info("Extracting features for Training set (for meta-classifier)...")
+    X_train = extract_features(df_train, mod_a, mod_c)
+    y_train = df_train['is_adversarial'].values
     
     logger.info("Extracting features for Test set...")
     X_test = extract_features(df_test, mod_a, mod_c)
@@ -72,7 +73,7 @@ def run_experiments():
     logger.info("Training and saving Stacking Ensemble Meta-Classifier...")
     ml_features = ['Module_A_Score', 'Module_B_Score', 'Module_C_Score']
     meta_clf = EnsembleMetaClassifier()
-    meta_clf.train(X_val[ml_features], y_val)
+    meta_clf.train(X_train[ml_features], y_train)
     os.makedirs(os.path.join(RESULTS_DIR, "models"), exist_ok=True)
     meta_clf.save_model(os.path.join(RESULTS_DIR, "models"))
     
@@ -91,7 +92,7 @@ def run_experiments():
     
     # 4. Logistic Regression
     lr_clf = LogisticRegression(class_weight='balanced')
-    lr_clf.fit(X_val[ml_features], y_val)
+    lr_clf.fit(X_train[ml_features], y_train)
     y_pred_lr = lr_clf.predict(X_test[ml_features])
     y_prob_lr = lr_clf.predict_proba(X_test[ml_features])[:, 1]
     
@@ -117,7 +118,7 @@ def run_experiments():
     logger.info("Running Ablation Experiment...")
     def train_eval_ablation(features):
         clf = LogisticRegression(class_weight='balanced')
-        clf.fit(X_val[features], y_val)
+        clf.fit(X_train[features], y_train)
         preds = clf.predict(X_test[features])
         probs = clf.predict_proba(X_test[features])[:, 1]
         return calc_metrics(y_test, preds, probs)

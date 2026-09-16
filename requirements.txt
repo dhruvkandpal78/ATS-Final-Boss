@@ -11,20 +11,13 @@ torch>=2.0.0  # Required backend for sentence-transformers
 PyMuPDF>=1.23.0  # Note: import fitz
 pdfplumber>=0.10.0
 
-# Explainability (retained for optional classical SHAP explainer — see DESIGN_RATIONALE.md)
-shap>=0.43.0
-
 # Visualization (ROC-AUC, PR Curves, Degradation plots)
 matplotlib>=3.7.0
 seaborn>=0.12.0
 
 # General Utilities
 tqdm>=4.65.0
-jupyter>=1.0.0 # For EDA and visualization notebooks
-
-# Interactive XAI Dashboard (Feature 1)
-streamlit>=1.30.0
-streamlit-lottie>=0.0.5
+requests>=2.31.0
 
 # Red vs Blue LLM ATS Proof (Feature 2)
 transformers>=4.38.0   # Local HuggingFace "HR Bot" (gpt2) — no API key required

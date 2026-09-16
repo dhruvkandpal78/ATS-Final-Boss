@@ -110,6 +110,7 @@ def run_evaluation():
     
     # 1. Load Splits
     logger.info("Loading dataset splits...")
+    df_train = pd.read_csv(os.path.join(SPLITS_DIR, "train.csv"))
     df_val = pd.read_csv(os.path.join(SPLITS_DIR, "val.csv"))
     df_test = pd.read_csv(os.path.join(SPLITS_DIR, "test.csv"))
     
@@ -136,9 +137,9 @@ def run_evaluation():
     
     # 4. Extract Features
     logger.info("--- FEATURE EXTRACTION PHASE ---")
-    logger.info("Processing Validation Set...")
-    X_val = extract_features(df_val, mod_a, mod_c)
-    y_val = df_val['is_adversarial'].values
+    logger.info("Processing Training Set...")
+    X_train = extract_features(df_train, mod_a, mod_c)
+    y_train = df_train['is_adversarial'].values
     
     logger.info("Processing Test Set...")
     X_test = extract_features(df_test, mod_a, mod_c)
@@ -147,13 +148,15 @@ def run_evaluation():
     # 5. Train Meta-Classifier
     logger.info("--- META-CLASSIFIER TRAINING PHASE ---")
     meta_clf = EnsembleMetaClassifier()
-    meta_clf.train(X_val, y_val)
+    # We only pass the required ML features to train()
+    ml_features = ['Module_A_Score', 'Module_B_Score', 'Module_C_Score']
+    meta_clf.train(X_train[ml_features], y_train)
     meta_clf.save_model(os.path.join(RESULTS_DIR, "models"))
     
     # 6. Evaluate on Test Set
     logger.info("--- FINAL TEST SET EVALUATION ---")
-    y_pred = meta_clf.predict(X_test)
-    y_proba_meta = meta_clf.predict_proba(X_test)
+    y_pred = meta_clf.predict(X_test[ml_features])
+    y_proba_meta = meta_clf.predict_proba(X_test[ml_features])
     
     # Standard metrics
     metrics = evaluate_predictions(y_test, y_pred, module_name="Meta-Classifier")

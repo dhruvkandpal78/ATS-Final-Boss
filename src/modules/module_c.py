@@ -134,7 +134,10 @@ class SemanticCoherenceScorer:
         is_variance_anomalous = variance > self.variance_threshold
 
         # Normalize variance score
-        semantic_score = min(1.0, variance / (self.variance_threshold * 2) if self.variance_threshold > 0 else 0)
+        if self.variance_threshold > 0:
+            semantic_score = min(1.0, variance / (self.variance_threshold * 2))
+        else:
+            semantic_score = 1.0 if variance > 0 else 0.0
 
         # Direct-instruction injection check
         n_cues = self._injection_signal(text)

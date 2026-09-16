@@ -81,6 +81,7 @@ def main():
             "category": row.get('category', 'UNKNOWN'),
             "original_text": original_text,
             "poisoned_text": poisoned_text,
+            "text": poisoned_text,  # Pipeline expects 'text' column
             "attack_type": attack_type,
             "injected_content": "LLM_GENERATED",
             "word_count": len(poisoned_text.split()),

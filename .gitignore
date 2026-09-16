@@ -24,3 +24,12 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Binary model artifacts — regenerate via run_experiments.py
+*.pkl
+
+# Planning / scratch files
+*.docx
+*.zip
+docx_content.txt
+scratch_reminder.txt

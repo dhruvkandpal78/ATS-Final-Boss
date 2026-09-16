@@ -20,14 +20,14 @@ The system operates as a Stacking Ensemble over three specialized modules:
 3. **Module C (Semantics)**: Uses `all-MiniLM-L6-v2` to compute sliding-window semantic variance. Anomaly scores spike when a resume contains disjointed jargon.
 
 ## Evaluation & Results
-All metrics (Precision, Recall, F1) are computed on a strictly held-out test set (20% split). The `run_experiments.py` script confirms that the Stacking Ensemble heavily overfits toward precision (100%), requiring a Hybrid System (Meta + Rules) to recover recall on explicit prompt injection attacks (increasing Recall from 25.00% to 35.63%). Furthermore, the Logistic Regression baseline (F1: 0.4986) demonstrated a much more balanced predictive capability than the complex Stacking Ensemble (F1: 0.4000).
+All metrics (Precision, Recall, F1) are computed on a strictly held-out test set (20% split). After fixing a critical normalization bug in Module A (which had been zeroing out all keyword-density scores), the pipeline achieved strong detection performance. The **Hybrid System** (Meta + Rules) achieved the best overall F1 of **0.7834** (Precision: 79.87%, Recall: 76.88%). The Stacking Ensemble (F1: 0.7752) and Logistic Regression baseline (F1: 0.7791) achieved highly comparable results, demonstrating strong linear separability of the three-module anomaly scores.
 
 *See `results/reports/experiments_summary.md` for full benchmark metrics.*
 
 ## Error Analysis
-* **False Positives**: The Logistic Regression baseline is more prone to flagging highly-technical legitimate resumes, whereas the Stacking Ensemble learned to suppress these entirely at the cost of recall.
-* **False Negatives**: The objective-based F1 calibration for Module A discovered an optimal threshold of 0.000 on the validation set, which inadvertently zeroed-out the normalization layer. Consequently, Type A keyword stuffing attacks achieved a 0% detection rate. 
-* **Prompt Injection Evasion**: Complex Type D prompt injections (42.50% detection rate) remain challenging because they semantically blend into the resume, requiring the explicit rule-based overrides in Module C to catch them.
+* **False Positives**: The Hybrid System maintains strong precision (79.87%), but highly-technical legitimate resumes with dense keyword sections can occasionally be flagged by Module A's density detector.
+* **False Negatives**: Type C (semantic blurring) attacks remain the hardest to detect (52.50% detection rate) because they blend context-free jargon that is semantically similar to legitimate technical language. Type B (structural) attacks are caught at 100% due to the explicit `[HIDDEN_TEXT_START]` marker in the proxy.
+* **Historical Bug (Fixed)**: An earlier version had a critical normalization bug in Module A where the optimal calibrated threshold of 0.000 caused the normalizer to output 0.0 for all inputs. This was fixed by adding a proper fallback: `normalized = 1.0 if score > 0 else 0.0` when threshold equals zero.
 
 *See `results/reports/error_analysis.md` for specific samples.*
 

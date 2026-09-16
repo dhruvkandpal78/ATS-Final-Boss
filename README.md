@@ -67,7 +67,7 @@ To ensure the model generalizes beyond its own synthetic generator, we evaluate 
    ```bash
    python src/app/server.py
    ```
-   Access the dashboard at `http://localhost:5000`.
+   Access the dashboard at `http://localhost:8000`.
 
 3. **Run CLI Inference**:
    ```bash
