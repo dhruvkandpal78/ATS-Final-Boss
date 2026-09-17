@@ -10,8 +10,8 @@
 | Module C (Semantics) | 0.2570 | 0.8625 | 0.3960 | 0.6059 |
 | Simple Fusion (OR) | 0.2769 | 0.9812 | 0.4319 | 0.0000 |
 | Logistic Regression (A+B+C) | 0.7651 | 0.7937 | 0.7791 | 0.9060 |
-| Stacking Ensemble (ML-Only) | 0.8095 | 0.7438 | 0.7752 | 0.9068 |
-| Hybrid System (Meta + Rules) | 0.7987 | 0.7688 | 0.7834 | 0.9134 |
+| Stacking Ensemble (ML-Only) | 0.8143 | 0.7125 | 0.7600 | 0.9054 |
+| Hybrid System (Meta + Rules) | 0.8027 | 0.7375 | 0.7687 | 0.9122 |
 
 ## Phase 10: Ablation Study
 | Features | Precision | Recall | F1 Score | ROC-AUC |
@@ -24,7 +24,7 @@
 ## Phase 11: Attack-Type Evaluation
 | Attack Type | Total Samples | Detection Rate (Recall) |
 |-------------|---------------|-------------------------|
-| TYPE_D | 40 | 77.50% |
+| TYPE_D | 40 | 70.00% |
 | TYPE_B | 40 | 100.00% |
 | TYPE_C | 40 | 52.50% |
-| TYPE_A | 40 | 77.50% |
+| TYPE_A | 40 | 72.50% |
