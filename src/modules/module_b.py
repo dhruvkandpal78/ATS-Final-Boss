@@ -35,7 +35,8 @@ class PDFForensicsDetector:
             "hidden_ocg": 0,
             "tiny_font": 0,
             "background_color_match": 0,
-            "total_flagged_spans": 0
+            "total_flagged_spans": 0,
+            "findings": []
         }
 
         # Check OCGs (Optional Content Groups) / Layers
@@ -61,6 +62,13 @@ class PDFForensicsDetector:
                             for key, flagged in flags.items():
                                 if flagged:
                                     anomalies[key] += 1
+                            
+                            # Report exact page numbers and rects when available
+                            anomalies["findings"].append({
+                                "page": page_num + 1,
+                                "rect": span["bbox"],
+                                "flags": [k for k, v in flags.items() if v]
+                            })
 
         doc.close()
         

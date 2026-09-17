@@ -120,10 +120,78 @@ def run_inference(file_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run adversarial detection on a single resume.")
     parser.add_argument("file", help="Path to the resume file (.txt or .pdf) to analyze.")
+    parser.add_argument("--json", action="store_true", help="Output raw JSON instead of human-readable text.")
     args = parser.parse_args()
     
     if not os.path.exists(args.file):
-        print(colored(f"Error: File '{args.file}' not found.", "red"))
+        print(colored(f"Error: File '{args.file}' not found.", "red"), file=sys.stderr)
         sys.exit(1)
         
-    run_inference(args.file)
+    if args.json:
+        # Load directly
+        import json
+        models_dir = os.path.join(os.path.dirname(__file__), "..", "results", "models")
+        from src.core.analysis_service import AnalysisService
+        analysis_service = AnalysisService(models_dir)
+        
+        is_pdf = args.file.lower().endswith(".pdf")
+        text_content = ""
+        b_score = 0.0
+        pdf_details = None
+        
+        if is_pdf:
+            b_res = analysis_service.mod_b.analyze_pdf(args.file)
+            b_score = b_res['anomaly_score']
+            pdf_details = b_res.get('details', {})
+            try:
+                import fitz
+                doc = fitz.open(args.file)
+                text_content = "\n".join([page.get_text() for page in doc])
+                doc.close()
+            except Exception:
+                text_content = ""
+        else:
+            with open(args.file, 'r', encoding='utf-8') as f:
+                text_content = f.read()
+                
+        if not text_content.strip():
+            text_content = " "
+            
+        res = analysis_service.analyze_text(text_content, b_score)
+        
+        from src.core.schemas import AnalysisResult, ModuleAData, ModuleBData, ModuleCData
+        from datetime import datetime
+        
+        result = AnalysisResult(
+            timestamp=datetime.utcnow().isoformat(),
+            input_mode="pdf" if is_pdf else "text",
+            features={
+                "Module_A_Score": round(res['features']['Module_A_Score'], 4),
+                "Module_B_Score": round(b_score, 4),
+                "Module_C_Score": round(res['features']['Module_C_Score'], 4),
+            },
+            model_decision=res['model_decision'],
+            model_proba=round(res['model_proba'], 4),
+            policy_decision=res['policy_decision'],
+            policy_proba=round(res['policy_proba'], 4),
+            module_a=ModuleAData(
+                score=round(res['features']['Module_A_Score'], 4),
+                density=round(res['module_a']["density"], 4),
+                is_flagged=bool(res['module_a']["is_flagged"])
+            ),
+            module_b=ModuleBData(
+                score=round(b_score, 4),
+                is_flagged=b_score >= 0.5,
+                details=pdf_details or {}
+            ),
+            module_c=ModuleCData(
+                score=round(res['features']['Module_C_Score'], 4),
+                variance=round(res['module_c']["variance"], 4),
+                injection_cues=int(res['module_c'].get("injection_cues", 0)),
+                is_flagged=bool(res['module_c']["is_flagged"]),
+                sentences=[] # sentences omitted for brevity in CLI
+            )
+        )
+        print(json.dumps(result.model_dump(), indent=2))
+    else:
+        run_inference(args.file)
