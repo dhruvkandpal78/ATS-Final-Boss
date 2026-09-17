@@ -65,64 +65,46 @@ def run_inference(file_path: str):
     print("-" * 60)
     
     models_dir = os.path.join(os.path.dirname(__file__), "..", "results", "models")
-    meta_clf, scaler, mod_a, mod_b, mod_c = load_pipeline(models_dir)
+    from src.core.analysis_service import AnalysisService
+    analysis_service = AnalysisService(models_dir)
     
     is_pdf = file_path.lower().endswith(".pdf")
     text_content = ""
+    b_score = 0.0
     
-    # 1. Module B (Structural Forensics)
-    print(colored("[Module B] Executing Deep Structural Forensics...", "blue"))
     if is_pdf:
-        b_res = mod_b.analyze_pdf(file_path)
-        b_score = b_res.get('anomaly_score', 0.0)
+        print(colored("\n[Module B] Executing PDF Structural Forensics...", "blue"))
+        b_res = analysis_service.mod_b.analyze_pdf(file_path)
+        b_score = b_res['anomaly_score']
+        print(f"  -> Structural Anomaly Score: {b_score:.4f}")
         
-        # Actually extract text from the PDF
-        import fitz
+        print(colored("  -> Extracting visible text layers...", "blue"))
         try:
+            import fitz
             doc = fitz.open(file_path)
-            text_content = " ".join(page.get_text() for page in doc)
+            text_content = "\n".join([page.get_text() for page in doc])
             doc.close()
         except Exception as e:
-            print(colored(f"[ERROR] Failed to extract text from PDF: {e}", "red"))
-            text_content = ""
-            
-        print(colored("  -> PDF structural analysis complete.", "green"))
+            print(colored(f"  -> [WARNING] Text extraction failed: {e}", "yellow"))
     else:
-        # Load text file
-        with open(file_path, "r", encoding="utf-8") as f:
+        print(colored("\n[Module B] Skipped (Input is plain text).", "blue"))
+        with open(file_path, 'r', encoding='utf-8') as f:
             text_content = f.read()
-        b_score = simulate_module_b_proxy(text_content)
-        print(colored("  -> Text file detected. Running CSV structural simulation...", "green"))
-        
-    print(f"  -> Structural Anomaly Score: {b_score:.4f}")
-
+            
     if not text_content.strip():
         print(colored("[WARNING] No text extracted. Using empty string.", "yellow"))
         text_content = " "
         
-    # 2. Module A (Keyword Density)
-    print(colored("\n[Module A] Executing Statistical Density Analysis...", "blue"))
-    a_res = mod_a.predict(text_content)
-    a_score = a_res['anomaly_score']
-    print(f"  -> Keyword Density Anomaly Score: {a_score:.4f}")
+    print(colored("\n[Module A & C] Executing Text Analysis...", "blue"))
+    res = analysis_service.analyze_text(text_content, b_score)
     
-    # 3. Module C (Semantic Coherence)
-    print(colored("\n[Module C] Executing Semantic Coherence Scoring (MiniLM-L6-v2)...", "blue"))
-    c_res = mod_c.predict(text_content)
-    c_score = c_res['anomaly_score']
-    print(f"  -> Semantic Variance Score: {c_score:.4f}")
+    print(f"  -> Keyword Density Anomaly Score: {res['features']['Module_A_Score']:.4f}")
+    print(f"  -> Semantic Variance Score: {res['features']['Module_C_Score']:.4f}")
     
     # 4. Meta-Classifier
     print(colored("\n[Meta-Classifier] Aggregating multi-modal signals...", "blue"))
-    import pandas as pd
-    features = pd.DataFrame([{
-        "Module_A_Score": a_score,
-        "Module_B_Score": b_score,
-        "Module_C_Score": c_score
-    }])
-    
-    is_attack = bool(meta_clf.predict(features)[0])
-    attack_proba = float(meta_clf.predict_proba(features)[0][1])
+    is_attack = res['policy_decision']
+    attack_proba = res['policy_proba']
     
     print("-" * 60)
     if is_attack:

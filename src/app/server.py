@@ -27,16 +27,19 @@ ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.append(os.path.abspath(ROOT))
 
 import pandas as pd  # noqa: E402
-from src.inference import load_pipeline  # noqa: E402
-from src.evaluation.evaluate import simulate_module_b_proxy  # noqa: E402
+from src.core.analysis_service import AnalysisService
+from src.evaluation.evaluate import simulate_module_b_proxy
 
 HERE = os.path.dirname(__file__)
 INDEX_PATH = os.path.join(HERE, "index.html")
 MODELS_DIR = os.path.join(ROOT, "results", "models")
 
-# Load the pipeline once at startup (expensive: sentence-transformer weights).
 print("[server] Booting neural defense core — loading models…")
-META_CLF, SCALER, MOD_A, MOD_B, MOD_C = load_pipeline(MODELS_DIR)
+analysis_service = AnalysisService(MODELS_DIR)
+# For endpoints that need the raw modules
+MOD_B = analysis_service.mod_b
+MOD_A = analysis_service.mod_a
+MOD_C = analysis_service.mod_c
 print("[server] Models loaded. Shield online.")
 
 MODULE_META = {
@@ -45,35 +48,19 @@ MODULE_META = {
     "c": ("Module C", "Semantic Coherence", "MiniLM sliding-window variance + direct-instruction injection cues."),
 }
 
-
-# ---------------------------------------------------------------------------
-# Core analysis
-# ---------------------------------------------------------------------------
 def _score(text, b_score, pdf_details=None):
-    a_res = MOD_A.predict(text)
-    c_res = MOD_C.predict(text)
-    a_score = a_res["anomaly_score"]
-    c_score = c_res["anomaly_score"]
-
-    features = pd.DataFrame([{
-        "Module_A_Score": a_score,
-        "Module_B_Score": b_score,
-        "Module_C_Score": c_score,
-    }])
-    scaled = SCALER.transform(features)
-    is_attack = bool(META_CLF.predict(scaled)[0])
-    proba = float(META_CLF.predict_proba(scaled)[0][1])
-
-    # Rule-Based Override: The Meta-Classifier optimizes heavily for Precision and 
-    # sometimes ignores rare explicit prompt injections. If we have a hard signal, override it.
-    if c_res.get("injection_cues", 0) > 0 or b_score >= 0.9:
-        is_attack = True
-        proba = max(proba, 0.95)
+    res = analysis_service.analyze_text(text, b_score)
+    
+    a_score = res['features']['Module_A_Score']
+    c_score = res['features']['Module_C_Score']
+    a_res = res['module_a']
+    c_res = res['module_c']
+    
+    is_attack = res['policy_decision']
+    proba = res['policy_proba']
 
     attribution = MOD_C.explain_sentences(text)
     all_sentences = attribution.get("sentences", [])
-    # Keep the attribution UI legible on long documents: surface every flagged
-    # clause plus the top contributors, capped — but report the true total.
     flagged = [s for s in all_sentences if s.get("heat", 0) >= 0.5]
     top = [s for s in all_sentences if s not in flagged][: max(0, 12 - len(flagged))]
     shown = flagged + top
@@ -107,6 +94,7 @@ def _score(text, b_score, pdf_details=None):
             for s in shown
         ],
     }
+
 
 
 def analyze_payload(payload):
@@ -149,10 +137,8 @@ def analyze_payload(payload):
 def _quick_proba(text):
     """Fast P(attack) for a text — used by the adaptive-attacker loop."""
     b = simulate_module_b_proxy(text)
-    a = MOD_A.predict(text)["anomaly_score"]
-    c = MOD_C.predict(text)["anomaly_score"]
-    X = pd.DataFrame([{"Module_A_Score": a, "Module_B_Score": b, "Module_C_Score": c}])
-    return float(META_CLF.predict_proba(SCALER.transform(X))[0][1]), a, c
+    res = analysis_service.analyze_text(text, b_score=b)
+    return res['policy_proba'], res['features']['Module_A_Score'], res['features']['Module_C_Score']
 
 
 # ---------------------------------------------------------------------------

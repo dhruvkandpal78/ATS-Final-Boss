@@ -32,33 +32,27 @@ def calc_metrics(y_true, y_pred, y_prob=None):
         metrics["ROC-AUC"] = 0.0
     return metrics
 
-def evaluate_on_dataframe(df, mod_a, mod_c, meta_clf):
-    X = extract_features(df, mod_a, mod_c)
+from src.core.analysis_service import AnalysisService
+
+def evaluate_on_dataframe(df, analysis_service):
     y_true = df['is_adversarial'].values
+    y_pred_hybrid = []
+    y_prob_hybrid = []
     
-    # Hybrid Evaluation
-    ml_features = ['Module_A_Score', 'Module_B_Score', 'Module_C_Score']
-    y_pred_meta = meta_clf.predict(X[ml_features])
-    y_prob_meta = meta_clf.predict_proba(X[ml_features])
-    
-    y_pred_hybrid = y_pred_meta.copy()
-    y_prob_hybrid = y_prob_meta[:, 1].copy()
-    
-    for i, row in X.reset_index(drop=True).iterrows():
-        if row['Injection_Cues'] > 0 or row['Module_B_Score'] >= 0.9:
-            y_pred_hybrid[i] = 1
-            y_prob_hybrid[i] = max(y_prob_hybrid[i], 0.95)
-            
+    for i, row in df.iterrows():
+        b_score = row.get('Module_B_Score', 0.0)
+        res = analysis_service.analyze_text(row['text'], b_score)
+        y_pred_hybrid.append(1 if res['policy_decision'] else 0)
+        y_prob_hybrid.append(res['policy_proba'])
+        
     return calc_metrics(y_true, y_pred_hybrid, y_prob_hybrid)
 
 def main():
     logger.info("Loading Pipeline...")
-    meta_clf, scaler, mod_a, mod_b, mod_c = load_pipeline(MODELS_DIR)
+    analysis_service = AnalysisService(MODELS_DIR)
     
     df_test = pd.read_csv(os.path.join(SPLITS_DIR, "test.csv"))
-    
-    logger.info("Evaluating on Synthetic Holdout (test.csv)...")
-    metrics_synthetic = evaluate_on_dataframe(df_test, mod_a, mod_c, meta_clf)
+    metrics_synthetic = evaluate_on_dataframe(df_test, analysis_service)
     
     metrics_llm = None
     llm_path = os.path.join(DATA_DIR, "llm_adversarial_resumes.csv")
@@ -67,7 +61,7 @@ def main():
         df_llm_adv = pd.read_csv(llm_path)
         df_clean = df_test[df_test['is_adversarial'] == 0].copy()
         df_llm_full = pd.concat([df_clean, df_llm_adv], ignore_index=True)
-        metrics_llm = evaluate_on_dataframe(df_llm_full, mod_a, mod_c, meta_clf)
+        metrics_llm = evaluate_on_dataframe(df_llm_full, analysis_service)
     else:
         logger.warning(f"LLM Adversarial file not found at {llm_path}. Skipping LLM Holdout.")
         
@@ -79,7 +73,7 @@ def main():
             logger.info("Evaluating on Human-Curated Holdout...")
             df_clean = df_test[df_test['is_adversarial'] == 0].copy()
             df_human_full = pd.concat([df_clean, df_human_adv], ignore_index=True)
-            metrics_human = evaluate_on_dataframe(df_human_full, mod_a, mod_c, meta_clf)
+            metrics_human = evaluate_on_dataframe(df_human_full, analysis_service)
         else:
             logger.info("Human-curated CSV exists but is empty. Skipping.")
     else:
