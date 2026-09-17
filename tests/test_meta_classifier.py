@@ -12,11 +12,11 @@ def test_meta_classifier_train_predict():
     # Create synthetic features
     # 'Module_A_Score', 'Module_B_Score', 'Module_C_Score'
     X = pd.DataFrame({
-        'Module_A_Score': [0.1, 0.9, 0.2, 0.8, 0.1, 0.9],
-        'Module_B_Score': [0.0, 0.8, 0.1, 0.9, 0.0, 0.9],
-        'Module_C_Score': [0.2, 0.7, 0.1, 0.8, 0.2, 0.8]
+        'Module_A_Score': [0.1, 0.9, 0.2, 0.8, 0.1, 0.9, 0.2, 0.8, 0.1, 0.9, 0.2, 0.8],
+        'Module_B_Score': [0.0, 0.8, 0.1, 0.9, 0.0, 0.9, 0.1, 0.8, 0.0, 0.9, 0.1, 0.8],
+        'Module_C_Score': [0.2, 0.7, 0.1, 0.8, 0.2, 0.8, 0.1, 0.7, 0.2, 0.8, 0.1, 0.7]
     })
-    y = [0, 1, 0, 1, 0, 1]
+    y = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
     
     # Train
     clf.train(X, y)
@@ -35,11 +35,11 @@ def test_meta_classifier_save_load(tmp_path):
     clf = EnsembleMetaClassifier()
     
     X = pd.DataFrame({
-        'Module_A_Score': [0.1, 0.9, 0.2, 0.8],
-        'Module_B_Score': [0.0, 0.8, 0.1, 0.9],
-        'Module_C_Score': [0.2, 0.7, 0.1, 0.8]
+        'Module_A_Score': [0.1, 0.9, 0.2, 0.8, 0.1, 0.9, 0.2, 0.8, 0.1, 0.9, 0.2, 0.8],
+        'Module_B_Score': [0.0, 0.8, 0.1, 0.9, 0.0, 0.8, 0.1, 0.9, 0.0, 0.8, 0.1, 0.9],
+        'Module_C_Score': [0.2, 0.7, 0.1, 0.8, 0.2, 0.7, 0.1, 0.8, 0.2, 0.7, 0.1, 0.8]
     })
-    y = [0, 1, 0, 1]
+    y = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]
     
     clf.train(X, y)
     
