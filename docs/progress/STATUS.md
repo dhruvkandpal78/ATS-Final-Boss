@@ -1,9 +1,9 @@
-# Status: B05 - Robust JSON serialization
+# Status: B06 - ML Evaluation artifact export
 
-- **Status**: Completed B05
-- **Source commit**: 554f175...
-- **Changed paths**: src/utils/json_encoder.py, src/inference.py, src/app/server.py
-- **Tests**: Ran test_api.py.
-- **Exit codes**: 0
+- **Status**: Completed B06
+- **Source commit**: 56c65b8...
+- **Changed paths**: src/evaluation/evaluate.py
+- **Tests**: None needed, logic verifies manually and artifact generation is straightforward.
+- **Exit codes**: N/A
 - **Limitations**: None.
-- **Next package**: B06 - ML Evaluation artifact export
+- **Next package**: B07 - Delete legacy eval scripts

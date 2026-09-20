@@ -24,7 +24,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from src.modules.module_a import KeywordDensityDetector
 from src.modules.module_c import SemanticCoherenceScorer
 from src.models.meta_classifier import EnsembleMetaClassifier
-from src.core.analysis_service import AnalysisService
 from src.evaluation.metrics import evaluate_predictions, bootstrap_f1
 from src.evaluation.curves import plot_roc_curves, plot_degradation_curve
 
@@ -162,6 +161,51 @@ def run_evaluation():
     # Standard metrics
     metrics = evaluate_predictions(y_test, y_pred, module_name="Meta-Classifier")
     
+    # Calculate policy rules for test set
+    y_pred_policy = y_pred.copy()
+    y_proba_policy = y_proba_meta.copy()
+    for i, row in X_test.reset_index(drop=True).iterrows():
+        if row['Injection_Cues'] > 0 or row['Module_B_Score'] >= 0.9:
+            y_pred_policy[i] = 1
+            y_proba_policy[i] = max(y_proba_policy[i], 0.95)
+            
+    # Calculate confusion matrix for policy
+    from sklearn.metrics import confusion_matrix
+    cm = confusion_matrix(y_test, y_pred_policy)
+    
+    # Dump results.json
+    per_sample = []
+    for i in range(len(y_test)):
+        per_sample.append({
+            "index": i,
+            "split": "test",
+            "true_label": int(y_test[i]),
+            "module_a_score": float(X_test['Module_A_Score'].iloc[i]),
+            "module_b_score": float(X_test['Module_B_Score'].iloc[i]),
+            "module_c_score": float(X_test['Module_C_Score'].iloc[i]),
+            "injection_cues": int(X_test['Injection_Cues'].iloc[i]),
+            "model_probability": float(y_proba_meta[i]),
+            "policy_probability": float(y_proba_policy[i]),
+            "model_decision": bool(y_pred[i]),
+            "policy_decision": bool(y_pred_policy[i])
+        })
+        
+    results_out = {
+        "confusion_matrix": {
+            "tn": int(cm[0][0]) if cm.shape == (2,2) else 0,
+            "fp": int(cm[0][1]) if cm.shape == (2,2) else 0,
+            "fn": int(cm[1][0]) if cm.shape == (2,2) else 0,
+            "tp": int(cm[1][1]) if cm.shape == (2,2) else 0
+        },
+        "samples": per_sample
+    }
+    
+    import json
+    with open(os.path.join(RESULTS_DIR, "results.json"), "w") as f:
+        json.dump(results_out, f, indent=2)
+        
+    logger.info("Saved ML evaluation artifact to results/results.json")
+    
     # Bootstrapped F1 for rigor
     bootstrap_f1(y_test, y_pred, n_iterations=1000)
     
@@ -183,6 +227,9 @@ def run_evaluation():
     adv_test = df_test[df_test['attack_type'].isin(['TYPE_A', 'TYPE_D'])]
     n_samples = min(30, len(adv_test))
     subset_df = adv_test.sample(n_samples, random_state=42)
+    
+    from src.core.analysis_service import AnalysisService
+    temp_service = AnalysisService(mod_a=mod_a, mod_b=None, mod_c=mod_c, meta_clf=meta_clf, scaler=None)
     
     for budget in sub_pcts:
         if budget == 0:
@@ -206,12 +253,8 @@ def run_evaluation():
                     words[i] = "experience" # generic benign word
             
             mutated_text = " ".join(words)
-            
             # Re-score
             b_sc = simulate_module_b_proxy(mutated_text)
-            # Create a temporary service instance to avoid circular logic or just use a local one
-            # Actually we can just create an AnalysisService and pass all models
-            temp_service = AnalysisService(mod_a=mod_a, mod_b=None, mod_c=mod_c, meta_clf=meta_clf, scaler=None)
             res = temp_service.analyze_text(mutated_text, b_score=b_sc)
             
             is_attack = res['policy_decision']
