@@ -1,9 +1,9 @@
-# Status: B09 - Semantic signals and faithful explanations
+# Status: B10 - Adaptive adversary calibration
 
-- **Status**: Completed B09
-- **Source commit**: b389636...
-- **Changed paths**: src/modules/module_c.py
-- **Tests**: Ran pytest on module_c.
+- **Status**: Completed B10
+- **Source commit**: 5cbdd93...
+- **Changed paths**: src/evaluation/evaluate.py
+- **Tests**: evaluate.py runs without error and correctly persists thresholds.json.
 - **Exit codes**: 0
-- **Limitations**: Exact causal deltas are computed for the top ones as requested, but pooled explanation is labeled approximate.
-- **Next package**: B10 - Adaptive adversary calibration
+- **Limitations**: None.
+- **Next package**: B11 - Service boundaries and schemas
