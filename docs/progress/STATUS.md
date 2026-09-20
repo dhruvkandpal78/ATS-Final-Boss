@@ -1,9 +1,9 @@
-# Status: B08 - Real structural evidence
+# Status: B09 - Semantic signals and faithful explanations
 
-- **Status**: Completed B08
-- **Source commit**: 31ef3d3...
-- **Changed paths**: src/modules/module_b.py, tests/test_module_b.py
-- **Tests**: pytest tests/test_module_b.py passes perfectly.
+- **Status**: Completed B09
+- **Source commit**: b389636...
+- **Changed paths**: src/modules/module_c.py
+- **Tests**: Ran pytest on module_c.
 - **Exit codes**: 0
-- **Limitations**: OCG implementation is currently based on document-wide properties, detailed span-level parsing would require further PyMuPDF exploration.
-- **Next package**: B09 - Semantic signals and faithful explanations
+- **Limitations**: Exact causal deltas are computed for the top ones as requested, but pooled explanation is labeled approximate.
+- **Next package**: B10 - Adaptive adversary calibration
