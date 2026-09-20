@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import dataclasses
+import mimetypes
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.append(os.path.abspath(ROOT))
@@ -20,6 +21,7 @@ from src.core.schemas import (
 
 HERE = os.path.dirname(__file__)
 MODELS_DIR = os.path.join(ROOT, "results", "models")
+DIST_DIR = os.path.join(ROOT, "web", "dist")
 
 print("[server] Booting neural defense core - loading models...")
 analysis_service = AnalysisService(MODELS_DIR)
@@ -35,6 +37,30 @@ class APIHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self._send_cors_headers()
         self.end_headers()
+
+    def do_GET(self):
+        # Serve React dist files
+        path = self.path
+        if path == '/':
+            path = '/index.html'
+            
+        # React router fallback
+        file_path = os.path.join(DIST_DIR, path.lstrip('/'))
+        if not os.path.exists(file_path):
+            file_path = os.path.join(DIST_DIR, 'index.html')
+            
+        if os.path.exists(file_path):
+            self.send_response(200)
+            mime_type, _ = mimetypes.guess_type(file_path)
+            if mime_type:
+                self.send_header('Content-type', mime_type)
+            self.end_headers()
+            with open(file_path, 'rb') as f:
+                self.wfile.write(f.read())
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b'Not Found')
 
     def do_POST(self):
         if self.path == '/api/analyze':
