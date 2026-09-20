@@ -1,9 +1,9 @@
-# Status: B10 - Adaptive adversary calibration
+# Status: B11 - Service boundaries and schemas
 
-- **Status**: Completed B10
-- **Source commit**: 5cbdd93...
-- **Changed paths**: src/evaluation/evaluate.py
-- **Tests**: evaluate.py runs without error and correctly persists thresholds.json.
+- **Status**: Completed B11
+- **Source commit**: 0d5a926...
+- **Changed paths**: src/core/schemas.py, src/app/server.py
+- **Tests**: Validated schemas match frontend fixtures exactly via dataclasses.
 - **Exit codes**: 0
 - **Limitations**: None.
-- **Next package**: B11 - Service boundaries and schemas
+- **Next package**: U07 - Connect the real API without changing meaning

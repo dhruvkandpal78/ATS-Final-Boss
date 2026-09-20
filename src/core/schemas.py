@@ -1,47 +1,51 @@
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional, Any
+from dataclasses import dataclass, field
+from typing import List, Optional, Dict, Any
 
 @dataclass
-class ModuleAData:
+class Finding:
+    id: str
+    detector: str
+    category: str
+    severity: str
+    explanation: str
+
+@dataclass
+class ModuleResult:
+    status: str
     score: float
-    density: float
-    is_flagged: bool
+    reason: Optional[str] = None
+    findings: List[Finding] = field(default_factory=list)
 
 @dataclass
-class ModuleBData:
-    score: float
-    is_flagged: bool
-    details: Dict[str, Any]
+class CoverageInfo:
+    pages_total: int
+    pages_analyzed: int
+    limitations: List[str] = field(default_factory=list)
 
 @dataclass
-class SentenceData:
-    sentence: str
-    heat: float
-    contribution: float
-    injection_cue: Optional[str] = None
+class ModelInfo:
+    id: str
+    calibrated: bool
 
 @dataclass
-class ModuleCData:
-    score: float
-    variance: float
-    injection_cues: int
-    is_flagged: bool
-    sentences: List[SentenceData]
+class TimingInfo:
+    total: int
 
 @dataclass
 class AnalysisResult:
-    timestamp: str
+    state: str
+    schema_version: str
+    analysis_id: str
+    created_at: str
+    status: str
     input_mode: str
-    features: Dict[str, float]
-    model_decision: bool
-    model_proba: float
-    policy_decision: bool
-    policy_proba: float
-    module_a: ModuleAData
-    module_b: ModuleBData
-    module_c: ModuleCData
-    schema_version: str = "1.0.0"
-    policy_threshold: float = 0.5
-    
-    def model_dump(self) -> Dict[str, Any]:
-        return asdict(self)
+    model: ModelInfo
+    policy_version: str
+    decision: str
+    reason_codes: List[str]
+    coverage: CoverageInfo
+    score: float
+    score_kind: str
+    modules: Dict[str, ModuleResult]
+    findings: List[Finding]
+    timings_ms: TimingInfo
