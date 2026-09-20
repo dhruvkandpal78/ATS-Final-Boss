@@ -327,7 +327,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(422, json.dumps({"error": "Missing base64 PDF data"}))
                 return
                 
-            self._send(200, json.dumps(handler(payload)))
+            from src.utils.json_encoder import RobustJSONEncoder
+            self._send(200, json.dumps(handler(payload), cls=RobustJSONEncoder))
         except Exception as e:
             self._send(500, json.dumps({"error": str(e)}))
 

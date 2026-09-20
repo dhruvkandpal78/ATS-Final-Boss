@@ -192,6 +192,7 @@ if __name__ == "__main__":
                 sentences=[] # sentences omitted for brevity in CLI
             )
         )
-        print(json.dumps(result.model_dump(), indent=2))
+        from src.utils.json_encoder import RobustJSONEncoder
+        print(json.dumps(result.model_dump(), cls=RobustJSONEncoder, indent=2))
     else:
         run_inference(args.file)

@@ -1,9 +1,9 @@
-# Status: B04 - Centralized evaluation adapters
+# Status: B05 - Robust JSON serialization
 
-- **Status**: Completed B04
-- **Source commit**: 5d21edb...
-- **Changed paths**: src/core/analysis_service.py, src/evaluation/evaluate.py
-- **Tests**: Ran python src/evaluation/evaluate.py to verify it doesn't crash on import, verified logic.
-- **Exit codes**: N/A
-- **Limitations**: B04 specifically mentioned evaluate.py and evaluate_holdout.py. Evaluated multiprocessing in evaluate.py and used a temporary service object per worker.
-- **Next package**: B05 - Robust JSON serialization
+- **Status**: Completed B05
+- **Source commit**: 554f175...
+- **Changed paths**: src/utils/json_encoder.py, src/inference.py, src/app/server.py
+- **Tests**: Ran test_api.py.
+- **Exit codes**: 0
+- **Limitations**: None.
+- **Next package**: B06 - ML Evaluation artifact export
