@@ -1,9 +1,9 @@
-# Status: U03 - Build the static landing page first
+# Status: U04 - Add controlled landing motion
 
-- **Status**: Completed U03
-- **Source commit**: da0a18e...
+- **Status**: Completed U04
+- **Source commit**: 0a94d50...
 - **Changed paths**: web/src/pages/Landing.tsx, web/src/App.tsx
 - **Tests**: npx tsc --noEmit passes.
 - **Exit codes**: 0
-- **Limitations**: Motion and scroll animations are not yet implemented (will be in U04).
-- **Next package**: U04 - Add controlled landing motion
+- **Limitations**: Motion triggers implemented using Framer Motion with reduced-motion support.
+- **Next package**: U05 - Build the analysis flow against fixtures
