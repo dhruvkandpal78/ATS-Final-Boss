@@ -6,7 +6,6 @@ import { Card, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { FindingsList } from '../components/FindingsList';
 import { SourceViewer } from '../components/SourceViewer';
-import { FIXTURES } from '../fixtures/analysis-states';
 
 type InputMode = 'pdf' | 'text';
 type RequestState = 'idle' | 'analyzing' | 'complete' | 'error';
@@ -19,7 +18,7 @@ export default function AnalyzePage() {
   
   const [reqState, setReqState] = useState<RequestState>('idle');
   const [result, setResult] = useState<any>(null);
-  const reqIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
@@ -36,7 +35,14 @@ export default function AnalyzePage() {
     setFile(selected);
   };
 
-  const handleAnalyze = () => {
+  const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve((reader.result as string).split(',')[1]);
+    reader.onerror = error => reject(error);
+  });
+
+  const handleAnalyze = async () => {
     if (mode === 'pdf' && !file) {
       setError('Please select a PDF file.');
       return;
@@ -48,19 +54,45 @@ export default function AnalyzePage() {
 
     setReqState('analyzing');
     setError(null);
-    reqIdRef.current += 1;
-    const currentReq = reqIdRef.current;
+    
+    abortControllerRef.current = new AbortController();
 
-    // Simulate analysis delay
-    setTimeout(() => {
-      if (reqIdRef.current !== currentReq) return; // stale request
-      setResult(FIXTURES.success);
+    try {
+      let payload: any = { mode };
+      if (mode === 'pdf') {
+        payload.b64 = await toBase64(file!);
+      } else {
+        payload.text = text;
+      }
+
+      const res = await fetch('http://localhost:8000/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: abortControllerRef.current.signal
+      });
+
+      if (!res.ok) {
+        throw new Error('Analysis failed with status ' + res.status);
+      }
+
+      const data = await res.json();
+      setResult(data);
       setReqState('complete');
-    }, 2000);
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.log('Request aborted');
+      } else {
+        setError(err.message || 'An unknown error occurred.');
+        setReqState('error');
+      }
+    }
   };
 
   const handleCancel = () => {
-    reqIdRef.current += 1; // invalidate pending
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setReqState('idle');
   };
 
@@ -130,8 +162,6 @@ export default function AnalyzePage() {
             </div>
           )}
 
-          {error && <p className="text-[--danger] mt-4 font-medium">{error}</p>}
-
           <div className="mt-8 flex gap-4">
             <Button variant="primary" onClick={handleAnalyze}>Analyze Document</Button>
           </div>
@@ -147,28 +177,46 @@ export default function AnalyzePage() {
         </Card>
       )}
 
+      {reqState === 'error' && (
+        <Card className="mb-8 border-l-4 border-[--danger]">
+          <CardHeader>
+            <CardTitle className="text-[--danger]">Analysis Failed</CardTitle>
+          </CardHeader>
+          <p className="body text-[--muted] mb-6">{error}</p>
+          <Button variant="secondary" onClick={handleClear}>Start Over</Button>
+        </Card>
+      )}
+
       {reqState === 'complete' && result && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-          <Card className="mb-8 border-l-4 border-[--success]">
+          <Card className={mb-8 border-l-4 }>
             <CardHeader>
-              <CardTitle className="text-[--success]">No manipulation signals detected</CardTitle>
+              <CardTitle className={result.decision === 'no_signals_detected' ? 'text-[--success]' : 'text-[--danger]'}>
+                 {result.decision === 'no_signals_detected' ? 'No manipulation signals detected' : 'Review Recommended'}
+              </CardTitle>
             </CardHeader>
-            <p className="body text-[--muted] mb-6">In {mode === 'pdf' ? file?.name : 'Raw Text'}. {result.coverage.pages_total} pages analyzed.</p>
+            <p className="body text-[--muted] mb-6">
+              In {mode === 'pdf' ? file?.name : 'Raw Text'}. {result.coverage?.pages_total || 1} pages analyzed.
+            </p>
             
             <div className="grid md:grid-cols-3 gap-4 mb-6">
                <div className="p-4 bg-[--surface-soft] rounded-[8px]">
                  <strong className="label block mb-1">Text Consistency</strong>
-                 <Badge variant="success">OK</Badge>
+                 <Badge variant={result.modules?.a?.score > 0.9 ? 'danger' : 'success'}>
+                    {result.modules?.a?.score > 0.9 ? 'Flagged' : 'OK'}
+                 </Badge>
                </div>
                <div className="p-4 bg-[--surface-soft] rounded-[8px]">
                  <strong className="label block mb-1">Document Structure</strong>
-                 <Badge variant={mode === 'text' ? 'neutral' : 'success'}>
-                   {mode === 'text' ? 'N/A' : 'OK'}
+                 <Badge variant={mode === 'text' ? 'neutral' : (result.modules?.b?.score > 0.9 ? 'danger' : 'success')}>
+                   {mode === 'text' ? 'N/A' : (result.modules?.b?.score > 0.9 ? 'Flagged' : 'OK')}
                  </Badge>
                </div>
                <div className="p-4 bg-[--surface-soft] rounded-[8px]">
                  <strong className="label block mb-1">Semantic Coherence</strong>
-                 <Badge variant="success">OK</Badge>
+                 <Badge variant={result.modules?.c?.score > 0.9 ? 'danger' : 'success'}>
+                    {result.modules?.c?.score > 0.9 ? 'Flagged' : 'OK'}
+                 </Badge>
                </div>
             </div>
 
@@ -179,7 +227,7 @@ export default function AnalyzePage() {
             <div className="grid lg:grid-cols-[40%_1fr] gap-6">
               <div className="flex flex-col gap-4">
                 <h3 className="h3">Findings</h3>
-                <FindingsList findings={result.findings} />
+                <FindingsList findings={result.findings || []} />
               </div>
               <div className="flex flex-col gap-4">
                 <h3 className="h3">Source Document</h3>

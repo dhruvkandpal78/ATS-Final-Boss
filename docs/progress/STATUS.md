@@ -1,9 +1,9 @@
-# Status: B11 - Service boundaries and schemas
+# Status: U07 - Connect the real API without changing meaning
 
-- **Status**: Completed B11
-- **Source commit**: 0d5a926...
-- **Changed paths**: src/core/schemas.py, src/app/server.py
-- **Tests**: Validated schemas match frontend fixtures exactly via dataclasses.
+- **Status**: Completed U07
+- **Source commit**: d22ee29...
+- **Changed paths**: web/src/pages/AnalyzePage.tsx
+- **Tests**: npx tsc --noEmit passes.
 - **Exit codes**: 0
 - **Limitations**: None.
-- **Next package**: U07 - Connect the real API without changing meaning
+- **Next package**: U08 - Build Lab scenario runner
