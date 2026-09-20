@@ -1,9 +1,9 @@
-# Status: U05 - Build the analysis flow against fixtures
+# Status: U06 - Implement findings and source mapping
 
-- **Status**: Completed U05
-- **Source commit**: e98a07b...
-- **Changed paths**: web/src/pages/AnalyzePage.tsx, web/src/App.tsx
+- **Status**: Completed U06
+- **Source commit**: 5a0f5f1...
+- **Changed paths**: web/src/components/FindingsList.tsx, web/src/components/SourceViewer.tsx, web/src/pages/AnalyzePage.tsx
 - **Tests**: npx tsc --noEmit passes.
 - **Exit codes**: 0
-- **Limitations**: Uses a mocked fixture timeout instead of real API.
-- **Next package**: U06 - Implement findings and source mapping
+- **Limitations**: Placeholder geometries used for PDF renderer as per plan.
+- **Next package**: U07 - Connect the real API without changing meaning

@@ -4,6 +4,8 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { FindingsList } from '../components/FindingsList';
+import { SourceViewer } from '../components/SourceViewer';
 import { FIXTURES } from '../fixtures/analysis-states';
 
 type InputMode = 'pdf' | 'text';
@@ -170,8 +172,19 @@ export default function AnalyzePage() {
                </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 mb-8">
               <Button variant="secondary" onClick={handleClear}>New Analysis</Button>
+            </div>
+            
+            <div className="grid lg:grid-cols-[40%_1fr] gap-6">
+              <div className="flex flex-col gap-4">
+                <h3 className="h3">Findings</h3>
+                <FindingsList findings={result.findings} />
+              </div>
+              <div className="flex flex-col gap-4">
+                <h3 className="h3">Source Document</h3>
+                <SourceViewer mode={mode} />
+              </div>
             </div>
           </Card>
         </motion.div>
