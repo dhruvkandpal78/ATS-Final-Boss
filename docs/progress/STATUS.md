@@ -1,9 +1,9 @@
-# Status: U04 - Add controlled landing motion
+# Status: U05 - Build the analysis flow against fixtures
 
-- **Status**: Completed U04
-- **Source commit**: 0a94d50...
-- **Changed paths**: web/src/pages/Landing.tsx, web/src/App.tsx
+- **Status**: Completed U05
+- **Source commit**: e98a07b...
+- **Changed paths**: web/src/pages/AnalyzePage.tsx, web/src/App.tsx
 - **Tests**: npx tsc --noEmit passes.
 - **Exit codes**: 0
-- **Limitations**: Motion triggers implemented using Framer Motion with reduced-motion support.
-- **Next package**: U05 - Build the analysis flow against fixtures
+- **Limitations**: Uses a mocked fixture timeout instead of real API.
+- **Next package**: U06 - Implement findings and source mapping

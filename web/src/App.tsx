@@ -3,6 +3,7 @@ import { Routes, Route, Link } from 'react-router-dom';
 import { motion, useScroll, useReducedMotion } from 'framer-motion';
 import Gallery from './Gallery';
 import Landing from './pages/Landing';
+import AnalyzePage from './pages/AnalyzePage';
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { scrollY } = useScroll();
@@ -42,7 +43,6 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Analyze() { return <div className="container py-[--space-32]"><h1 className="h1">Analyze (U05/U06)</h1></div>; }
 function Lab() { return <div className="container py-[--space-32]"><h1 className="h1">Lab (U08)</h1></div>; }
 function Methodology() { return <div className="container py-[--space-32]"><h1 className="h1">Methodology</h1></div>; }
 
@@ -51,7 +51,7 @@ export default function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/analyze" element={<Analyze />} />
+        <Route path="/analyze" element={<AnalyzePage />} />
         <Route path="/lab" element={<Lab />} />
         <Route path="/methodology" element={<Methodology />} />
         <Route path="/gallery" element={<Gallery />} />
