@@ -5,6 +5,7 @@ import Gallery from './Gallery';
 import Landing from './pages/Landing';
 import AnalyzePage from './pages/AnalyzePage';
 import LabPage from './pages/LabPage';
+import MethodologyPage from './pages/MethodologyPage';
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { scrollY } = useScroll();
@@ -44,8 +45,6 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Methodology() { return <div className="container py-[--space-32]"><h1 className="h1">Methodology</h1></div>; }
-
 export default function App() {
   return (
     <Layout>
@@ -53,7 +52,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/analyze" element={<AnalyzePage />} />
         <Route path="/lab" element={<LabPage />} />
-        <Route path="/methodology" element={<Methodology />} />
+        <Route path="/methodology" element={<MethodologyPage />} />
         <Route path="/gallery" element={<Gallery />} />
       </Routes>
     </Layout>
