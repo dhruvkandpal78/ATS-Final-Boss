@@ -1,9 +1,9 @@
-# Status: B06 - ML Evaluation artifact export
+# Status: B07 - Delete legacy eval scripts
 
-- **Status**: Completed B06
-- **Source commit**: 56c65b8...
-- **Changed paths**: src/evaluation/evaluate.py
-- **Tests**: None needed, logic verifies manually and artifact generation is straightforward.
-- **Exit codes**: N/A
+- **Status**: Completed B07
+- **Source commit**: 41934a9...
+- **Changed paths**: src/evaluation/
+- **Tests**: Checked dir contents.
+- **Exit codes**: 0
 - **Limitations**: None.
-- **Next package**: B07 - Delete legacy eval scripts
+- **Next package**: Phase 2: U01
