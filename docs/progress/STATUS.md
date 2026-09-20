@@ -1,9 +1,9 @@
-# Status: U01 - Scaffold the frontend and contract fixtures
+# Status: U02 - Build design tokens and accessible primitives
 
-- **Status**: Completed U01
-- **Source commit**: 24203d2...
-- **Changed paths**: web/
-- **Tests**: Ran npm run build, npx vitest run, npx tsc --noEmit.
+- **Status**: Completed U02
+- **Source commit**: bc4ed8d...
+- **Changed paths**: web/src/components, web/src/tokens.css, web/tailwind.config.js, web/src/Gallery.tsx
+- **Tests**: npx tsc --noEmit passes. Verified component gallery structure visually in code.
 - **Exit codes**: 0
 - **Limitations**: None.
-- **Next package**: U02 - Build design tokens and accessible primitives
+- **Next package**: U03 - Build the static landing page first

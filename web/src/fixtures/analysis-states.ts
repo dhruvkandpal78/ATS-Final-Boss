@@ -33,18 +33,25 @@ export const FIXTURES = {
         state: "complete",
         schema_version: "2.0",
         analysis_id: "test-002",
+        created_at: "2026-09-20T10:00:00Z",
         status: "complete",
+        input_mode: "pdf",
+        model: { id: "ensemble-v1", calibrated: true },
+        policy_version: "1.0",
         decision: "review_recommended",
+        reason_codes: ["invisible_text"],
+        coverage: { pages_total: 1, pages_analyzed: 1, limitations: [] },
         score: 0.95,
         score_kind: "calibrated_probability",
         modules: {
-            a: { status: "ok", score: 0.9, findings: [] },
-            b: { status: "ok", score: 1.0, findings: [] },
-            c: { status: "ok", score: 0.9, findings: [] }
+            a: { status: "ok", score: 0.9, reason: null, findings: [] },
+            b: { status: "ok", score: 1.0, reason: null, findings: [] },
+            c: { status: "ok", score: 0.9, reason: null, findings: [] }
         },
         findings: [
             { id: "f1", detector: "b", category: "invisible_text", severity: "high", explanation: "Hidden text detected" }
-        ]
+        ],
+        timings_ms: { total: 150 }
     },
     partial: { state: "partial", decision: "review_recommended", coverage: { pages_analyzed: 1, pages_total: 5 } },
     unsupported: { state: "unscorable", decision: "insufficient_evidence", reason_codes: ["image_only_pdf"] },
