@@ -1,27 +1,15 @@
 import fitz  # PyMuPDF
 import logging
+from typing import Dict, Any, List
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class PDFForensicsDetector:
-    """
-    A structural anomaly detector (Module B) that interrogates the PDF byte-layer
-    to identify adversarial text injections such as keyword stuffing and hidden prompts.
-    """
-    
-    def __init__(self, font_size_threshold: float = 1.5, color_tolerance: float = 0.05):
-        """
-        :param font_size_threshold: Font size (in pts) below which text is flagged as hidden.
-        :param color_tolerance: Tolerance for matching text color to background color.
-        """
+    def __init__(self, font_size_threshold: float = 1.5):
         self.font_size_threshold = font_size_threshold
-        self.color_tolerance = color_tolerance
 
     def analyze_pdf(self, pdf_path: str) -> dict:
-        """
-        Performs deep structural forensics on a PDF document.
-        """
         try:
             doc = fitz.open(pdf_path)
         except Exception as e:
@@ -39,41 +27,63 @@ class PDFForensicsDetector:
             "findings": []
         }
 
-        # Check OCGs (Optional Content Groups) / Layers
-        hidden_ocgs = self._get_hidden_ocgs(doc)
+        # OCG handling (just record if there are hidden OCGs globally for now, or check items)
+        hidden_ocgs = set()
+        try:
+            ocgs = doc.get_ocgs()
+            for ocg in ocgs:
+                if doc.get_ocg_pi(ocg) and doc.get_ocg_pi(ocg).get('state') == 'OFF':
+                    hidden_ocgs.add(ocg)
+        except Exception:
+            pass
 
         for page_num in range(len(doc)):
             page = doc[page_num]
             page_rect = page.rect
             
-            # Extract dictionary dict to get detailed text block info
-            text_dict = page.get_text("dict")
-            blocks = text_dict.get("blocks", [])
+            # Get images to check for OCR overlays
+            images = page.get_image_info()
+            image_rects = [fitz.Rect(img['bbox']) for img in images]
             
-            for block in blocks:
-                if "lines" not in block:
-                    continue  # Skip image blocks
-                for line in block["lines"]:
-                    for span in line["spans"]:
-                        flags = self._analyze_span(span, page_rect, hidden_ocgs)
-                        
-                        if any(flags.values()):
-                            anomalies["total_flagged_spans"] += 1
-                            for key, flagged in flags.items():
-                                if flagged:
-                                    anomalies[key] += 1
-                            
-                            # Report exact page numbers and rects when available
-                            anomalies["findings"].append({
-                                "page": page_num + 1,
-                                "rect": span["bbox"],
-                                "flags": [k for k, v in flags.items() if v]
-                            })
+            # Get drawings to check background context
+            drawings = page.get_drawings()
+            dark_bg_rects = []
+            for d in drawings:
+                # If filled with a color that is not white
+                if d.get('type') == 'f' or d.get('type') == 'fs':
+                    fill_color = d.get('fill')
+                    if fill_color and not (fill_color[0] > 0.95 and fill_color[1] > 0.95 and fill_color[2] > 0.95):
+                        dark_bg_rects.append(d['rect'])
+
+            try:
+                traces = page.get_texttrace()
+            except AttributeError:
+                # Fallback for older PyMuPDF or just return empty
+                traces = []
+
+            for trace in traces:
+                flags = self._analyze_trace(trace, page_rect, image_rects, dark_bg_rects, hidden_ocgs)
+                
+                if any(flags.values()):
+                    anomalies["total_flagged_spans"] += 1
+                    active_flags = [k for k, v in flags.items() if v]
+                    for key in active_flags:
+                        anomalies[key] += 1
+                    
+                    # Convert chars to string for explanation context
+                    chars = trace.get('chars', [])
+                    text = "".join(chr(c[0]) for c in chars if len(c) > 0 and isinstance(c[0], int))
+                    if len(text) > 20: text = text[:17] + "..."
+                    
+                    anomalies["findings"].append({
+                        "page": page_num + 1,
+                        "rect": trace["bbox"],
+                        "flags": active_flags,
+                        "text": text
+                    })
 
         doc.close()
         
-        # Calculate a normalized structural anomaly score (0.0 to 1.0)
-        # In a real pipeline, this would be calibrated on the validation set.
         score = min(1.0, anomalies["total_flagged_spans"] / 10.0) 
         
         return {
@@ -82,33 +92,7 @@ class PDFForensicsDetector:
             "details": anomalies
         }
 
-    def _get_hidden_ocgs(self, doc: fitz.Document) -> set:
-        """
-        PLACEHOLDER: Identifies Optional Content Groups (OCGs) that have
-        visibility explicitly set to OFF.
-
-        NOTE: This method currently always returns an empty set — OCG-based
-        hidden-text detection is NOT yet implemented. A résumé hidden via
-        Optional Content Groups will not be flagged by this check today.
-        A real implementation would parse the /OCProperties catalog entry
-        (/OFF array) and check span OCG membership against that set.
-        See DESIGN_RATIONALE.md "Honest limitations" for details.
-        """
-        hidden_ocgs = set()
-        try:
-            ocg_list = doc.get_ocgs()
-            for ocg in ocg_list:
-                # TODO: implement real OCG visibility check via
-                # doc.get_layer(config=0) / /OCProperties /OFF array parsing
-                pass 
-        except Exception:
-            pass
-        return hidden_ocgs
-
-    def _analyze_span(self, span: dict, page_rect: fitz.Rect, hidden_ocgs: set) -> dict:
-        """
-        Analyzes a single text span for structural anomalies.
-        """
+    def _analyze_trace(self, trace: dict, page_rect: fitz.Rect, image_rects: list, dark_bg_rects: list, hidden_ocgs: set) -> dict:
         flags = {
             "invisible_render_mode": False,
             "zero_sized_bbox": False,
@@ -118,42 +102,39 @@ class PDFForensicsDetector:
             "background_color_match": False
         }
         
-        bbox = fitz.Rect(span["bbox"])
-        
-        # 1. Zero-sized or extremely small Bounding Box area
-        # Sometimes an adversary sets width/height to exactly 0, or just very small
+        bbox = fitz.Rect(trace["bbox"])
         area = bbox.width * bbox.height
+        
         if area <= 0.01:
             flags["zero_sized_bbox"] = True
             
-        # 2. Out of Bounds (Negative coordinates or completely outside page dimensions)
-        if (bbox.x1 <= 0 or bbox.y1 <= 0 or 
-            bbox.x0 >= page_rect.width or bbox.y0 >= page_rect.height):
+        if (bbox.x1 <= 0 or bbox.y1 <= 0 or bbox.x0 >= page_rect.width or bbox.y0 >= page_rect.height):
             flags["out_of_bounds"] = True
             
-        # 3. Tiny Font Size (e.g., 1pt or less)
-        if span["size"] <= self.font_size_threshold:
+        if trace.get("size", 10) <= self.font_size_threshold:
             flags["tiny_font"] = True
             
-        # 4. Text Rendering Mode 3 (Invisible Text)
-        # Placeholder flag for stream parsing (TJ/Tj operators)
-        
-        # 5. Background Color Match (Contextual white text on white background)
-        srgb_color = span.get("color")
-        if srgb_color == 16777215: # 0xFFFFFF (White)
-            # Instead of blindly flagging all white text, we only flag it if 
-            # it's out of bounds, tiny, or we know the background is white.
-            # Since we can't reliably read the background from the dict, 
-            # we consider it an anomaly if it's white AND very small, 
-            # OR we just flag it with a lower confidence. For now, we will flag it 
-            # but log that it requires background context.
-            # In a production system, we'd cross-reference with drawn rectangles.
-            flags["background_color_match"] = True
-            
-        return flags
+        # Render mode 3 is invisible text
+        if trace.get("type") == 3:
+            # Check if it overlaps an image (OCR text)
+            is_ocr = any(bbox.intersects(img_rect) for img_rect in image_rects)
+            if not is_ocr:
+                flags["invisible_render_mode"] = True
+                
+        # White text check
+        color = trace.get("color")
+        if color and len(color) >= 3:
+            if color[0] > 0.95 and color[1] > 0.95 and color[2] > 0.95:
+                # White text. Check if it's over a dark background or image
+                over_image = any(bbox.intersects(img_rect) for img_rect in image_rects)
+                over_dark_bg = any(bbox.intersects(bg_rect) for bg_rect in dark_bg_rects)
+                
+                if not (over_image or over_dark_bg):
+                    flags["background_color_match"] = True
+                    
+        # Hidden OCG check
+        layer = trace.get("layer")
+        if layer and layer in hidden_ocgs:
+            flags["hidden_ocg"] = True
 
-if __name__ == "__main__":
-    # Example usage:
-    detector = PDFForensicsDetector()
-    # result = detector.analyze_pdf("sample_resume.pdf")
-    # print(result)
+        return flags

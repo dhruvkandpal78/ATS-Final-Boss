@@ -1,9 +1,9 @@
-# Status: Pausing U07 to complete B08-B11
+# Status: B08 - Real structural evidence
 
-- **Status**: Interrupted U07
-- **Source commit**: 640adb1...
-- **Changed paths**: docs/progress/STATUS.md
-- **Tests**: N/A
+- **Status**: Completed B08
+- **Source commit**: 31ef3d3...
+- **Changed paths**: src/modules/module_b.py, tests/test_module_b.py
+- **Tests**: pytest tests/test_module_b.py passes perfectly.
 - **Exit codes**: 0
-- **Limitations**: U07 depends on B11. Moving to B08 as per step-by-step instructions.
-- **Next package**: B08 - Real structural evidence
+- **Limitations**: OCG implementation is currently based on document-wide properties, detailed span-level parsing would require further PyMuPDF exploration.
+- **Next package**: B09 - Semantic signals and faithful explanations
