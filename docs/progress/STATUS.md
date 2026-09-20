@@ -1,9 +1,9 @@
-# Status: U00 - Capture and map the old presentation
+# Status: U01 - Scaffold the frontend and contract fixtures
 
-- **Status**: Completed U00
-- **Source commit**: 236bfce...
-- **Changed paths**: docs/ui/legacy-feature-map.md
-- **Tests**: Checked docs/progress/BASELINE.md for screenshot notes.
+- **Status**: Completed U01
+- **Source commit**: 24203d2...
+- **Changed paths**: web/
+- **Tests**: Ran npm run build, npx vitest run, npx tsc --noEmit.
 - **Exit codes**: 0
-- **Limitations**: Screenshots assumed to be done in B00.
-- **Next package**: U01 - Scaffold the frontend and contract fixtures
+- **Limitations**: None.
+- **Next package**: U02 - Build design tokens and accessible primitives
