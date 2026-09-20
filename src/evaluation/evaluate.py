@@ -24,6 +24,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from src.modules.module_a import KeywordDensityDetector
 from src.modules.module_c import SemanticCoherenceScorer
 from src.models.meta_classifier import EnsembleMetaClassifier
+from src.core.analysis_service import AnalysisService
 from src.evaluation.metrics import evaluate_predictions, bootstrap_f1
 from src.evaluation.curves import plot_roc_curves, plot_degradation_curve
 
@@ -59,30 +60,30 @@ def simulate_module_b_proxy(text: str) -> float:
 _worker_mod_a = None
 _worker_mod_c = None
 
+_worker_analysis_service = None
+
 def _init_worker():
-    global _worker_mod_a, _worker_mod_c
+    global _worker_analysis_service
     from src.modules.module_a import KeywordDensityDetector
     from src.modules.module_c import SemanticCoherenceScorer
-    _worker_mod_a = KeywordDensityDetector()
-    _worker_mod_c = SemanticCoherenceScorer(model_name='all-MiniLM-L6-v2', window_size=2)
+    from src.core.analysis_service import AnalysisService
+    mod_a = KeywordDensityDetector()
+    mod_c = SemanticCoherenceScorer(model_name='all-MiniLM-L6-v2', window_size=2)
+    _worker_analysis_service = AnalysisService(mod_a=mod_a, mod_b=None, mod_c=mod_c)
 
 def _process_row(args):
     idx, text, mod_a_thresh, mod_c_thresh = args
-    global _worker_mod_a, _worker_mod_c
+    global _worker_analysis_service
     
-    _worker_mod_a.threshold = mod_a_thresh
-    _worker_mod_c.variance_threshold = mod_c_thresh
+    _worker_analysis_service.mod_a.threshold = mod_a_thresh
+    _worker_analysis_service.mod_c.variance_threshold = mod_c_thresh
     
-    a_res = _worker_mod_a.predict(text)
     b_score = simulate_module_b_proxy(text)
-    c_res = _worker_mod_c.predict(text)
+    res = _worker_analysis_service.analyze_text(text, b_score)
     
-    return {
-        "Module_A_Score": a_res['anomaly_score'],
-        "Module_B_Score": b_score,
-        "Module_C_Score": c_res['anomaly_score'],
-        "Injection_Cues": c_res.get('injection_cues', 0)
-    }
+    features = res['features']
+    features['Injection_Cues'] = res['injection_cues']
+    return features
 
 def extract_features(df: pd.DataFrame, mod_a: KeywordDensityDetector, mod_c: SemanticCoherenceScorer) -> pd.DataFrame:
     """
@@ -207,12 +208,13 @@ def run_evaluation():
             mutated_text = " ".join(words)
             
             # Re-score
-            a_sc = mod_a.predict(mutated_text)['anomaly_score']
             b_sc = simulate_module_b_proxy(mutated_text)
-            c_sc = mod_c.predict(mutated_text)['anomaly_score']
+            # Create a temporary service instance to avoid circular logic or just use a local one
+            # Actually we can just create an AnalysisService and pass all models
+            temp_service = AnalysisService(mod_a=mod_a, mod_b=None, mod_c=mod_c, meta_clf=meta_clf, scaler=None)
+            res = temp_service.analyze_text(mutated_text, b_score=b_sc)
             
-            feat = pd.DataFrame([{"Module_A_Score": a_sc, "Module_B_Score": b_sc, "Module_C_Score": c_sc}])
-            is_attack = meta_clf.predict(feat)[0]
+            is_attack = res['policy_decision']
             
             y_true_budg.append(1) # We know these are adversarial
             y_pred_budg.append(int(is_attack))
@@ -225,12 +227,9 @@ def run_evaluation():
         for idx, row in clean_sub.iterrows():
             y_true_budg.append(0)
             
-            a_sc = mod_a.predict(row['text'])['anomaly_score']
             b_sc = simulate_module_b_proxy(row['text'])
-            c_sc = mod_c.predict(row['text'])['anomaly_score']
-            
-            feat = pd.DataFrame([{"Module_A_Score": a_sc, "Module_B_Score": b_sc, "Module_C_Score": c_sc}])
-            is_attack = meta_clf.predict(feat)[0]
+            res = temp_service.analyze_text(row['text'], b_score=b_sc)
+            is_attack = res['policy_decision']
             
             y_pred_budg.append(int(is_attack))
             

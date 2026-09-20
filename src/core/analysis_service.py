@@ -4,8 +4,15 @@ from typing import Dict, Any
 from src.inference import load_pipeline
 
 class AnalysisService:
-    def __init__(self, models_dir: str):
-        self.meta_clf, self.scaler, self.mod_a, self.mod_b, self.mod_c = load_pipeline(models_dir)
+    def __init__(self, models_dir: str = None, mod_a=None, mod_b=None, mod_c=None, meta_clf=None, scaler=None):
+        if models_dir is not None:
+            self.meta_clf, self.scaler, self.mod_a, self.mod_b, self.mod_c = load_pipeline(models_dir)
+        else:
+            self.mod_a = mod_a
+            self.mod_b = mod_b
+            self.mod_c = mod_c
+            self.meta_clf = meta_clf
+            self.scaler = scaler
 
     def analyze_text(self, text: str, b_score: float = 0.0) -> Dict[str, Any]:
         # Feature extraction
@@ -21,9 +28,12 @@ class AnalysisService:
             'Module_C_Score': c_score
         }])
         
-        # Meta-classifier handles scaling if a DataFrame is passed
-        is_attack_model = bool(self.meta_clf.predict(features).item(0))
-        proba_model = float(self.meta_clf.predict_proba(features).item(0))
+        is_attack_model = False
+        proba_model = 0.0
+        
+        if self.meta_clf is not None:
+            is_attack_model = bool(self.meta_clf.predict(features).item(0))
+            proba_model = float(self.meta_clf.predict_proba(features).item(0))
         
         # Policy rules
         is_attack_policy = is_attack_model
