@@ -1,9 +1,9 @@
-# Status: B07 - Delete legacy eval scripts
+# Status: U00 - Capture and map the old presentation
 
-- **Status**: Completed B07
-- **Source commit**: 41934a9...
-- **Changed paths**: src/evaluation/
-- **Tests**: Checked dir contents.
+- **Status**: Completed U00
+- **Source commit**: 236bfce...
+- **Changed paths**: docs/ui/legacy-feature-map.md
+- **Tests**: Checked docs/progress/BASELINE.md for screenshot notes.
 - **Exit codes**: 0
-- **Limitations**: None.
-- **Next package**: Phase 2: U01
+- **Limitations**: Screenshots assumed to be done in B00.
+- **Next package**: U01 - Scaffold the frontend and contract fixtures
