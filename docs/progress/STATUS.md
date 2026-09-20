@@ -1,9 +1,9 @@
-# Status: U06 - Implement findings and source mapping
+# Status: Pausing U07 to complete B08-B11
 
-- **Status**: Completed U06
-- **Source commit**: 5a0f5f1...
-- **Changed paths**: web/src/components/FindingsList.tsx, web/src/components/SourceViewer.tsx, web/src/pages/AnalyzePage.tsx
-- **Tests**: npx tsc --noEmit passes.
+- **Status**: Interrupted U07
+- **Source commit**: 640adb1...
+- **Changed paths**: docs/progress/STATUS.md
+- **Tests**: N/A
 - **Exit codes**: 0
-- **Limitations**: Placeholder geometries used for PDF renderer as per plan.
-- **Next package**: U07 - Connect the real API without changing meaning
+- **Limitations**: U07 depends on B11. Moving to B08 as per step-by-step instructions.
+- **Next package**: B08 - Real structural evidence
