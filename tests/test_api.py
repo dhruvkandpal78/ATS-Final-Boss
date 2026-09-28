@@ -1,5 +1,12 @@
 import pytest
+import os
+from src.app import server
 from src.app.server import analyze_payload, _score
+
+def test_server_bootstraps_without_trained_models():
+    assert not os.path.exists(server.MODELS_DIR)
+    assert hasattr(server.META_CLF, "predict_proba")
+    assert hasattr(server.SCALER, "transform")
 
 def test_api_clean_text():
     # Test typical clean text (make it long enough to avoid artificially high keyword density)
