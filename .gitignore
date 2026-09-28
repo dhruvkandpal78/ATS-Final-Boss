@@ -33,3 +33,8 @@ Thumbs.db
 *.zip
 docx_content.txt
 scratch_reminder.txt
+
+# Local verification and frontend dependency caches
+.test-tmp/
+node_modules/
+.pytest_cache/

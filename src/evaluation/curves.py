@@ -52,19 +52,19 @@ def plot_roc_curves(y_true, proba_dict: dict, output_path: str):
     plt.close()
     logger.info(f"Saved ROC curve to {output_path}")
 
-def plot_degradation_curve(substitution_percentages: list, accuracy_drops: list, output_path: str):
+def plot_degradation_curve(substitution_percentages: list, f1_values: list, output_path: str):
     """
-    Plots the Adaptive Adversary Test degradation curve.
+    Plots the synthetic validation-set mutation stress test.
     """
     plt.figure(figsize=(10, 6))
     
-    plt.plot(substitution_percentages, accuracy_drops, color=COLORS['Meta-Classifier'], marker='o', lw=2, markersize=8)
+    plt.plot(substitution_percentages, f1_values, color=COLORS['Meta-Classifier'], marker='o', lw=2, markersize=8)
     
     plt.xlim([0.0, max(substitution_percentages) + 10])
     plt.ylim([0.0, 1.0])
     plt.xlabel('Word Substitution Budget (%)', fontsize=12)
-    plt.ylabel('Detection Accuracy (F1)', fontsize=12)
-    plt.title('Adaptive Adversary Degradation (Meta-Classifier)', fontsize=14, pad=15)
+    plt.ylabel('Review policy F1', fontsize=12)
+    plt.title('Synthetic validation mutation study', fontsize=14, pad=15)
     plt.grid(True, linestyle=':', alpha=0.3)
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

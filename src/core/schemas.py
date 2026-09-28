@@ -1,51 +1,60 @@
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+"""The versioned, JSON-compatible result contract shared by all adapters."""
 
-@dataclass
-class Finding:
+from typing import Any, Dict, List, Literal, Optional, TypedDict
+
+
+Decision = Literal["no_signals_detected", "review_recommended", "insufficient_evidence"]
+ModuleStatus = Literal["ok", "not_applicable", "unsupported", "error"]
+
+
+class Anchor(TypedDict):
+    page_index: Optional[int]
+    char_start: Optional[int]
+    char_end: Optional[int]
+    bbox: Optional[List[float]]
+
+
+class Finding(TypedDict):
     id: str
     detector: str
     category: str
     severity: str
+    explanation_method: str
     explanation: str
+    anchor: Anchor
+    uncertainty: str
 
-@dataclass
-class ModuleResult:
-    status: str
-    score: float
-    reason: Optional[str] = None
-    findings: List[Finding] = field(default_factory=list)
 
-@dataclass
-class CoverageInfo:
-    pages_total: int
-    pages_analyzed: int
-    limitations: List[str] = field(default_factory=list)
+class ModuleResult(TypedDict, total=False):
+    name: str
+    sub: str
+    desc: str
+    status: ModuleStatus
+    score: Optional[float]
+    reason: Optional[str]
+    evidence_ids: List[str]
+    capabilities: Dict[str, bool]
 
-@dataclass
-class ModelInfo:
-    id: str
-    calibrated: bool
 
-@dataclass
-class TimingInfo:
-    total: int
+class CoverageInfo(TypedDict):
+    pages_total: Optional[int]
+    pages_analyzed: Optional[int]
+    limitations: List[str]
 
-@dataclass
-class AnalysisResult:
-    state: str
-    schema_version: str
+
+class AnalysisResult(TypedDict, total=False):
+    schema_version: Literal["2.0"]
     analysis_id: str
     created_at: str
-    status: str
-    input_mode: str
-    model: ModelInfo
+    status: Literal["complete", "partial", "unscorable"]
+    input_mode: Literal["text", "pdf"]
+    model: Dict[str, Any]
     policy_version: str
-    decision: str
+    score: Optional[float]
+    score_kind: Literal["model_score", "calibrated_probability", "unavailable"]
+    decision: Decision
     reason_codes: List[str]
     coverage: CoverageInfo
-    score: float
-    score_kind: str
     modules: Dict[str, ModuleResult]
     findings: List[Finding]
-    timings_ms: TimingInfo
+    timings_ms: Dict[str, float]

@@ -1,5 +1,18 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-26 to 2026-09-28: correctness, runtime, interface and ownership
+
+- Unified CLI/API analysis, fixed scaling and class-probability selection, separated policy from score, and made missing/partial coverage explicit.
+- Fixed keyword alias boundaries, scoped injection exceptions, improved PDF trace heuristics and bounded explanation work.
+- Preserved source lineage for group-disjoint dataset splitting; separated historical proxy experiments from real-PDF evaluation; moved mutation studies to validation only.
+- Removed per-row model loading and failing nested-CV diagnostics; made optional XGBoost explicit and default worker counts bounded.
+- Added lazy isolated inference, request validation, concurrency rejection, a hard deadline, temporary-file cleanup and safe error responses.
+- Rebuilt the maintained frontend with the user's light/dark references, a persistent theme toggle, responsive input/results, coverage and evidence, export and honest unavailable lab states.
+- Added ownership/reuse notices and an in-app policy page. New reserved-rights additions do not revoke earlier MIT permissions; the prior license is preserved.
+- Full implementation suite: 73 passed, including cached-model integration and synthetic PDF checks. No held-out dataset used and no improved accuracy percentage claimed.
+
+Exact changes, commands, screenshots, remaining limitations and package records: [enhancement record](docs/progress/ENHANCEMENT_2026-09-26.md). Earlier entries below are historical, not current release certification.
+
 This document tracks the step-by-step evolution of the ATS Final Boss project, from its initial prototype to its current rigorous, defense-in-depth architecture.
 
 ## Phase 1: The Initial Prototype

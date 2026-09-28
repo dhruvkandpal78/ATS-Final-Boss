@@ -17,6 +17,7 @@ import logging
 import random
 from tqdm import tqdm
 import sys
+from sklearn.metrics import f1_score
 
 # Add src to path so we can import our modules
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -55,50 +56,82 @@ def simulate_module_b_proxy(text: str) -> float:
 # ---------------------------------------------------------------------------
 # Feature Extraction Runner
 # ---------------------------------------------------------------------------
-# Global variables for worker processes
-_worker_mod_a = None
-_worker_mod_c = None
-
-_worker_analysis_service = None
-
-def _init_worker():
-    global _worker_analysis_service
-    from src.modules.module_a import KeywordDensityDetector
-    from src.modules.module_c import SemanticCoherenceScorer
-    from src.core.analysis_service import AnalysisService
-    mod_a = KeywordDensityDetector()
-    mod_c = SemanticCoherenceScorer(model_name='all-MiniLM-L6-v2', window_size=2)
-    _worker_analysis_service = AnalysisService(mod_a=mod_a, mod_b=None, mod_c=mod_c)
-
-def _process_row(args):
-    idx, text, mod_a_thresh, mod_c_thresh = args
-    global _worker_analysis_service
-    
-    _worker_analysis_service.mod_a.threshold = mod_a_thresh
-    _worker_analysis_service.mod_c.variance_threshold = mod_c_thresh
-    
-    b_score = simulate_module_b_proxy(text)
-    res = _worker_analysis_service.analyze_text(text, b_score)
-    
-    features = res['features']
-    features['Injection_Cues'] = res['injection_cues']
-    return features
-
 def extract_features(df: pd.DataFrame, mod_a: KeywordDensityDetector, mod_c: SemanticCoherenceScorer) -> pd.DataFrame:
     """
-    Extracts module anomaly scores in parallel to serve as features for the meta-classifier.
+    Extract historical synthetic-research features with reused detector objects.
+
+    The B value is an explicit marker proxy, not PDF evidence. Keep this path
+    separate from the deployed AnalysisService, which correctly reports B as
+    not applicable for text and never fills in a synthetic structural score.
     """
-    import concurrent.futures
-    import multiprocessing
-    
-    logger.info(f"Extracting features for {len(df)} samples using {multiprocessing.cpu_count()} cores...")
-    
-    args_list = [(idx, row['text'], mod_a.threshold, mod_c.variance_threshold) for idx, row in df.iterrows()]
-    
-    with concurrent.futures.ProcessPoolExecutor(initializer=_init_worker) as executor:
-        results = list(tqdm(executor.map(_process_row, args_list), total=len(df), desc="Extracting"))
-        
-    return pd.DataFrame(results)
+    logger.info("Extracting synthetic research features for %d samples...", len(df))
+    rows = []
+    for text in tqdm(df['text'], total=len(df), desc="Extracting"):
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("Research feature extraction requires nonempty text")
+        a_result = mod_a.predict(text)
+        c_result = mod_c.predict(text)
+        rows.append({
+            "Module_A_Score": float(a_result["anomaly_score"]),
+            "Module_B_Score": simulate_module_b_proxy(text),
+            "Module_C_Score": float(c_result["anomaly_score"]),
+            "Injection_Cues": int(c_result.get("injection_cues", 0)),
+        })
+    return pd.DataFrame(rows, columns=["Module_A_Score", "Module_B_Score", "Module_C_Score", "Injection_Cues"])
+
+
+RESEARCH_MODEL_FEATURES = ["Module_A_Score", "Module_B_Score", "Module_C_Score"]
+
+
+def research_policy_predictions(features: pd.DataFrame, meta_clf) -> np.ndarray:
+    """Policy decisions for synthetic research features, separate from deployment."""
+    model_predictions = np.asarray(meta_clf.predict(features[RESEARCH_MODEL_FEATURES]), dtype=int)
+    rules = (features["Injection_Cues"].to_numpy() > 0) | (
+        features["Module_B_Score"].to_numpy() >= 0.9
+    )
+    return (model_predictions.astype(bool) | rules).astype(int)
+
+
+def validation_degradation_curve(df_val: pd.DataFrame, mod_a, mod_c, meta_clf,
+                                 budgets=(0, 10, 20, 30, 40, 50), sample_size=30,
+                                 seed=42):
+    """Score a fixed validation subset at each mutation budget.
+
+    This is a synthetic research stress test, not a deployed PDF benchmark.
+    It must never select examples or a budget using the test split.
+    """
+    required = {"text", "attack_type", "is_adversarial"}
+    if not required.issubset(df_val.columns):
+        raise ValueError("Validation curve requires text, attack_type, and is_adversarial")
+    attacked = df_val[df_val["attack_type"].isin(["TYPE_A", "TYPE_D"])]
+    clean = df_val[df_val["is_adversarial"] == 0]
+    if attacked.empty or clean.empty:
+        raise ValueError("Validation curve needs both text-based attacks and clean controls")
+    attacked = attacked.sample(min(sample_size, len(attacked)), random_state=seed)
+    clean = clean.sample(min(sample_size, len(clean)), random_state=seed)
+    clean_features = extract_features(clean, mod_a, mod_c)
+    clean_predictions = research_policy_predictions(clean_features, meta_clf)
+    labels = np.concatenate([np.ones(len(attacked), dtype=int), np.zeros(len(clean), dtype=int)])
+    values = []
+    for budget in budgets:
+        if not 0 <= budget <= 100:
+            raise ValueError("Mutation budgets must be percentages between 0 and 100")
+        texts = []
+        for row_index, text in enumerate(attacked["text"]):
+            words = text.split()
+            count = min(len(words), int(len(words) * budget / 100))
+            if count:
+                rng = random.Random(seed + budget * 1009 + row_index)
+                for word_index in rng.sample(range(len(words)), count):
+                    words[word_index] = "experience"
+            texts.append(" ".join(words))
+        attack_features = extract_features(pd.DataFrame({"text": texts}), mod_a, mod_c)
+        attack_predictions = research_policy_predictions(attack_features, meta_clf)
+        predictions = np.concatenate([attack_predictions, clean_predictions])
+        values.append(float(f1_score(labels, predictions, zero_division=0)))
+    return {"budgets": list(budgets), "f1": values,
+            "n_adversarial": len(attacked), "n_clean": len(clean),
+            "source_split": "validation", "input_mode": "synthetic_text_proxy"}
 
 # ---------------------------------------------------------------------------
 # Main Evaluation Pipeline
@@ -163,11 +196,9 @@ def run_evaluation():
     
     # Calculate policy rules for test set
     y_pred_policy = y_pred.copy()
-    y_proba_policy = y_proba_meta.copy()
     for i, row in X_test.reset_index(drop=True).iterrows():
         if row['Injection_Cues'] > 0 or row['Module_B_Score'] >= 0.9:
             y_pred_policy[i] = 1
-            y_proba_policy[i] = max(y_proba_policy[i], 0.95)
             
     # Calculate confusion matrix for policy
     from sklearn.metrics import confusion_matrix
@@ -185,7 +216,6 @@ def run_evaluation():
             "module_c_score": float(X_test['Module_C_Score'].iloc[i]),
             "injection_cues": int(X_test['Injection_Cues'].iloc[i]),
             "model_probability": float(y_proba_meta[i]),
-            "policy_probability": float(y_proba_policy[i]),
             "model_decision": bool(y_pred[i]),
             "policy_decision": bool(y_pred_policy[i])
         })
@@ -218,76 +248,16 @@ def run_evaluation():
     }
     plot_roc_curves(y_test, proba_dict, os.path.join(RESULTS_DIR, "plots", "roc_curves.png"))
     
-    # 7. Adaptive Adversary Degradation (Real Eval)
-    logger.info("Running Adaptive Adversary Degradation (subsampled to 30 for runtime)...")
-    sub_pcts = [0, 10, 20, 30, 40, 50]
-    acc_drops = []
-    
-    # Take a subset of Type-A and Type-D (the text-based attacks)
-    adv_test = df_test[df_test['attack_type'].isin(['TYPE_A', 'TYPE_D'])]
-    n_samples = min(30, len(adv_test))
-    subset_df = adv_test.sample(n_samples, random_state=42)
-    
-    from src.core.analysis_service import AnalysisService
-    temp_service = AnalysisService(mod_a=mod_a, mod_b=None, mod_c=mod_c, meta_clf=meta_clf, scaler=None)
-    
-    for budget in sub_pcts:
-        if budget == 0:
-            acc_drops.append(metrics['f1'])
-            continue
-            
-        y_true_budg = []
-        y_pred_budg = []
-        
-        for idx, row in subset_df.iterrows():
-            text = row['text']
-            words = text.split()
-            n_replace = int(len(words) * (budget / 100.0))
-            
-            # Simple substitution attack: replace keywords with harmless generic words
-            # to evade density detection, while trying to keep semantics.
-            # We simulate this by replacing random words with generic tokens.
-            if n_replace > 0:
-                replace_indices = random.sample(range(len(words)), min(n_replace, len(words)))
-                for i in replace_indices:
-                    words[i] = "experience" # generic benign word
-            
-            mutated_text = " ".join(words)
-            # Re-score
-            b_sc = simulate_module_b_proxy(mutated_text)
-            res = temp_service.analyze_text(mutated_text, b_score=b_sc)
-            
-            is_attack = res['policy_decision']
-            
-            y_true_budg.append(1) # We know these are adversarial
-            y_pred_budg.append(int(is_attack))
-            
-        # Add some clean samples to compute real F1 at this budget
-        clean_test = df_test[df_test['is_adversarial'] == 0]
-        n_clean = min(30, len(clean_test))
-        clean_sub = clean_test.sample(n_clean, random_state=42)
-        
-        for idx, row in clean_sub.iterrows():
-            y_true_budg.append(0)
-            
-            b_sc = simulate_module_b_proxy(row['text'])
-            res = temp_service.analyze_text(row['text'], b_score=b_sc)
-            is_attack = res['policy_decision']
-            
-            y_pred_budg.append(int(is_attack))
-            
-        # Calc F1
-        tp = sum(1 for yt, yp in zip(y_true_budg, y_pred_budg) if yt == 1 and yp == 1)
-        fp = sum(1 for yt, yp in zip(y_true_budg, y_pred_budg) if yt == 0 and yp == 1)
-        fn = sum(1 for yt, yp in zip(y_true_budg, y_pred_budg) if yt == 1 and yp == 0)
-        
-        prec = tp / (tp + fp) if (tp + fp) > 0 else 0
-        rec = tp / (tp + fn) if (tp + fn) > 0 else 0
-        f1_budg = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0
-        
-        acc_drops.append(f1_budg)
-        
-    plot_degradation_curve(sub_pcts, acc_drops, os.path.join(RESULTS_DIR, "plots", "degradation_curve.png"))
+    # 7. Synthetic validation stress test. The final test split is never used
+    # for selecting the mutation budget or building this curve.
+    logger.info("Running synthetic degradation study on a fixed validation subset...")
+    try:
+        degradation = validation_degradation_curve(df_val, mod_a, mod_c, meta_clf)
+    except ValueError as exc:
+        logger.warning("Validation degradation study unavailable: %s", exc)
+    else:
+        plot_degradation_curve(degradation["budgets"], degradation["f1"],
+                               os.path.join(RESULTS_DIR, "plots", "degradation_curve.png"))
     
     logger.info("=" * 60)
     logger.info("EVALUATION COMPLETE. ALL PLOTS SAVED TO /results/plots/")

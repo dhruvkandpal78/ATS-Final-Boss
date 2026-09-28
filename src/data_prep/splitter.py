@@ -5,8 +5,9 @@ Splits the full dataset (clean + adversarial) into three non-overlapping
 partitions with strict isolation guarantees to prevent data leakage.
 
 Design Decisions:
-    - Stratified by both `attack_type` AND `category` to ensure each split
-      has a proportional representation of all attack types and job domains.
+    - Grouped by source_id so a clean resume and its generated variants cannot
+      cross partitions. Row ratios are approximate; attack/category proportions
+      are reported for review, not guaranteed by stratification.
     - The TEST split is saved as a separate, clearly named file and must NOT
       be touched until the final evaluation in Phase 5 (Week 5).
     - The VALIDATION split is used exclusively for threshold calibration
@@ -27,7 +28,7 @@ import numpy as np
 import os
 import json
 import logging
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit
 from datetime import datetime
 
 logging.basicConfig(
@@ -54,9 +55,32 @@ RANDOM_SEED = 42
 # ---------------------------------------------------------------------------
 # Main Splitting Pipeline
 # ---------------------------------------------------------------------------
+def split_by_source(df, random_state=RANDOM_SEED):
+    """Keep a resume and all its generated variants in the same partition.
+
+    Ratios are approximate by row because source groups have varying sizes.
+    Old generated data without lineage must be regenerated, not guessed.
+    """
+    if "source_id" not in df or df["source_id"].isna().any():
+        raise ValueError("Missing source_id lineage. Regenerate the dataset with the current injector before splitting.")
+    groups = df["source_id"].astype(str).str.strip()
+    if (groups == "").any() or groups.nunique() < 5:
+        raise ValueError("At least five non-empty source groups are required.")
+    first = GroupShuffleSplit(n_splits=1, test_size=VAL_RATIO + TEST_RATIO, random_state=random_state)
+    train_idx, rest_idx = next(first.split(df, groups=groups))
+    train, rest = df.iloc[train_idx], df.iloc[rest_idx]
+    second = GroupShuffleSplit(n_splits=1, test_size=TEST_RATIO / (VAL_RATIO + TEST_RATIO), random_state=random_state)
+    val_idx, test_idx = next(second.split(rest, groups=groups.iloc[rest_idx]))
+    splits = (train, rest.iloc[val_idx], rest.iloc[test_idx])
+    ids = [set(part["source_id"].astype(str).str.strip()) for part in splits]
+    if any(ids[i] & ids[j] for i, j in ((0, 1), (0, 2), (1, 2))):
+        raise ValueError("Source-group leakage detected.")
+    return tuple(part.reset_index(drop=True) for part in splits)
+
+
 def run_splitting_pipeline():
     """
-    Executes the strict 60/20/20 stratified split and saves all partitions.
+    Executes the source-group-disjoint split and saves all partitions.
     """
     logger.info("=" * 60)
     logger.info("PHASE 1: STRICT DATA SPLITTING PIPELINE")
@@ -67,26 +91,7 @@ def run_splitting_pipeline():
     df = pd.read_csv(FULL_DATASET_PATH)
     logger.info(f"Loaded {len(df)} total samples.")
 
-    # --- First split: Train (60%) vs Temp (40%) ---
-    df_train, df_temp = train_test_split(
-        df,
-        test_size=(VAL_RATIO + TEST_RATIO),
-        random_state=RANDOM_SEED,
-        stratify=df["attack_type"],
-    )
-
-    # --- Second split: Val (50% of 40% = 20%) vs Test (50% of 40% = 20%) ---
-    df_val, df_test = train_test_split(
-        df_temp,
-        test_size=0.5,
-        random_state=RANDOM_SEED,
-        stratify=df_temp["attack_type"],
-    )
-
-    # Reset indices
-    df_train = df_train.reset_index(drop=True)
-    df_val = df_val.reset_index(drop=True)
-    df_test = df_test.reset_index(drop=True)
+    df_train, df_val, df_test = split_by_source(df)
 
     # ---------------------------------------------------------------------------
     # Save splits
@@ -107,6 +112,10 @@ def run_splitting_pipeline():
     manifest = {
         "created_at": datetime.now().isoformat(),
         "random_seed": RANDOM_SEED,
+        "strategy": "source-group-disjoint; approximate row ratios; not attack-stratified",
+        "source_group_overlap": 0,
+        "source_group_counts": {name: int(part["source_id"].nunique()) for name, part in
+                                (("train", df_train), ("val", df_val), ("test", df_test))},
         "source_file": os.path.normpath(FULL_DATASET_PATH),
         "split_ratios": {
             "train": TRAIN_RATIO,

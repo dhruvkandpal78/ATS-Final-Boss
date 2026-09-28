@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import re
+import unicodedata
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -8,6 +9,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 class SemanticCoherenceScorer:
+    EXPLANATION_MAX_UNITS = 64
+
     def __init__(self, model_name: str = 'all-MiniLM-L6-v2', window_size: int = 2):
         self.model_name = model_name
         self.window_size = window_size
@@ -168,14 +171,63 @@ class SemanticCoherenceScorer:
     def _injection_signal(self, text: str) -> int:
         if not isinstance(text, str):
             return 0
-        low = text.lower()
-        
-        # Check benign patterns first
-        if any(re.search(bp, low) for bp in self.BENIGN_PATTERNS):
-            return 0
-            
-        count = sum(1 for pattern in self.INJECTION_PATTERNS if re.search(pattern, low))
+
+        normalized = self._normalize_cue_text(text)
+        count = 0
+        for pattern in self.INJECTION_PATTERNS:
+            matches = re.finditer(pattern, normalized)
+            if any(not self._is_benign_cue_context(normalized, match.start(), match.end()) for match in matches):
+                count += 1
         return count
+
+    @staticmethod
+    def _normalize_cue_text(text: str) -> str:
+        """Normalize compatibility characters and remove invisible format controls."""
+        normalized = unicodedata.normalize("NFKC", text).casefold()
+        return "".join(char for char in normalized if unicodedata.category(char) != "Cf")
+
+    @classmethod
+    def _is_benign_cue_context(cls, text: str, start: int, end: int) -> bool:
+        """Ignore a cue only when its own nearby sentence presents it as an example."""
+        left_boundary = max(
+            (match.end() for match in re.finditer(r"[.!?;\n]+\s*", text[:start])),
+            default=0,
+        )
+        right_boundary_match = re.search(r"[.!?;\n]+", text[end:])
+        right_boundary = end + right_boundary_match.start() if right_boundary_match else len(text)
+        clause = text[left_boundary:right_boundary]
+        local_start = start - left_boundary
+        local_end = end - left_boundary
+        # A quote is local to this cue; quoted material elsewhere cannot suppress it.
+        quote_pairs = (("\"", "\""), ("'", "'"), ("`", "`"), ("“", "”"), ("‘", "’"))
+        for opening, closing in quote_pairs:
+            before = clause.rfind(opening, 0, local_start)
+            after = clause.find(closing, local_end)
+            if opening == "'":
+                if before >= 0 and before > 0 and local_start < len(clause) and clause[before - 1].isalnum() and clause[before + 1].isalnum():
+                    before = -1  # Ignore apostrophes inside contractions and possessives.
+                if after >= 0 and after > 0 and after + 1 < len(clause) and clause[after - 1].isalnum() and clause[after + 1].isalnum():
+                    after = -1
+            if before >= 0 and after >= 0:
+                return True
+
+        # Descriptive labels must immediately introduce the cue in the same clause.
+        prefix = clause[:local_start]
+        for benign_pattern in cls.BENIGN_PATTERNS:
+            for benign_match in re.finditer(benign_pattern, prefix):
+                if local_start - benign_match.end() <= 64:
+                    return True
+        return False
+
+    @classmethod
+    def _injection_cue_for_sentence(cls, text: str):
+        """Return the first actionable cue for explanation, with the same scope as scoring."""
+        normalized = cls._normalize_cue_text(text)
+        for pattern in cls.INJECTION_PATTERNS:
+            match = re.search(pattern, normalized)
+            if match and not cls._is_benign_cue_context(normalized, match.start(), match.end()):
+                return pattern
+        return None
 
     def _variance_from_unit_emb(self, unit_emb) -> float:
         n = len(unit_emb)
@@ -205,7 +257,15 @@ class SemanticCoherenceScorer:
         base_var = self._variance_from_unit_emb(unit_emb)
 
         records = []
-        for i, unit in enumerate(units):
+        candidate_indices = np.linspace(
+            0,
+            len(units) - 1,
+            num=min(len(units), self.EXPLANATION_MAX_UNITS),
+            dtype=int,
+        )
+        for i in candidate_indices:
+            i = int(i)
+            unit = units[i]
             sent = unit['text']
             
             # 3. For a small selected set, offer exact text-only removal deltas through the actual scoring path
@@ -217,11 +277,7 @@ class SemanticCoherenceScorer:
             var_without = self._variance_from_unit_emb(ablated_emb)
             contribution = base_var - var_without
 
-            low = sent.lower()
-            cue_hit = next((c for c in self.INJECTION_PATTERNS if re.search(c, low)), None)
-            is_benign = any(re.search(bp, low) for bp in self.BENIGN_PATTERNS)
-            if is_benign:
-                cue_hit = None
+            cue_hit = self._injection_cue_for_sentence(sent)
 
             records.append({
                 "sentence": sent,
@@ -244,7 +300,8 @@ class SemanticCoherenceScorer:
         return {
             "base_variance": base_var, 
             "sentences": records,
-            "approximation_warning": "Pooled-embedding explanation is approximate."
+            "approximation_warning": "Pooled-embedding explanation is approximate; only evenly spaced units are shown when the document has more than 64 units.",
+            "omitted_unit_count": len(units) - len(records),
         }
 
     def explain(self, text: str):

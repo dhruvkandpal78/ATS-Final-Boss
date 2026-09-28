@@ -8,8 +8,9 @@ from src.modules.module_b import PDFForensicsDetector
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
 
 @pytest.fixture(scope="module", autouse=True)
-def setup_fixtures():
-    os.makedirs(FIXTURES_DIR, exist_ok=True)
+def setup_fixtures(tmp_path_factory):
+    global FIXTURES_DIR
+    FIXTURES_DIR = str(tmp_path_factory.mktemp("forensics"))
     
     # 1. Normal PDF
     c = canvas.Canvas(os.path.join(FIXTURES_DIR, "normal.pdf"), pagesize=letter)

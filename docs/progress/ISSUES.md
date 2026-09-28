@@ -1,14 +1,16 @@
 # Issue Ledger
 
-- [ ] **F01** - Inference preprocessing differs [P0] - Fix: B02
-- [ ] **F02** - Rule decisions alter the displayed probability [P0] - Fix: B03
-- [ ] **F03** - Synthetic structural markers are not PDF evidence [P0] - Fix: B03, B05, B08
-- [ ] **F04** - Related variants can cross dataset splits [P0] - Fix: B04
-- [ ] **F05** - Published metrics disagree [P0] - Fix: B05, B14
-- [ ] **F06** - Structural coverage is narrower than presentation [P0] - Fix: B03, B08
-- [ ] **F07** - Keyword normalization needs token-aware handling [P1] - Fix: B07
-- [ ] **F08** - Explanation is not the deployed decision function [P1] - Fix: B09
-- [ ] **F09** - Demonstration outcomes can overstate success [P0] - Fix: B10
-- [ ] **F10** - Startup, tests and artifacts are tightly coupled [P1] - Fix: B01, B11, B12
-- [ ] **F11** - Upload limits do not bound all processing [P1] - Fix: B11
-- [ ] **F12** - The UI has motion, but lacks a restrained hierarchy [P1] - Fix: U00-U10
+Updated 2026-09-28. Evidence: [enhancement record](ENHANCEMENT_2026-09-26.md). Checked items mean the named implementation defect is addressed, not that every research release gate is complete.
+
+- [x] **F01** Inference preprocessing differs: one shared CLI/API service; scaling and positive-class regression tests (B02-B03).
+- [x] **F02** Rules alter probability: policy and numeric score separated and tested (B02-B03).
+- [x] **F03** Text markers presented as PDF evidence: proxy experiments isolated; text B unavailable; PDF score explicitly experimental (B02-B03/B04-B10).
+- [ ] **F04** Related variants cross splits: code now retains lineage and group-splits; old data regeneration and near-duplicate audit remain pending (B04-B10).
+- [ ] **F05** Published metrics disagree: current claims removed, old reports marked historical; fresh calibrated benchmark pending.
+- [ ] **F06** Structural coverage: additional trace checks and honest limitations implemented; complete OCG/occlusion/OCR support remains open.
+- [x] **F07** Keyword normalization: token-aware aliases, whitespace positions and regression tests implemented.
+- [ ] **F08** Explanation fidelity: approximate explanation labeled and bounded; deployed causal explanations and PDF viewer remain open.
+- [x] **F09** Misleading demos: unavailable endpoints and UI state replace unsupported success claims.
+- [ ] **F10** Startup/artifact coupling: lazy startup and offline deterministic tests implemented; complete reproducible provisioning remains open.
+- [ ] **F11** Processing bounds: one isolated worker, deadlines and upload/page/trace bounds implemented and tested; OS memory limits and production isolation remain open.
+- [x] **F12** UI hierarchy: rebuilt and browser-checked light/dark responsive interface; full automated accessibility/performance audit remains separate.

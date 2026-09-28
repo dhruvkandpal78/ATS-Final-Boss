@@ -1,41 +1,57 @@
-import sys
+"""Read-only environment diagnostics; never downloads models or evaluates data."""
+import hashlib
 import importlib.util
-import os
+from importlib.metadata import version, PackageNotFoundError
+import json
 from pathlib import Path
+import sys
 
-def check_package(name: str) -> bool:
-    if importlib.util.find_spec(name) is None:
-        print(f"[FAIL] Missing package: {name}")
-        return False
-    print(f"[PASS] Found package: {name}")
-    return True
+ROOT = Path(__file__).resolve().parents[1]
+PACKAGES = {"numpy": "numpy", "pandas": "pandas", "sklearn": "scikit-learn",
+            "sentence_transformers": "sentence-transformers", "torch": "torch",
+            "fitz": "PyMuPDF", "pdfplumber": "pdfplumber"}
 
-def doctor():
-    print("=== ATS Final Boss Diagnostic ===")
-    
-    # Check Python version
-    if sys.version_info >= (3, 9):
-        print(f"[PASS] Python {sys.version.split()[0]} is compatible.")
+
+def diagnose():
+    checks = []
+    checks.append({"name": "python", "ok": sys.version_info >= (3, 9), "detail": sys.version.split()[0]})
+    for module, distribution in PACKAGES.items():
+        available = importlib.util.find_spec(module) is not None
+        try:
+            installed = version(distribution)
+        except PackageNotFoundError:
+            installed = "missing"
+        checks.append({"name": distribution, "ok": available, "detail": installed})
+    for relative in ("results/models/meta_classifier.pkl", "results/models/scaler.pkl",
+                     "configs/thresholds.json", "configs/model_config.json"):
+        path = ROOT / relative
+        checks.append({"name": relative, "ok": path.is_file(),
+                       "detail": hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else "missing"})
+    # Cache inspection only: a directory alone does not prove model compatibility.
+    try:
+        from huggingface_hub import try_to_load_from_cache
+        configured = json.loads((ROOT / "configs/model_config.json").read_text())
+        model = configured.get("embedding_model", "all-MiniLM-L6-v2")
+        if "/" not in model:
+            model = "sentence-transformers/" + model
+        cached = try_to_load_from_cache(model, "config.json")
+        checks.append({"name": "embedding_config_cache", "ok": isinstance(cached, str),
+                       "detail": "config cached; runtime load still required" if isinstance(cached, str) else "not cached; provision model explicitly"})
+    except (ImportError, OSError, ValueError):
+        checks.append({"name": "embedding_config_cache", "ok": False, "detail": "cache could not be inspected"})
+    return checks
+
+
+def main():
+    checks = diagnose()
+    if "--json" in sys.argv:
+        print(json.dumps({"ok": all(item["ok"] for item in checks), "checks": checks}, indent=2))
     else:
-        print(f"[FAIL] Python {sys.version.split()[0]} is too old. Need >= 3.9.")
-        
-    print("\n--- Core Packages ---")
-    core = ["numpy", "pandas", "sklearn", "sentence_transformers", "torch", "fitz", "pdfplumber", "tqdm"]
-    all_core = all(check_package(p) for p in core)
-    
-    print("\n--- Optional Packages ---")
-    check_package("xgboost")
-    
-    print("\n--- Models and Artifacts ---")
-    model_dir = Path("results/models")
-    if (model_dir / "meta_classifier.pkl").exists() and (model_dir / "scaler.pkl").exists():
-        print("[PASS] Local model artifacts found.")
-    else:
-        print("[WARN] Local model artifacts missing (meta_classifier.pkl / scaler.pkl). Run experiments script if needed.")
-        
-    print("\nDiagnostic complete.")
-    if not all_core:
-        sys.exit(1)
+        for item in checks:
+            print(f"[{'PASS' if item['ok'] else 'FAIL'}] {item['name']}: {item['detail']}")
+        print("Checks are read-only. Artifact hashes identify this checkout; they do not certify provenance or model compatibility.")
+    return 0 if all(item["ok"] for item in checks) else 1
 
-if __name__ == '__main__':
-    doctor()
+
+if __name__ == "__main__":
+    raise SystemExit(main())

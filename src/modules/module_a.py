@@ -11,6 +11,8 @@ import numpy as np
 import logging
 import json
 import os
+import re
+from bisect import bisect_right
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -32,6 +34,12 @@ class KeywordDensityDetector:
             self.keywords = keywords
             
         self.threshold = None  # To be calibrated on the validation set
+        # Compile once, longest aliases first. Boundaries prevent aliases such as
+        # "ml" from rewriting innocent tokens (HTML, XML, etc.).
+        self._aliases = [(re.compile(r"(?<!\w)" + r"\s+".join(map(re.escape, alias.split())) + r"(?!\w)", re.I), standard)
+                         for alias, standard in sorted(self.keyword_aliases.items(), key=lambda item: -len(item[0]))]
+        self._keyword_patterns = [re.compile(r"(?<!\w)" + r"\s+".join(map(re.escape, word.split())) + r"(?!\w)")
+                                  for word in dict.fromkeys(self.keywords)]
 
     def calibrate(self, val_df: pd.DataFrame, objective: str = "f1"):
         """
@@ -88,24 +96,21 @@ class KeywordDensityDetector:
         text_lower = text.lower()
         
         # Replace aliases with standard forms for consistency
-        for alias, std in self.keyword_aliases.items():
-            text_lower = text_lower.replace(alias, std)
+        for pattern, standard in self._aliases:
+            text_lower = pattern.sub(standard, text_lower)
             
         total_words = len(text_lower.split())
         if total_words == 0:
             return {"density": 0.0, "concentration": 0.0, "score": 0.0}
             
         # Count keyword occurrences and track their actual token positions
-        import re
+        token_starts = [match.start() for match in re.finditer(r'\S+', text_lower)]
         kw_positions = []
-        for kw in self.keywords:
-            # Use regex boundaries to match exact keywords or multi-word phrases
-            pattern = r'\b' + re.escape(kw) + r'\b'
-            for match in re.finditer(pattern, text_lower):
-                # Count the number of spaces before this match to approximate word index
-                prefix = text_lower[:match.start()]
-                word_idx = prefix.count(' ')
-                kw_positions.append(word_idx)
+        for pattern in self._keyword_patterns:
+            for match in pattern.finditer(text_lower):
+                # Binary lookup avoids repeatedly copying/scanning growing prefixes.
+                # Tabs and newlines have exactly the same token semantics as spaces.
+                kw_positions.append(bisect_right(token_starts, match.start()) - 1)
                 
         kw_count = len(kw_positions)
         density = kw_count / total_words

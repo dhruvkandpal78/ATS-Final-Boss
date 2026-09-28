@@ -1,13 +1,12 @@
+import argparse
 import os
 import sys
+from pathlib import Path
 import pandas as pd
 import logging
 from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
-
-from src.inference import load_pipeline
-from src.evaluation.evaluate import extract_features
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-7s | %(message)s')
 logger = logging.getLogger(__name__)
@@ -19,7 +18,7 @@ MODELS_DIR = os.path.join(RESULTS_DIR, "models")
 
 def calc_metrics(y_true, y_pred, y_prob=None):
     if len(y_true) == 0:
-        return {"Precision": 0, "Recall": 0, "F1": 0, "ROC-AUC": 0}
+        raise ValueError("A holdout evaluation needs at least one labeled row")
     
     metrics = {
         "Precision": precision_score(y_true, y_pred, zero_division=0),
@@ -29,79 +28,67 @@ def calc_metrics(y_true, y_pred, y_prob=None):
     if y_prob is not None and len(set(y_true)) > 1:
         metrics["ROC-AUC"] = roc_auc_score(y_true, y_prob)
     else:
-        metrics["ROC-AUC"] = 0.0
+        metrics["ROC-AUC"] = None
     return metrics
 
 from src.core.analysis_service import AnalysisService
 
 def evaluate_on_dataframe(df, analysis_service):
+    """Evaluate only rows with real PDF evidence through deployed inference.
+
+    Historic text-only CSVs contain synthetic structural proxy values. Passing
+    those values to the deployed service would misrepresent PDF forensics, so
+    this adapter fails closed until a PDF-ground-truth holdout is supplied.
+    """
+    required = {'pdf_path', 'is_adversarial'}
+    if not required.issubset(df.columns):
+        raise ValueError(
+            "Holdout evaluation requires pdf_path and is_adversarial columns "
+            "with real PDF files; synthetic text proxy scores are not deployable evidence."
+        )
     y_true = df['is_adversarial'].values
     y_pred_hybrid = []
     y_prob_hybrid = []
     
-    for i, row in df.iterrows():
-        b_score = row.get('Module_B_Score', 0.0)
-        res = analysis_service.analyze_text(row['text'], b_score)
-        y_pred_hybrid.append(1 if res['policy_decision'] else 0)
-        y_prob_hybrid.append(res['policy_proba'])
+    for _, row in df.iterrows():
+        res = analysis_service.analyze_pdf(row['pdf_path'])
+        if res['status'] != 'complete' or res['score'] is None:
+            raise ValueError(
+                "Holdout row could not be fully scored through the deployed PDF "
+                "service; no aggregate metric was written."
+            )
+        y_pred_hybrid.append(int(res['decision'] == 'review_recommended'))
+        y_prob_hybrid.append(res['score'])
         
     return calc_metrics(y_true, y_pred_hybrid, y_prob_hybrid)
 
-def main():
-    logger.info("Loading Pipeline...")
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Evaluate a real-PDF holdout through deployed inference.")
+    parser.add_argument("--pdf-holdout", required=True,
+                        help="CSV with pdf_path and is_adversarial columns")
+    parser.add_argument("--report-path", default=os.path.join(RESULTS_DIR, "reports", "holdout_comparison.md"))
+    args = parser.parse_args(argv)
+    csv_path = Path(args.pdf_holdout).resolve()
+    frame = pd.read_csv(csv_path)
+    if 'pdf_path' not in frame.columns:
+        raise ValueError("A real-PDF holdout with pdf_path is required; legacy text CSVs are unsupported")
+    frame['pdf_path'] = frame['pdf_path'].map(
+        lambda value: str((csv_path.parent / str(value)).resolve())
+        if not Path(str(value)).is_absolute() else str(value)
+    )
     analysis_service = AnalysisService(MODELS_DIR)
-    
-    df_test = pd.read_csv(os.path.join(SPLITS_DIR, "test.csv"))
-    metrics_synthetic = evaluate_on_dataframe(df_test, analysis_service)
-    
-    metrics_llm = None
-    llm_path = os.path.join(DATA_DIR, "llm_adversarial_resumes.csv")
-    if os.path.exists(llm_path):
-        logger.info("Evaluating on LLM-Generated Holdout...")
-        df_llm_adv = pd.read_csv(llm_path)
-        df_clean = df_test[df_test['is_adversarial'] == 0].copy()
-        df_llm_full = pd.concat([df_clean, df_llm_adv], ignore_index=True)
-        metrics_llm = evaluate_on_dataframe(df_llm_full, analysis_service)
-    else:
-        logger.warning(f"LLM Adversarial file not found at {llm_path}. Skipping LLM Holdout.")
-        
-    metrics_human = None
-    human_path = os.path.join(DATA_DIR, "human_adversarial_samples.csv")
-    if os.path.exists(human_path):
-        df_human_adv = pd.read_csv(human_path)
-        if len(df_human_adv) > 0:
-            logger.info("Evaluating on Human-Curated Holdout...")
-            df_clean = df_test[df_test['is_adversarial'] == 0].copy()
-            df_human_full = pd.concat([df_clean, df_human_adv], ignore_index=True)
-            metrics_human = evaluate_on_dataframe(df_human_full, analysis_service)
-        else:
-            logger.info("Human-curated CSV exists but is empty. Skipping.")
-    else:
-        pd.DataFrame(columns=df_test.columns).to_csv(human_path, index=False)
-        logger.info(f"Created empty human_adversarial_samples.csv template at {human_path}")
-
-    logger.info("Saving Holdout Comparison Report...")
-    os.makedirs(os.path.join(RESULTS_DIR, "reports"), exist_ok=True)
-    report_path = os.path.join(RESULTS_DIR, "reports", "holdout_comparison.md")
-    
-    with open(report_path, "w") as f:
+    metrics = evaluate_on_dataframe(frame, analysis_service)
+    report_path = Path(args.report_path)
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    auc = "N/A (single class)" if metrics['ROC-AUC'] is None else f"{metrics['ROC-AUC']:.4f}"
+    with report_path.open("w", encoding="utf-8") as f:
         f.write("> **Generated by:** `src/evaluation/evaluate_holdout.py`\n\n")
-        f.write("# Holdout Generalization Comparison\n\n")
-        
+        f.write("# Real-PDF Holdout Evaluation\n\n")
+        f.write("Decision metrics use the deployed review policy. ROC-AUC uses the separate uncalibrated experimental model score. All rows required complete PDF evidence. These figures do not validate hiring outcomes.\n\n")
         f.write("| Dataset | Precision | Recall | F1 Score | ROC-AUC |\n")
         f.write("|---------|-----------|--------|----------|---------|\n")
-        
-        f.write(f"| Synthetic Holdout (test.csv) | {metrics_synthetic['Precision']:.4f} | {metrics_synthetic['Recall']:.4f} | {metrics_synthetic['F1']:.4f} | {metrics_synthetic['ROC-AUC']:.4f} |\n")
-        
-        if metrics_llm:
-            f.write(f"| LLM-Generated Holdout | {metrics_llm['Precision']:.4f} | {metrics_llm['Recall']:.4f} | {metrics_llm['F1']:.4f} | {metrics_llm['ROC-AUC']:.4f} |\n")
-        else:
-            f.write("| LLM-Generated Holdout | N/A | N/A | N/A | N/A |\n")
-            
-        if metrics_human:
-            f.write(f"| Human-Curated Holdout | {metrics_human['Precision']:.4f} | {metrics_human['Recall']:.4f} | {metrics_human['F1']:.4f} | {metrics_human['ROC-AUC']:.4f} |\n")
-            
-    logger.info(f"Done! Report saved to {report_path}")
+        f.write(f"| {csv_path.name} | {metrics['Precision']:.4f} | {metrics['Recall']:.4f} | {metrics['F1']:.4f} | {auc} |\n")
+    logger.info("Report saved to %s", report_path)
 
 if __name__ == "__main__":
     main()
