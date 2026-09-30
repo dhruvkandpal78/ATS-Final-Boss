@@ -2,6 +2,10 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-09-30: remove redundant publication files and align research guidance
+
+Removed duplicate UI exports, obsolete migration scaffolding, unused dummy-model/API generators and a root scratch sample. Archived the single historical rebuild specification, consolidated dependency declarations through pyproject.toml, and corrected the maintained research/rules guidance. Research evidence, licenses, test fixtures and public Git history are retained. See [cleanup decisions and verification](docs/progress/PUBLIC_TREE_CLEANUP_2026-09-30.md).
+
 ## 2026-09-30: bounded worker recovery and public tree cleanup
 
 Added capped recovery backoff, dynamic retry guidance and content-free recovery health. Removed unused/broken developer scripts, assistant launch configuration and the unserved generated frontend; archived historical planning records and strengthened publication/build exclusions. Research evidence and Git history remain intact. See [recovery and cleanup record](docs/progress/RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).

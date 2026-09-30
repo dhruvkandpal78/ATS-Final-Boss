@@ -1,47 +1,30 @@
-# Research & Methodology
+# Research and methodology
 
-## Problem
-Modern Applicant Tracking Systems (ATS) increasingly rely on Large Language Models (LLMs) and automated keyword extractors to screen candidates. This has incentivized adversarial behavior from applicants, including Keyword Stuffing, Semantic Blurring, and direct Prompt Injections (e.g., "Ignore all previous instructions").
+This project inspects document-manipulation signals for human review. It does not establish a candidate's intent, honesty or suitability. Current runtime details are in [Architecture](docs/Architecture.md); the [release gate](docs/COMPANY_RELEASE_GATE.md) lists the evidence still required before customer use.
 
-## Threat Model
-We assume a "Grey Box" attacker:
-* The attacker knows the system uses keyword matching and semantic similarity (MiniLM).
-* The attacker can manipulate text content and PDF byte-structure (white-text, zero-sized bounding boxes).
-* The attacker can embed direct prompt injections to attack downstream LLMs.
+## Detector scope
 
-## Dataset
-We utilized a synthetic dataset of 6,555 resume samples (clean and adversarial) built using Faker and localized to represent diverse demographic profiles, ensuring we can test fairness. 
-Additionally, an optional **LLM-Generated Adversarial Variant** (`llm_adversarial_resumes.csv`) can be dynamically created using the Anthropic API (`claude-3-5-sonnet`). This provides a secondary, highly linguistically varied adversarial source to evaluate model generalization, balancing the deterministic nature (and zero cost) of the template-based generator against the expensive but realistic LLM-generated attacks.
+- Module A measures keyword density and repetition. Dense technical skills alone are advisory under policy 2.0.
+- Module B examines PDF text traces and structural attributes. Full pixel visibility, clipping/occlusion, complex optional-content behavior and OCR comparison remain incomplete. The rendered-region inspector in `src/research/pdf_visibility.py` is experimental and is not a deployed model feature.
+- Module C uses cached, off-the-shelf MiniLM embeddings for sentence-window coherence. Screening instructions are detected by separate conservative lexical cues, which can miss paraphrases, encoding, multilingual and mixed-script text.
+- The meta-classifier combines standardized features. Its score is experimental, not a calibrated cheating probability. Invalid keyword calibration and incomplete required coverage suppress the combined score.
 
-## Architecture
-The system operates as a Stacking Ensemble over three specialized modules:
-1. **Module A (Keywords)**: Measures term density, normalizes aliases, and flags abnormally clumped keywords.
-2. **Module B (Structural)**: Parses the PDF byte-layer using PyMuPDF to find zero-sized, out-of-bounds, or contextually hidden text.
-3. **Module C (Semantics)**: Uses `all-MiniLM-L6-v2` to compute sliding-window semantic variance. Anomaly scores spike when a resume contains disjointed jargon.
+Rules and model scores are separate. The deployed review policy does not jitter thresholds, and the lab/adaptive endpoints are unavailable. Evidence highlights locate observations; they are not SHAP attributions or proof of intent.
 
-## Evaluation & Results
-All metrics (Precision, Recall, F1) are computed on a strictly held-out test set (20% split). After fixing a critical normalization bug in Module A (which had been zeroing out all keyword-density scores), the pipeline achieved strong detection performance. The **Hybrid System** (Meta + Rules) achieved the best overall F1 of **0.7834** (Precision: 79.87%, Recall: 76.88%). The Stacking Ensemble (F1: 0.7752) and Logistic Regression baseline (F1: 0.7791) achieved highly comparable results, demonstrating strong linear separability of the three-module anomaly scores.
+## Data and evaluation
 
-*See `results/reports/experiments_summary.md` for full benchmark metrics.*
+Historical synthetic text-marker experiments and their plots/reports are retained in `results/`. They are historical outputs, not current accuracy claims or real-PDF hidden-text validation. The removed external API injector was not part of the maintained pipeline or supported evaluation; its existence never established generalization, human ground truth or permission to transmit resumes.
 
-## Error Analysis
-* **False Positives**: The Hybrid System maintains strong precision (79.87%), but highly-technical legitimate resumes with dense keyword sections can occasionally be flagged by Module A's density detector.
-* **False Negatives**: Type C (semantic blurring) attacks remain the hardest to detect (52.50% detection rate) because they blend context-free jargon that is semantically similar to legitimate technical language. Type B (structural) attacks are caught at 100% due to the explicit `[HIDDEN_TEXT_START]` marker in the proxy.
-* **Historical Bug (Fixed)**: An earlier version had a critical normalization bug in Module A where the optimal calibrated threshold of 0.000 caused the normalizer to output 0.0 for all inputs. This was fixed by adding a proper fallback: `normalized = 1.0 if score > 0 else 0.0` when threshold equals zero.
+The [dataset acquisition script](scripts/acquire_resume_dataset.py) retrieves a pinned public PDF corpus with hashes into ignored local storage. These are real layouts with unreviewed manipulation labels. Public availability does not establish natural attack ground truth or permission for every subsequent use.
 
-*See `results/reports/error_analysis.md` for specific samples.*
+Controlled benchmarks pair no-added-attack documents with known scripted edits, grouping all variants of each source in one partition. [Policy 2.0's frozen evaluation](docs/progress/PRECISION_POLICY_2026-09-30.md) observed 0/200 no-added-attack false positives and detected 100/100 scripted attacks across 100 holdout source groups. The group-level one-sided 95% upper false-positive bound is 2.95%. These results do not establish zero population false positives, natural attack accuracy or subgroup fairness. The earlier benchmark failures remain recorded in [the controlled benchmark record](docs/progress/CONTROLLED_PDF_BENCHMARK_2026-09-30.md).
 
-## Adaptive Attacker & Robustness
-We deployed a white-box simulation (the Adaptive Attacker endpoint) where an adversary optimizes against the meta-classifier's decision boundary.
-By implementing **Moving Target Defense (MTD)**—jittering the final decision threshold randomly by ±5% at inference time—the success rate of greedy iterative attacks plummeted, proving basic robustness without requiring massive architecture changes.
+Train and validation manifests must retain source lineage. Calibration uses only source-disjoint validation data; zero/nonfinite thresholds stop candidate generation. Freeze configuration, policy code and artifact hashes before a one-time final evaluation. Do not tune against an already consumed holdout. Supported candidate/evaluation commands are in [README](README.md).
 
-## Limitations & Future Work
-* PyMuPDF dictionary parsing does not catch raw PDF stream manipulation (e.g., deeply obfuscated Text Rendering Mode 3 operations).
-* The semantic model (`MiniLM`) is English-only and does not handle multi-lingual resumes well.
-* Future work should incorporate robust multi-lingual embeddings.
+## Robustness and remaining evidence
 
-## Related Work
-* **Adversarial Attacks in NLP:** General textual adversarial attacks often utilize synonym substitution or formatting tricks. Jin et al. (2020) in *Is BERT Really Robust? A Strong Baseline for Natural Language Attack on Text Classification and Entailment* (TextFooler) demonstrates how language models can be fooled by semantically preserving perturbations, akin to our Type C semantic blurring.
-* **ATS Gaming & Keyword Stuffing:** Academic literature on ATS gaming is sparse, largely due to the proprietary nature of commercial ATS systems (e.g., Workday, Taleo). However, industry analyses from platforms like Jobscan (e.g., \"How to Beat the ATS\") routinely discuss white-text steganography and skill-section stuffing, motivating our Module A and B defenses.
-* **Prompt Injections & LLM Defenses:** With the rise of LLM-based evaluators, direct prompt injections have become a critical threat. Perez et al. (2022) in *Ignore Previous Prompt: Attack Techniques For Language Models* and Greshake et al. (2023) in *Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection* formalize the exact Type D attacks simulated in our dataset, where context windows are hijacked by adversarial instructions.
-* **PDF Steganography:** Hiding text within PDFs (Type B attacks) exploits the PDF rendering specification. Zhong et al. (2020) and various cybersecurity whitepapers on PDF malware analysis highlight the use of zero-width fonts, off-page rendering coordinates, and matching foreground/background colors (Text Rendering Mode 3) to embed hidden payloads that parsers extract but humans cannot see.
+`scripts/check_adaptive_cues.py` runs fixed lexical diagnostic probes without model downloads. Seven authored misses were recorded in [the review response](docs/progress/CURRENT_REVIEW_2026-09-30.md). This small diagnostic is not a representative adaptive attack benchmark or an empirical robustness guarantee.
+
+Natural manipulation labels, independent adjudication, near-duplicate review, subgroup evaluation, source-disjoint probability calibration, complete PDF visibility and customer deployment/security acceptance remain open. Preserve confidence intervals, sample definitions, split provenance and per-attack outcomes when reporting future evaluations. Synthetic demographic fields or lexical diversity proxies do not establish fairness.
+
+Consult [Ethics](docs/ethics.md), [project rules](docs/rules.md), [current status](docs/progress/STATUS.md) and [the issue ledger](docs/progress/ISSUES.md). Historical plans in `docs/archive/` preserve context and do not override these maintained records.

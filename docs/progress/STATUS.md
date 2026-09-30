@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+September 30 publication cleanup: removed redundant/unused files, archived the single rebuild specification and aligned the maintained research guide with actual detector/evaluation limitations. No policy, thresholds or artifacts changed. Verification: [public-tree cleanup record](PUBLIC_TREE_CLEANUP_2026-09-30.md).
+
 September 30 further enhancement: capped worker recovery, accurate retry headers and content-free recovery health implemented; historical plans archived and unused developer/generated files removed from the current public tree. Publication guard and build exclusions strengthened. Implementation c4ef422 passed both hosted push/PR CI runs: 353 Linux tests passed per Python version plus installed-package, audit and container checks. Verification and unresolved gates: [recovery/cleanup record](RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).
 
 September 30 architecture continuation: bounded data-only IPC replaces pickle; reply framing/JSON parsing is deadline-controlled. API exposes supported trace checks separately from missing full visibility/OCR. Detector policy and thresholds unchanged. Implementation 93088fa passed both hosted push/PR CI runs: 339 Linux tests passed on each Python version, plus installed-wheel, audit and container checks. See [worker boundary record](WORKER_BOUNDARY_2026-09-30.md) for exact evidence and remaining gates.

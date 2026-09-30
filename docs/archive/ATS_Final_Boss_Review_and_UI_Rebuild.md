@@ -1,4 +1,4 @@
-﻿ATS FINAL BOSS
+ATS FINAL BOSS
 Strict capstone review + complete UI rebuild
 ANTIGRAVITY IMPLEMENTATION SPECIFICATION | VERSION 2 | 17 SEPTEMBER 2026
 58 / 100 - strict mentor assessment
