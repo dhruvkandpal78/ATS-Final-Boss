@@ -25,6 +25,7 @@ from starlette.concurrency import run_in_threadpool
 
 from src.app.security import RequestBudget, SecuritySettings
 from src.app.http_contract import SECURITY_HEADERS, decode_json_body, json_request_length
+from src.app.integration_contract import REVIEW_ROUTE, REVIEW_CAPABILITIES, project_review, validate_review_request
 from src.core.runtime_paths import models_directory, notice_path
 from src.app.startup import WARMUP_TEXT, require_warmup_result, warmup_pdf_payload
 from src.app.server import (
@@ -38,7 +39,7 @@ ASSET_SUFFIXES = {".css", ".js", ".svg", ".woff2", ".png", ".webp"}
 KNOWN_ROUTES = {
     "/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership",
     "/license", "/license-legacy", "/health", "/health/live", "/health/ready",
-    "/api/capabilities",
+    "/api/capabilities", REVIEW_ROUTE,
 }
 
 
@@ -132,12 +133,18 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
             elif method == "POST":
                 if not budget.consume():
                     response = _response(429, {"error": "Request budget exceeded. Retry later."})
-                elif path != "/analyze":
+                elif path not in ("/analyze", REVIEW_ROUTE):
                     response = _response(404, {"error": "Not found. Experimental lab endpoints are disabled."})
                 else:
                     payload = await _read_payload(request, headers)
+                    if path == REVIEW_ROUTE:
+                        try:
+                            validate_review_request(payload)
+                        except ValueError:
+                            raise APIError(422, "Review accepts only text or filename/b64 fields.") from None
                     validate_payload(payload)
-                    response = _response(200, await run_in_threadpool(worker.run, payload))
+                    result = await run_in_threadpool(worker.run, payload)
+                    response = _response(200, project_review(result) if path == REVIEW_ROUTE else result)
             elif method == "GET":
                 if path in {"/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership"}:
                     try:
@@ -163,6 +170,7 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                     response = _response(200 if ready else 503, {"ready": ready})
                 elif path == "/api/capabilities":
                     response = _response(200, {
+                        **REVIEW_CAPABILITIES,
                         "input_modes": ["text", "pdf"], "max_file_bytes": MAX_FILE_BYTES,
                         "max_text_characters": MAX_TEXT_CHARS, "max_pages": MAX_PAGES,
                         "deadline_seconds": INFERENCE_TIMEOUT, "concurrent_analyses": 1,

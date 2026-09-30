@@ -93,6 +93,12 @@ Both maintained HTTP adapters use one strict body-header validator before readin
 
 The historical Streamlit dashboard is a separate proxy experiment; it uses local font fallbacks and explicitly labels its uncalibrated scores. It is not a supported company deployment. The [customer release gate](COMPANY_RELEASE_GATE.md) records the operational evidence still required for the single-organization pilot. See [the change record](progress/COMPANY_HTTP_HARDENING_2026-09-30.md).
 
+## Data-minimized review boundary
+
+`POST /api/v1/review` shares analysis admission and returns a closed-vocabulary projection with supported versions, enums, booleans and bounded observation counts. Document-derived strings, arbitrary metadata, source excerpts, previews and scores do not cross that projection. Invalid/unknown result contracts return 503. `/analyze` remains the detailed human evidence interface; no detector/policy code or artifacts changed. This is output separation, not full resume sanitization, verified factual extraction or a native process sandbox. See [integration contract](INTEGRATION.md).
+
+The prevalence scenario tool takes supplied aggregate confusion counts and explicitly assumed base rates, exposing expected review burden. It does not calibrate the classifier, verify source labels or make controlled attacks representative of a deployment.
+
 ## Recovery admission
 
 The worker applies request-driven 5/10/20/40/60-second capped backoff after attempted 503/504 work, including transport failure and timeouts. Cooldown requests receive 503 and the remaining Retry-After without restarting the worker or extending recovery. Client errors do not trip the circuit; successful validated replies reset it. Health exposes only recovery counts/timing, with readiness false after disposal. Recovery resets on HTTP process restart and does not provide separate physical memory isolation. See [recovery and cleanup](progress/RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).
