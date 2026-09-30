@@ -1,3 +1,5 @@
+> Historical planning document. Current behavior and limits are defined by [README](../README.md), [Architecture](Architecture.md), [Security](../SECURITY.md) and [Ethics](ethics.md). See [documentation map](README.md). This record is retained for provenance and does not establish current performance or deployment readiness.
+
 # 6-Week Prototype Build & Research Phases
 
 ## Phase 1: Data, Infrastructure, & Attack Generation (Week 1)

@@ -2,9 +2,13 @@
 
 A local research tool for inspecting resume-manipulation signals. It combines keyword analysis, PDF text-trace heuristics, and MiniLM semantic analysis, and presents evidence for human review. It does **not** determine honesty or suitability for employment.
 
+MiniLM measures sentence-window coherence; instruction detection is a separate conservative lexical cue check, not a general semantic prompt-injection classifier. Paraphrased, encoded, multilingual and mixed-script instructions can evade it. The [documentation map](docs/README.md) identifies current specifications and historical planning records.
+
 Copyright © 2026 Dhruv Kandpal. New original enhancements have reserved-rights terms; previously MIT-licensed material and third-party rights are preserved. See [LICENSE](LICENSE), [legacy MIT notice](LICENSE-MIT-LEGACY.txt), and [ownership policy](docs/OWNERSHIP.md). This is a mixed-rights research project, not an unrestricted open-source release of the new additions.
 
 ## Run locally
+
+Before processing real customer resumes, complete [the single-customer release evidence checklist](docs/COMPANY_RELEASE_GATE.md). It records currently untested operational gates and the supported pilot scope; this repository is not certified company-ready.
 
 Python 3.11 or newer is required. For the proposed single-company customer pilot, see [private deployment](docs/PRIVATE_PILOT.md), [security policy](SECURITY.md), and [customer strategy](docs/CUSTOMER_PILOT_STRATEGY.md). This deployment foundation still requires a verified Linux build and customer gateway integration before real resume processing.
 

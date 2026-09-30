@@ -1,3 +1,5 @@
+> Historical planning document. Current behavior and limits are defined by [README](../README.md), [Architecture](Architecture.md), [Security](../SECURITY.md) and [Ethics](ethics.md). See [documentation map](README.md). This record is retained for provenance and does not establish current performance or deployment readiness.
+
 # Project Memory & Status Tracker
 
 > Updated 2026-09-28: the older completion narrative below is historical. Current implementation status, verification and outstanding research gates are in [progress/STATUS.md](progress/STATUS.md) and [progress/ENHANCEMENT_2026-09-26.md](progress/ENHANCEMENT_2026-09-26.md). Do not tune thresholds against test outcomes.

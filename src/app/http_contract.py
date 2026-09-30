@@ -1,4 +1,63 @@
-"""Shared browser response policy for both maintained HTTP adapters."""
+"""Shared request and browser response policy for both HTTP adapters."""
+
+import re
+import json
+
+MAX_JSON_DEPTH = 64
+
+
+class HTTPContractError(ValueError):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
+
+def decode_json_body(raw):
+    """Bound nesting independently of Python's parser/recursion implementation."""
+    try:
+        text = raw.decode("utf-8-sig")
+        depth = 0
+        quoted = escaped = False
+        for char in text:
+            if quoted:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    quoted = False
+            elif char == '"':
+                quoted = True
+            elif char in "[{":
+                depth += 1
+                if depth > MAX_JSON_DEPTH:
+                    raise HTTPContractError(400, "Invalid JSON payload.")
+            elif char in "]}":
+                depth -= 1
+        return json.loads(text)
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        raise HTTPContractError(400, "Invalid JSON payload.") from None
+
+
+def json_request_length(headers, max_body_bytes):
+    """Validate framing and media type before reading a JSON request body."""
+    if headers.get_all("Transfer-Encoding", []):
+        raise HTTPContractError(400, "Transfer-Encoding is unsupported.")
+    lengths = headers.get_all("Content-Length", [])
+    if len(lengths) != 1:
+        raise HTTPContractError(411, "One Content-Length header is required.")
+    value = lengths[0]
+    if not re.fullmatch(r"[0-9]+", value):
+        raise HTTPContractError(400, "Invalid Content-Length.")
+    significant = value.lstrip("0")
+    if not significant:
+        raise HTTPContractError(400, "Request body must not be empty.")
+    maximum = str(max_body_bytes)
+    if len(significant) > len(maximum) or (len(significant) == len(maximum) and significant > maximum):
+        raise HTTPContractError(413, "Request exceeds the 7 MiB encoded-body limit.")
+    if len(headers.get_all("Content-Type", [])) != 1 or headers.get_content_type() != "application/json":
+        raise HTTPContractError(415, "Use application/json.")
+    return int(significant)
 
 SECURITY_HEADERS = {
     "Cache-Control": "no-store",

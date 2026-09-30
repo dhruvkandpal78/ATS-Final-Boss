@@ -1,5 +1,5 @@
 """
-dashboard.py — Interactive XAI Dashboard (Streamlit)
+dashboard.py — Historical proxy experiment (Streamlit)
 ====================================================
 A self-contained, GPU-free 3D-animated command centre for the Adversarial
 Defense Shield. Everything visual is rendered from pure HTML/CSS/Canvas (no
@@ -13,6 +13,8 @@ external CDNs, no Lottie fetches) so the interface is fully offline-robust:
     * Real SHAP-style explainability: Module C's leave-one-sentence-out
       attribution heat-maps the exact clauses that triggered the flag.
 
+Historical experiment only: uses structural proxies and uncalibrated scores.
+The maintained human-review UI is served by src.app.server or src.app.asgi.
 Run:  streamlit run src/app/dashboard.py
 """
 
@@ -56,11 +58,16 @@ DEFAULT_PAYLOAD = (
 # ---------------------------------------------------------------------------
 # Native Streamlit chrome (fonts + base theme + hide default header)
 # ---------------------------------------------------------------------------
+st.warning(
+    "Historical proxy experiment: uncalibrated scores are not cheating probabilities. "
+    "Use the maintained server/asgi interface for document evidence and human review."
+)
+
+
 def inject_base_css():
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
         .stApp {
             background: radial-gradient(1200px 800px at 15% -10%, #1e1b4b 0%, #0b1120 45%, #05070f 100%);
             color: #e5e7eb;
@@ -270,7 +277,6 @@ def render_results(a, b, c, proba, is_attack, sentence_html):
 RESULTS_TEMPLATE = r"""
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:transparent;font-family:'Inter',system-ui,sans-serif;color:#e5e7eb;}
   .grid{display:grid;gap:18px;padding:4px;}

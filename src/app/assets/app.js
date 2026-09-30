@@ -454,6 +454,9 @@
     ($('finding-detector').parentElement.hidden ? $('finding-severity') : $('finding-detector')).focus();
   });
   function renderResult(data, snapshot) {
+    const pdfCapabilities = data.modules?.b?.capabilities || {};
+    const visibilityUnverified = (data.input_mode || snapshot.mode) === 'pdf' &&
+      (pdfCapabilities.pixel_visibility !== true || pdfCapabilities.optional_content_complete !== true);
     const decision = data.decision ||
       ({ attack: 'review_recommended', clean: 'no_signals_detected' }[data.verdict]) ||
       'insufficient_evidence';
@@ -502,23 +505,31 @@
       calibrated ?
         'Use this estimate only for the document pattern being analyzed, alongside its findings and coverage.' :
         'Independent calibration is needed before this percentage can be interpreted as a real-world probability.';
+    if (visibilityUnverified) {
+      $('model-guidance').textContent += ' PDF pixel visibility and complex layers are not fully verified; this score covers the existing supported features only.';
+    }
 
     const coverage = data.coverage || {};
     const total = coverage.pages_total;
     const analyzed = coverage.pages_analyzed;
-    const coverageState = data.status || 'unknown';
+    const coverageState = visibilityUnverified && data.status === 'complete' ? 'partial' : (data.status || 'unknown');
     $('coverage-state').dataset.state = coverageState;
     $('coverage-state').textContent = {
       complete: 'Analysis complete for supported checks',
       partial: 'Partial analysis · review limits',
       unscorable: 'Insufficient coverage for a combined assessment'
     }[coverageState] || 'Coverage status not supplied';
+    if (visibilityUnverified && coverageState === 'partial') {
+      $('coverage-state').textContent = 'Supported trace checks only · visibility coverage incomplete';
+    }
     $('coverage-summary').textContent = total == null ?
       snapshot.mode === 'text' ? 'Pasted text analyzed. PDF structure is not applicable.' :
         'PDF page coverage was not reported.' :
       (analyzed ?? 0) + ' of ' + total + ' page' + (total === 1 ? '' : 's') + ' analyzed.';
     $('coverage-limitations').replaceChildren();
     const limitations = Array.isArray(coverage.limitations) ? coverage.limitations : [];
+    if (visibilityUnverified) append($('coverage-limitations'), 'li', '',
+      'Rendered visibility, clipping, complex layers and OCR discrepancies are not fully checked by the maintained detector. No detected signal does not establish visible-text equivalence.');
     if (limitations.length) limitations.forEach(text => append($('coverage-limitations'), 'li', '', text));
     else append($('coverage-limitations'), 'li', '', 'No further limitations were listed in this response.');
 

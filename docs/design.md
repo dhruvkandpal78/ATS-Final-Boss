@@ -1,3 +1,5 @@
+> Historical planning document. Current behavior and limits are defined by [README](../README.md), [Architecture](Architecture.md), [Security](../SECURITY.md) and [Ethics](ethics.md). See [documentation map](README.md). This record is retained for provenance and does not establish current performance or deployment readiness.
+
 # UI & Design System
 
 > **Note**: As per the prototype build plan, this project is primarily a backend detection script/pipeline designed to yield a data table for a research paper. A full web UI or Flask API is *explicitly out of scope*. However, for the purposes of a hypothetical terminal output CLI or a future demo dashboard, the following design guidelines apply.

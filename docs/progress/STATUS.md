@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+September 30 company continuation: shared strict request validation, worker crash-log minimization and historical-dashboard clarification added. Static scoped app scan at the preceding revision found no confirmed boundary crossing; customer deployment and physical-memory containment remain unverified. Current patch verification is recorded in [the company HTTP record](COMPANY_HTTP_HARDENING_2026-09-30.md), with customer acceptance tracked in [the release gate](../COMPANY_RELEASE_GATE.md).
+
 September 30 installed runtime: UI/assets/configs now packaged; public notices resolve in regular installs; CLI/API/private preflight share the operator model directory. Live wheel smoke outside checkout passed; offline suite 262 passed. Both hosted push/PR runs passed all Python and container jobs for implementation 3a92e04, including the installed-runtime check. See [portable runtime record](PORTABLE_RUNTIME_2026-09-30.md).
 
 September 30 merge resolution: current main incorporated into the publication branch, preserving the enhanced runtime/API tests and existing synthetic fixtures. ReportLab requirements addition retained. Local offline verification and hosted mergeability/CI recorded in [merge resolution](MERGE_RESOLUTION_2026-09-30.md).

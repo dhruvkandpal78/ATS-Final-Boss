@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from src.app.security import SecuritySettings, RequestBudget
-from src.app.http_contract import SECURITY_HEADERS
+from src.app.http_contract import HTTPContractError, SECURITY_HEADERS, decode_json_body, json_request_length
 from src.core.runtime_paths import models_directory, notice_path
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
@@ -40,10 +40,7 @@ _SERVICE = None
 logger = logging.getLogger(__name__)
 
 
-class APIError(ValueError):
-    def __init__(self, status, message):
-        super().__init__(message)
-        self.status = status
+APIError = HTTPContractError
 
 
 def get_service():
@@ -296,7 +293,7 @@ class ModelWorker:
                     return result
                 except (EOFError, BrokenPipeError, OSError) as exc:
                     exitcode = self.process.exitcode if self.process else None
-                    logger.error(json.dumps({"event": "worker_crash", "error": str(exc), "exitcode": exitcode}))
+                    logger.error(json.dumps({"event": "worker_crash", "error_type": type(exc).__name__, "exitcode": exitcode}))
                     self._close_locked()
                     raise APIError(503, "The analysis worker stopped. Please retry.") from None
         finally:
@@ -370,7 +367,7 @@ class Handler(BaseHTTPRequestHandler):
         Closing with unread incoming bytes can discard the response on Windows.
         Neither a large payload nor a slow sender may delay authorization denial.
         """
-        if self.command != "POST" or self.headers.get("Transfer-Encoding"):
+        if self.command != "POST" or self.headers.get_all("Transfer-Encoding", []):
             return
         lengths = self.headers.get_all("Content-Length", [])
         if len(lengths) != 1:
@@ -472,27 +469,17 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "Not found. Experimental lab endpoints are disabled."})
             return
         try:
-            if self.headers.get("Transfer-Encoding"):
-                raise APIError(400, "Transfer-Encoding is unsupported.")
-            lengths = self.headers.get_all("Content-Length", [])
-            if len(lengths) != 1:
-                raise APIError(411, "One Content-Length header is required.")
             try:
-                length = int(lengths[0])
-            except ValueError:
-                raise APIError(400, "Invalid Content-Length.") from None
-            if length <= 0:
-                raise APIError(400, "Request body must not be empty.")
-            if length > MAX_BODY_BYTES:
-                raise APIError(413, "Request exceeds the 7 MiB encoded-body limit.")
-            if self.headers.get_content_type() != "application/json":
-                raise APIError(415, "Use application/json.")
+                length = json_request_length(self.headers, MAX_BODY_BYTES)
+            except APIError:
+                self._discard_small_body()
+                raise
             raw = self.rfile.read(length)
             if len(raw) != length:
                 raise APIError(400, "Incomplete request body.")
             try:
-                payload = json.loads(raw)
-            except (ValueError, UnicodeDecodeError):
+                payload = decode_json_body(raw)
+            except (ValueError, UnicodeDecodeError, RecursionError):
                 raise APIError(400, "Invalid JSON payload.") from None
             self._send(200, WORKER.run(payload))
         except APIError as exc:
