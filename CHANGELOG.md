@@ -2,6 +2,10 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-01: constrained review integration and prevalence reporting
+
+Added a versioned, closed-vocabulary review projection through both bounded HTTP adapters, shared gateway analysis limits and explicit integration/privilege boundaries. Added base-rate scenario reporting from supplied confusion counts with visible assumptions and stress scenarios. Detector policy, thresholds, candidate artifacts and held-out results are unchanged. See [product-gap implementation and verification](docs/progress/PRODUCT_GAP_REVIEW_2026-10-01.md).
+
 ## 2026-09-30: remove redundant publication files and align research guidance
 
 Removed duplicate UI exports, obsolete migration scaffolding, unused dummy-model/API generators and a root scratch sample. Archived the single historical rebuild specification, consolidated dependency declarations through pyproject.toml, and corrected the maintained research/rules guidance. Research evidence, licenses, test fixtures and public Git history are retained. See [cleanup decisions and verification](docs/progress/PUBLIC_TREE_CLEANUP_2026-09-30.md).

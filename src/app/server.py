@@ -34,6 +34,7 @@ from src.app.worker_protocol import (
     encode_message, receive_message, validate_request, validate_response,
 )
 from src.app.worker_recovery import WorkerRecovery
+from src.app.integration_contract import REVIEW_ROUTE, REVIEW_CAPABILITIES, project_review, validate_review_request
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -470,7 +471,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         route = urlsplit(getattr(self, "path", "")).path
         known_routes = {"/", "/analyze", "/health", "/health/live", "/health/ready",
-                        "/api/capabilities", "/methodology", "/lab", "/ownership"}
+                        "/api/capabilities", "/methodology", "/lab", "/ownership", REVIEW_ROUTE}
         logger.info(json.dumps({"event": "http_response", "request_id": self.request_id,
             "method": getattr(self, "command", None) if getattr(self, "command", None) in ("GET", "POST") else "other",
             "route": route if route in known_routes else "other", "status": code,
@@ -512,7 +513,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._send(200, target.read_bytes(), mimetypes.guess_type(str(target))[0] or "application/octet-stream")
         elif path == "/api/capabilities":
-            self._send(200, {"input_modes": ["text", "pdf"], "max_file_bytes": MAX_FILE_BYTES,
+            self._send(200, {**REVIEW_CAPABILITIES, "input_modes": ["text", "pdf"], "max_file_bytes": MAX_FILE_BYTES,
                 "max_text_characters": MAX_TEXT_CHARS, "max_pages": MAX_PAGES,
                 "deadline_seconds": INFERENCE_TIMEOUT, "concurrent_analyses": 1,
                 "lab_enabled": False, "retention": "temporary files deleted after processing",
@@ -523,7 +524,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self._guard(urlsplit(self.path).path):
             return
-        if urlsplit(self.path).path != "/analyze":
+        path = urlsplit(self.path).path
+        if path not in ("/analyze", REVIEW_ROUTE):
             self._discard_small_body()
             self._send(404, {"error": "Not found. Experimental lab endpoints are disabled."})
             return
@@ -540,7 +542,13 @@ class Handler(BaseHTTPRequestHandler):
                 payload = decode_json_body(raw)
             except (ValueError, UnicodeDecodeError, RecursionError):
                 raise APIError(400, "Invalid JSON payload.") from None
-            self._send(200, WORKER.run(payload))
+            if path == REVIEW_ROUTE:
+                try:
+                    validate_review_request(payload)
+                except ValueError:
+                    raise APIError(422, "Review accepts only text or filename/b64 fields.") from None
+            result = WORKER.run(payload)
+            self._send(200, project_review(result) if path == REVIEW_ROUTE else result)
         except APIError as exc:
             self._send(exc.status, {"error": str(exc)}, retry_after=exc.retry_after)
         except socket.timeout:

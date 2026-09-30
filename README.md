@@ -31,6 +31,8 @@ python src/inference.py path/to/resume.pdf --json
 python src/inference.py path/to/resume.txt
 ```
 
+Integrations can use `POST /api/v1/review` for a fixed-vocabulary, data-minimized review result without source text, explanation strings, previews or scores. It uses the same bounded worker and fail-closed availability handling. It does not reconstruct/sanitize a resume or make a hiring decision. See [request/response and downstream separation](docs/INTEGRATION.md).
+
 ## Interpreting results
 
 The checked-in keyword threshold is currently zero. This invalid calibration is now reported by `scripts/doctor.py`; keyword and combined scores are withheld until a positive threshold is established using source-disjoint validation data. Available semantic and PDF evidence still runs. Do not substitute an arbitrary threshold to enable a percentage display.
@@ -64,6 +66,8 @@ node --check src/app/assets/app.js
 CI runs deterministic tests without model downloads. Generated PDF fixtures use temporary directories, not tracked files. See [the enhancement record](docs/progress/ENHANCEMENT_2026-09-26.md) for exact commands, results, browser evidence and unresolved release gates.
 
 ## Research status
+
+Use `python -m src.evaluation.prevalence --help` to report supplied confusion counts at explicitly assumed deployment base rates. It calculates aggregate review burden and precision/NPV scenarios, not candidate probabilities or independent validation. Zero observed false positives must not be presented as zero population risk.
 
 Old F1/AUC values in `results/` and historical change entries are retained as historical research outputs, **not current release performance claims**. Keyword normalization, injection-cue handling, structural interpretation and source grouping have changed. A fresh training/validation cycle and independent PDF-ground-truth benchmark are needed before publishing accuracy claims. No held-out dataset was used for the September 26 enhancement verification.
 

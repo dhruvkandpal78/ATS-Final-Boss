@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 1 product-gap continuation: versioned fixed-vocabulary review projection, shared admission/gateway policy and explicit prevalence scenarios implemented. These are integration/reporting controls, not calibrated candidate probabilities, a sanitizer, independent accuracy/fairness proof or company readiness. See [product-gap record](PRODUCT_GAP_REVIEW_2026-10-01.md).
+
 September 30 publication cleanup: removed redundant/unused files, archived the single rebuild specification and aligned the maintained research guide with actual detector/evaluation limitations. No policy, thresholds or artifacts changed. Verification: [public-tree cleanup record](PUBLIC_TREE_CLEANUP_2026-09-30.md).
 
 September 30 further enhancement: capped worker recovery, accurate retry headers and content-free recovery health implemented; historical plans archived and unused developer/generated files removed from the current public tree. Publication guard and build exclusions strengthened. Implementation c4ef422 passed both hosted push/PR CI runs: 353 Linux tests passed per Python version plus installed-package, audit and container checks. Verification and unresolved gates: [recovery/cleanup record](RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).
