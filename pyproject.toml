@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "ats-final-boss"
 version = "0.2.0"
 description = "Resume integrity analysis"
+license-files = ["LICENSE", "LICENSE-MIT-LEGACY.txt"]
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.24.0",
@@ -42,7 +43,11 @@ security = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["src*"]
+include = ["src*", "configs"]
+
+[tool.setuptools.package-data]
+"src.app" = ["index.html", "assets/*.css", "assets/*.js"]
+"configs" = ["*.json"]
 
 [tool.pytest.ini_options]
 markers = ["integration: requires provisioned local model artifacts and cached embeddings"]

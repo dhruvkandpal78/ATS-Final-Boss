@@ -85,7 +85,8 @@ def analyze_file(file_path: str, service=None):
     if not path.is_file():
         raise FileNotFoundError(f"Input file not found: {path}")
     if service is None:
-        service = AnalysisService(str(Path(__file__).resolve().parents[1] / "results" / "models"))
+        from src.core.runtime_paths import models_directory
+        service = AnalysisService(str(models_directory()))
     if path.suffix.lower() == ".pdf":
         return service.analyze_pdf(str(path))
     if path.suffix.lower() == ".txt":

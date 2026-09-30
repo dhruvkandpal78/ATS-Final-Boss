@@ -88,3 +88,9 @@ For engineering verification only, `python scripts/generate_pdf_smoke.py` genera
 A [controlled PDF benchmark](docs/progress/CONTROLLED_PDF_BENCHMARK_2026-09-30.md) now measures edits inserted into 48 public resume layouts. Its first frozen holdout found every inserted attack but also flagged every benign structural confounder. These are results for known edits, not validated performance on natural cheating or a calibrated probability. The policy has not been tuned on the consumed holdout.
 
 [Policy 2.0](docs/progress/PRECISION_POLICY_2026-09-30.md) keeps structure, density and experimental model alerts advisory; direct screening instructions or sustained keyword repetition trigger review. On a fresh, once-evaluated source holdout it flagged 0/200 no-added-attack PDFs and detected 100/100 scripted attacks. The group-level 95% upper bound for false-positive risk is 2.95%; natural attack performance remains unverified. Candidates now freeze policy code hashes alongside model artifacts before final evaluation.
+
+## Installed runtime
+
+A regular `pip install .` includes the maintained HTML/assets, default JSON configs and both public license notices. `python -m src.app.asgi` serves the local UI from outside the checkout. Model artifacts remain operator-provisioned: set `ATS_MODELS_DIR` to the approved bundle directory for both the API and CLI. Missing artifacts do not produce a replacement model score. Private mode still requires the independent candidate/embedding pins and deployment controls in [the private pilot guide](docs/PRIVATE_PILOT.md).
+
+CI runs `scripts/check_installed_runtime.py` outside the checkout to verify the installed HTTP resources, configuration and lifecycle without model downloads. See [portable runtime verification](docs/progress/PORTABLE_RUNTIME_2026-09-30.md).

@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: make installed wheels serve the complete runtime
+
+Packaged the maintained UI/assets, default configs and existing license notices. Added distribution-aware notice resolution and shared CLI/API/private startup model-path handling. CI now serves the actual installed wheel outside the checkout to detect missing resources. Offline suite: 262 passed; installed live smoke passed. Details and limits: [portable runtime record](docs/progress/PORTABLE_RUNTIME_2026-09-30.md).
+
 ## 2026-09-30: resolve main/publication merge conflicts
 
 Merged current main into the enhanced publication branch, preserving the shared runtime, deterministic API suite and byte-identical synthetic PDF fixtures. Retained the main ReportLab requirements addition. Details and verification: [merge resolution record](docs/progress/MERGE_RESOLUTION_2026-09-30.md).

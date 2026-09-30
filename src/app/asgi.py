@@ -26,6 +26,7 @@ from starlette.concurrency import run_in_threadpool
 
 from src.app.security import RequestBudget, SecuritySettings
 from src.app.http_contract import SECURITY_HEADERS
+from src.core.runtime_paths import models_directory, notice_path
 from src.app.startup import WARMUP_TEXT, require_warmup_result, warmup_pdf_payload
 from src.app.server import (
     APIError, INDEX_PATH, INFERENCE_TIMEOUT, MAX_BODY_BYTES, MAX_FILE_BYTES,
@@ -117,7 +118,7 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                         raise RuntimeError("Private mode requires a resource-limited Linux container")
                     if private_startup_check is None:
                         from src.core.artifacts import verify_candidate, verify_policy
-                        models = Path(os.environ.get("ATS_MODELS_DIR", str(MODELS_DIR)))
+                        models = models_directory()
                         pin = os.environ["ATS_CANDIDATE_MANIFEST_SHA256"]
                         await run_in_threadpool(lambda: verify_policy(verify_candidate(models, pin)))
                     else:
@@ -163,9 +164,12 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                     except FileNotFoundError:
                         response = _response(404, {"error": "Frontend is unavailable."})
                 elif path in {"/license", "/license-legacy"}:
-                    notice = ROOT / ("LICENSE" if path == "/license" else "LICENSE-MIT-LEGACY.txt")
-                    response = _response(200, await run_in_threadpool(notice.read_text, encoding="utf-8"),
-                                         "text/plain; charset=utf-8")
+                    try:
+                        notice = notice_path("LICENSE" if path == "/license" else "LICENSE-MIT-LEGACY.txt")
+                        response = _response(200, await run_in_threadpool(notice.read_text, encoding="utf-8"),
+                                             "text/plain; charset=utf-8")
+                    except FileNotFoundError:
+                        response = _response(404, {"error": "Public notice is unavailable."})
                 elif path == "/health/live":
                     response = _response(200, {"ok": True})
                 elif path == "/health":

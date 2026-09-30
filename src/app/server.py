@@ -28,6 +28,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from src.app.security import SecuritySettings, RequestBudget
 from src.app.http_contract import SECURITY_HEADERS
+from src.core.runtime_paths import models_directory, notice_path
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -55,7 +56,7 @@ def get_service():
             os.environ.setdefault("HF_HUB_OFFLINE", "1")
             os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
         from src.core.analysis_service import AnalysisService
-        models = Path(os.environ.get("ATS_MODELS_DIR", str(MODELS_DIR)))
+        models = models_directory()
         if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
             from src.core.artifacts import verify_policy, verify_candidate
             from src.inference import load_pipeline
@@ -435,8 +436,11 @@ class Handler(BaseHTTPRequestHandler):
             except FileNotFoundError:
                 self._send(404, {"error": "Frontend is unavailable."})
         elif path in ("/license", "/license-legacy"):
-            notice = ROOT / ("LICENSE" if path == "/license" else "LICENSE-MIT-LEGACY.txt")
-            self._send(200, notice.read_text(encoding="utf-8"), "text/plain; charset=utf-8")
+            try:
+                notice = notice_path("LICENSE" if path == "/license" else "LICENSE-MIT-LEGACY.txt")
+                self._send(200, notice.read_text(encoding="utf-8"), "text/plain; charset=utf-8")
+            except FileNotFoundError:
+                self._send(404, {"error": "Public notice is unavailable."})
         elif path == "/health/live":
             self._send(200, {"ok": True})
         elif path == "/health":

@@ -57,3 +57,5 @@ scratch_reminder.txt
 .test-tmp/
 node_modules/
 .pytest_cache/
+build/
+dist/

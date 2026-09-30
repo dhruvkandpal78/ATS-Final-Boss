@@ -42,6 +42,13 @@ jobs:
           assert not json.loads(record or "{}").get("dir_info", {}).get("editable", False)
           assert Version(version("setuptools")) >= Version("83.0.0")
           PY
+      - name: Smoke installed wheel outside the checkout
+        run: |
+          checkout="$PWD"
+          smoke_dir="$(mktemp -d)"
+          trap 'rm -rf "$smoke_dir"' EXIT
+          cd "$smoke_dir"
+          python "$checkout/scripts/check_installed_runtime.py" --forbid-root "$checkout"
       - name: Run deterministic tests without model downloads
         run: python -m pytest tests/ -m "not integration"
         env:
