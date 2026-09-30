@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: regular CI installation and patched build tools
+
+Changed CI to a regular project install with metadata verification and a setuptools fixed-version floor. Removed the editable audit exclusion while preserving strict lock checks. The actual preceding failure was vulnerable runner setuptools; Python 3.12 and container jobs passed. See [CI installation repair](docs/progress/CI_INSTALL_REPAIR_2026-09-30.md).
+
 ## 2026-09-30: declare the HTML parser runtime dependency
 
 Declared `beautifulsoup4>=4.12.0` in project runtime dependencies and the legacy requirements list. Regenerated the Linux CPU hash lock with Beautiful Soup 4.15.0 and Soup Sieve 2.10, preserving all previous runtime versions and hashes. This fixes CI test collection through `src/data_prep/cleaner.py` without an ad hoc workflow install. Validation and limits: [dependency repair record](docs/progress/DEPENDENCY_REPAIR_2026-09-30.md).
