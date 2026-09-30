@@ -18,4 +18,7 @@ Windows local validation built a regular wheel using setuptools 84.0.0, installe
 - CI YAML parse, offline Compose shape validation and scoped Bandit high-severity check passed (existing trusted-pickle B301 exception retained).
 - The five frozen detector/service/policy files are unchanged. No holdout, calibration, score or threshold changes; no independent accuracy claim is added.
 
-The previous source-only publication is now merged as PR #2; both Python jobs and container smoke passed for that merge. Customer gateway testing, real pinned embedding compatibility, independent natural manipulation labels, external security review and worker-specific physical-memory containment remain open. Hosted checks for this enhancement are pending publication.
+The previous source-only publication is now merged as PR #2; both Python jobs and container smoke passed for that merge. Customer gateway testing, real pinned embedding compatibility, independent natural manipulation labels, external security review and worker-specific physical-memory containment remain open. Hosted implementation verification completed successfully; see below.
+
+## Hosted implementation evidence
+Commit 3a92e04 passed both push run [36711280845](https://github.com/dhruvkandpal78/ATS-Final-Boss/actions/runs/36711280845) and PR run [36711298859](https://github.com/dhruvkandpal78/ATS-Final-Boss/actions/runs/36711298859). Both Python 3.11/3.12 jobs passed the installed-wheel smoke outside the checkout, offline suite, runtime/installed audits and scoped security scan; both container build/smoke jobs passed. [PR #3](https://github.com/dhruvkandpal78/ATS-Final-Boss/pull/3) is the review artifact. These checks do not close the documented real-model/customer/physical-isolation release gates.
