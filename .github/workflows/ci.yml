@@ -37,6 +37,8 @@ jobs:
         env:
           HF_HUB_OFFLINE: "1"
           TRANSFORMERS_OFFLINE: "1"
+      - name: Check private deployment security configuration
+        run: python scripts/check_private_deployment.py
       - name: Audit installed dependencies
         run: python -m pip_audit --progress-spinner off --skip-editable
       - name: Audit locked runtime without skipped CPU-wheel versions
@@ -48,3 +50,25 @@ jobs:
         # B301 is excluded because the runtime intentionally loads trusted,
         # locally provisioned pickle artifacts; see SECURITY.md.
         run: python -m bandit -r src/app src/core src/inference.py -lll -s B301
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Build locked runtime image without customer data
+        run: docker build --tag ats-final-boss:ci .
+      - name: Smoke test image without network or model downloads
+        run: |
+          docker run --detach --name ats-smoke --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 3g --cpus 2 --pids-limit 128 --tmpfs /tmp/ats-analysis:rw,noexec,nosuid,nodev,size=128m,uid=10001,gid=10001 -e ATS_DEPLOYMENT_MODE=local -e HOST=127.0.0.1 ats-final-boss:ci
+          for attempt in $(seq 1 30); do
+            if docker exec ats-smoke python -c "import json, urllib.request; result=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)); assert result == {'ok': True}"; then break; fi
+            sleep 1
+          done
+          docker exec ats-smoke python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/'); assert response.status == 200; assert response.headers['X-Content-Type-Options'] == 'nosniff'"
+      - name: Stop isolated smoke container
+        if: always()
+        run: docker stop --time 30 ats-smoke && docker rm ats-smoke

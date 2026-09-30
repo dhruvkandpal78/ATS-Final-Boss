@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from src.app.security import SecuritySettings, RequestBudget
+from src.app.http_contract import SECURITY_HEADERS
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -152,36 +153,83 @@ class ModelWorker:
     def __init__(self, timeout=INFERENCE_TIMEOUT):
         self.timeout = timeout
         self.lock = threading.Lock()
+        self.stopping = threading.Event()
         self.process = None
         self.connection = None
         self.ready = False
 
-    def close(self):
+    def _close_locked(self):
+        """Dispose of the worker while the request lock is held."""
         if self.process is not None:
             if self.process.is_alive():
                 self.process.terminate()
             self.process.join(timeout=5)
             if self.process.is_alive():
                 self.process.kill()
-                self.process.join()
-            self.process.close()
+                self.process.join(timeout=5)
+            if not self.process.is_alive():
+                self.process.close()
         if self.connection is not None:
             self.connection.close()
         self.process = self.connection = None
         self.ready = False
 
+    def shutdown(self, grace=5):
+        """Stop admission, cancel active work, then release worker resources.
+
+        Inference and cleanup remain owned by the request thread. Shutdown never
+        closes a pipe concurrently with its recv/send operations.
+        """
+        self.stopping.set()
+        if not self.lock.acquire(timeout=max(0, grace)):
+            # A process blocked in native code might not observe the stop event.
+            # Termination wakes its parent without racing on the connection.
+            process = self.process
+            if process is not None:
+                try:
+                    if process.is_alive():
+                        process.terminate()
+                except (OSError, ValueError):
+                    pass
+            if not self.lock.acquire(timeout=5):
+                return False
+        try:
+            self._close_locked()
+            return True
+        finally:
+            self.lock.release()
+
+    def close(self):
+        return self.shutdown()
+
     def run(self, payload):
         validate_payload(payload)
+        if self.stopping.is_set():
+            raise APIError(503, "Analysis service is stopping.")
         if not self.lock.acquire(blocking=False):
             raise APIError(429, "Another document is being analyzed. Retry shortly.")
         try:
+            if self.stopping.is_set():
+                raise APIError(503, "Analysis service is stopping.")
             if self.process is None or not self.process.is_alive():
-                self.close()
+                self._close_locked()
                 context = mp.get_context("spawn")
-                self.connection, child = context.Pipe()
-                self.process = context.Process(target=_worker_loop, args=(child,), daemon=True)
-                self.process.start()
-                child.close()
+                parent, child = context.Pipe()
+                process = None
+                try:
+                    process = context.Process(target=_worker_loop, args=(child,), daemon=True)
+                    process.start()
+                except Exception:
+                    parent.close()
+                    if process is not None:
+                        process.close()
+                    raise APIError(503, "Analysis worker could not start.") from None
+                finally:
+                    child.close()
+                self.connection, self.process = parent, process
+            if self.stopping.is_set():
+                self._close_locked()
+                raise APIError(503, "Analysis service is stopping.")
             with tempfile.TemporaryDirectory(prefix="ats-analysis-") as directory:
                 try:
                     deadline = monotonic() + self.timeout
@@ -194,23 +242,34 @@ class ModelWorker:
                             sending_errors.append(exc)
                     sender = threading.Thread(target=send_request, daemon=True)
                     sender.start()
-                    sender.join(timeout=max(0, deadline - monotonic()))
+                    while sender.is_alive() and not self.stopping.is_set():
+                        sender.join(timeout=min(0.2, max(0, deadline - monotonic())))
+                        if monotonic() >= deadline:
+                            break
+                    if self.stopping.is_set():
+                        self._close_locked()
+                        sender.join(timeout=1)
+                        raise APIError(503, "Analysis service is stopping.")
                     if sender.is_alive():
-                        self.close()
+                        self._close_locked()
                         sender.join(timeout=1)
                         raise APIError(504, "Analysis worker did not accept the request within its deadline.")
                     if sending_errors:
                         raise sending_errors[0]
-                    if not self.connection.poll(max(0, deadline - monotonic())):
-                        self.close()
-                        raise APIError(504, "Analysis exceeded its 90-second deadline. Try a shorter document.")
+                    while not self.connection.poll(min(0.2, max(0, deadline - monotonic()))):
+                        if self.stopping.is_set():
+                            self._close_locked()
+                            raise APIError(503, "Analysis service is stopping.")
+                        if monotonic() >= deadline:
+                            self._close_locked()
+                            raise APIError(504, "Analysis exceeded its 90-second deadline. Try a shorter document.")
                     status, result = self.connection.recv()
                     self.ready = status == 200
                     if status != 200:
                         raise APIError(status, result["error"])
                     return result
                 except (EOFError, BrokenPipeError, OSError):
-                    self.close()
+                    self._close_locked()
                     raise APIError(503, "The analysis worker stopped. Please retry.") from None
         finally:
             self.lock.release()
@@ -317,15 +376,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Cache-Control", "no-store")
         self.send_header("X-Request-Id", self.request_id)
         self.send_header("Connection", "close")
         self.close_connection = True
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
-        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+        for name, value in SECURITY_HEADERS.items():
+            self.send_header(name, value)
         if code == 401:
             self.send_header("WWW-Authenticate", 'Bearer realm="resume-inspection"')
         if code in (429, 503):
@@ -437,7 +492,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        WORKER.close()
+        WORKER.shutdown()
         server.server_close()
 
 

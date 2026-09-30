@@ -16,6 +16,8 @@ python src/app/server.py
 
 Open http://127.0.0.1:8000. The interface has a light theme inspired by the supplied white/lavender reference and a persistent charcoal/orange dark theme. The maintained frontend is `src/app/index.html` and `src/app/assets/`; no frontend build step is required. Existing `web/dist` files are historical and are not served.
 
+The private deployment image uses `python -m src.app.asgi`, a single-process Uvicorn/Starlette adapter with bounded inference, admission controls and private startup warm-up. The standard-library server above remains the lightweight local demo. Run `python scripts/check_private_deployment.py` before reviewing a private Compose deployment. The gateway example delegates identity verification to the customer's SSO authorizer; it is not an installed SSO integration.
+
 The server starts without loading models. The first analysis loads trusted local `results/models/meta_classifier.pkl`, `results/models/scaler.pkl`, detector configuration, and cached MiniLM weights. Downloads are disabled by default. Missing dependencies produce an actionable 503 response, not a fabricated result. The diagnostic checks installed packages, model files and embedding config cache without downloading or evaluating data; a successful diagnostic does not certify artifact provenance or full runtime compatibility.
 
 CLI uses the same analysis service:

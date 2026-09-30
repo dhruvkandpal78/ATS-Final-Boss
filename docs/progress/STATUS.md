@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+September 30 architecture continuation: private ASGI adapter, startup warm-up, coordinated worker cleanup, shared response policy, gateway template and deployment validator implemented. Full suite: 218 passed; real loopback transport smoke passed. Docker is unavailable locally, so image CI, customer gateway and external security validation remain open. See [architecture record](ARCHITECTURE_HARDENING_2026-09-30.md).
+
 September 30 private pilot: implemented authentication, origin/host guards, independent artifact pinning, bounded admission, privacy-safe response events, locked Linux CPU dependencies and container/CI configuration. See [hardening record](PRIVATE_PILOT_HARDENING_2026-09-30.md). Docker execution, exact Linux installation, customer gateway and independent security review remain unverified; no company-ready certification is claimed.
 
 September 30 policy 2.0: advisory anomalies no longer independently recommend review. A new frozen holdout of 100 source groups yielded 0/200 no-added-attack false positives and 100/100 known added attacks detected. This is a controlled source benchmark, not general real-world certification; the group-level one-sided 95% false-positive upper bound is 2.95%. See [precision policy record](PRECISION_POLICY_2026-09-30.md). The earlier result below remains the historical policy 1.0 baseline.

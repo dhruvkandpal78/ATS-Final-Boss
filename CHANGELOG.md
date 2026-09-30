@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: production-compatible adapter and lifecycle architecture
+
+Added a Uvicorn/Starlette private adapter, shared HTTP security headers, fail-closed model warm-up before serving, coordinated worker shutdown and spawn-failure cleanup. Added a TLS/SSO gateway template, deployment-security mutation checks, image-build/smoke CI, and reusable denominator-aware statistics. Full local suite: 218 passed; live loopback adapter smoke passed. Detection policy and consumed holdouts remain unchanged. Exact Linux/container/gateway validation remains open. See [architecture hardening record](docs/progress/ARCHITECTURE_HARDENING_2026-09-30.md).
+
 ## 2026-09-30: private-company pilot security foundation
 
 Added guarded local/private deployment modes, Host/Origin checks, secret-file authentication, externally pinned model verification, bounded connections/request admission, content-free response audit events and Linux resource-limit/container configuration. Added a hashed Linux CPU runtime lock, advisory/static checks, CI and security/operations/customer-strategy documentation. The proposed first customer is a technical staffing agency or midsized recruiting team. This is a pilot foundation; Docker, customer SSO/TLS, exact Linux runtime and independent security validation remain release gates. Personal resumes remain excluded from publication. See [hardening record](docs/progress/PRIVATE_PILOT_HARDENING_2026-09-30.md).

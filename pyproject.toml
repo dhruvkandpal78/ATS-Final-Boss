@@ -16,7 +16,9 @@ dependencies = [
     "PyMuPDF>=1.23.0",
     "pdfplumber>=0.10.0",
     "tqdm>=4.65.0",
-    "requests>=2.31.0"
+    "requests>=2.31.0",
+    "starlette>=0.52.0",
+    "uvicorn>=0.40.0"
 ]
 
 [project.optional-dependencies]
@@ -26,14 +28,16 @@ dev = [
     "seaborn>=0.12.0",
     "transformers>=4.38.0",
     "termcolor>=2.4.0",
-    "reportlab>=4.0.0"
+    "reportlab>=4.0.0",
+    "httpx>=0.28.0"
 ]
 models = [
     "xgboost>=2.0.0"
 ]
 security = [
     "pip-audit>=2.10.1",
-    "bandit>=1.9.4"
+    "bandit>=1.9.4",
+    "PyYAML>=6.0.0"
 ]
 
 [tool.setuptools.packages.find]

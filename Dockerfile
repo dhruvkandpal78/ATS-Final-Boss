@@ -29,4 +29,4 @@ RUN addgroup --system --gid 10001 ats \
 
 USER 10001:10001
 EXPOSE 8000
-CMD ["python", "src/app/server.py"]
+CMD ["python", "-m", "src.app.asgi"]

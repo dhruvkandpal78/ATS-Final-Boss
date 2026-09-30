@@ -8,7 +8,10 @@ ATS Final Boss is an input-level resume inspection tool. It reports evidence and
 
 ```mermaid
 flowchart TD
-    UI[Maintained browser UI: src/app] --> API[Bounded HTTP adapter]
+    UI[Maintained browser UI: src/app] --> Gateway[Customer TLS and SSO gateway: private deployment]
+    Gateway --> API[Uvicorn and Starlette adapter]
+    Demo[Loopback demo UI] --> Local[Standard-library local adapter]
+    Local --> Worker
     API --> Worker[Isolated inference worker and deadline]
     CLI[CLI adapter] --> Service[Shared AnalysisService]
     Worker --> Service
@@ -34,6 +37,10 @@ The CLI and HTTP worker use `src/core/analysis_service.py`; adapters do not inve
 Uploaded documents are untrusted data. Candidate weights are trusted local artifacts, never uploaded documents. Candidate bundles are hash-checked before pickle deserialization; hashes detect accidental changes, not replacement of both artifacts and manifests by an attacker.
 
 Private mode additionally requires an independently pinned manifest digest, verifies policy hashes, and deserializes the exact verified bytes. It requires Linux resource limits and an authenticated customer gateway. Host/Origin guards, bearer authentication, connection limits and a global request budget apply before analysis. Local mode refuses network-wide binding. The proposed container is non-root, read-only and resource-limited; Docker execution and customer SSO/TLS integration remain unverified. See [private pilot guide](PRIVATE_PILOT.md).
+
+`src/app/asgi.py` is the maintained private HTTP adapter. Uvicorn runs one server process with a concurrency cap; the application limits body size and total upload time before passing validated payloads to the shared isolated worker. Private startup validates pinned artifacts and performs a synthetic warm-up before accepting traffic, eliminating the earlier readiness/warm-up routing cycle. Static UI and API requests require gateway-injected authentication. Lifespan shutdown stops worker admission and coordinates cleanup; model work stays outside the HTTP process.
+
+The worker owns its process and pipe under a request lock. A stop event cancels active work during bounded polling and prevents new requests; shutdown no longer closes a pipe concurrently with a request. Spawn failures clean up both endpoints. The deployment validator rejects weakened Compose controls, while CI adds a data-free image build and smoke test. These are testable architecture controls, not proof of runtime isolation or external security certification.
 
 ## Evidence, policy and score
 

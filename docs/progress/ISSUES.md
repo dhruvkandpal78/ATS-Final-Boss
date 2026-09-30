@@ -1,5 +1,9 @@
 # Issue Ledger
 
+- [x] Private HTTP adapter uses Uvicorn/Starlette, bounded requests and fail-closed startup warm-up.
+- [x] Worker stop admission, cancellation and spawn-failure cleanup coordinated under lifecycle lock.
+- [x] Deployment configuration weakening is detected by mutation-tested offline checks; this does not verify runtime isolation.
+
 - [x] Local network binding, Host/Origin validation and private-route authentication implemented with regression coverage.
 - [x] Private model loading requires independently pinned manifest and verified artifact bytes; executable pickle remains trusted-only.
 - [ ] Linux container/resource-limit execution, gateway integration, exact locked installation and external penetration testing require release evidence.

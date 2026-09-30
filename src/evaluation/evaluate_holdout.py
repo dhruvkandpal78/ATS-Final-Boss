@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import logging
 import json
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import roc_auc_score
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -19,22 +19,8 @@ RESULTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "results")
 MODELS_DIR = os.path.join(RESULTS_DIR, "models")
 
 def calc_metrics(y_true, y_pred, y_prob=None):
-    if len(y_true) == 0:
-        raise ValueError("A holdout evaluation needs at least one labeled row")
-    
-    metrics = {
-        "Precision": precision_score(y_true, y_pred, zero_division=0),
-        "Recall": recall_score(y_true, y_pred, zero_division=0),
-        "F1": f1_score(y_true, y_pred, zero_division=0)
-    }
-    negatives = sum(int(value == 0) for value in y_true)
-    false_positives = sum(int(actual == 0 and predicted == 1) for actual, predicted in zip(y_true, y_pred))
-    metrics["False-positive rate"] = false_positives / negatives if negatives else None
-    metrics["N"] = len(y_true)
-    metrics["TP"] = sum(int(a == 1 and p == 1) for a, p in zip(y_true, y_pred))
-    metrics["FP"] = false_positives
-    metrics["TN"] = sum(int(a == 0 and p == 0) for a, p in zip(y_true, y_pred))
-    metrics["FN"] = sum(int(a == 1 and p == 0) for a, p in zip(y_true, y_pred))
+    from src.evaluation.statistics import binary_confusion_metrics
+    metrics = binary_confusion_metrics(y_true, y_pred)
     if y_prob is not None and len(set(y_true)) > 1:
         metrics["ROC-AUC"] = roc_auc_score(y_true, y_prob)
     else:
@@ -160,7 +146,9 @@ def main(argv=None):
         f.write("Decision metrics use the deployed review policy. ROC-AUC uses the separate uncalibrated experimental model score. All rows required complete PDF evidence. These figures do not validate hiring outcomes.\n\n")
         f.write("| Dataset | Precision | Recall | F1 Score | ROC-AUC |\n")
         f.write("|---------|-----------|--------|----------|---------|\n")
-        f.write(f"| {csv_path.name} | {metrics['Precision']:.4f} | {metrics['Recall']:.4f} | {metrics['F1']:.4f} | {auc} |\n")
+        rates = ["N/A (undefined)" if metrics[name] is None else f"{metrics[name]:.4f}"
+                 for name in ("Precision", "Recall", "F1")]
+        f.write(f"| {csv_path.name} | {' | '.join(rates)} | {auc} |\n")
         f.write(f"\nDecision confusion counts: TP={metrics['TP']}, FP={metrics['FP']}, TN={metrics['TN']}, FN={metrics['FN']}. ")
         fpr = metrics["False-positive rate"]
         f.write("False-positive rate on labeled no-added-attack rows: " +
