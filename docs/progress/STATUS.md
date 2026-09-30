@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+September 30 dependency repair: declared Beautiful Soup in runtime metadata, synchronized legacy requirements and regenerated the hashed Linux CPU lock (59 packages, all previous pins/hashes preserved). Offline publication suite: 259 passed, one Windows symlink skip, three integration tests deselected. Parser hash/install smoke and runtime audit passed; the revised full Linux CI run remains pending. See [dependency repair record](DEPENDENCY_REPAIR_2026-09-30.md).
+
 September 30 integrity continuation: separate embedding pin/export validation, meaningful semantic/PDF startup probes, shutdown-aware readiness, private diagnostic suppression and Git payload guard added. Full suite: 262 passed, one Windows symlink skip. Real embedding export/Linux deployment and worker-specific physical-memory containment remain unverified; see [integrity record](INTEGRITY_STARTUP_2026-09-30.md).
 
 September 30 architecture continuation: private ASGI adapter, startup warm-up, coordinated worker cleanup, shared response policy, gateway template and deployment validator implemented. Full suite: 218 passed; real loopback transport smoke passed. Docker is unavailable locally, so image CI, customer gateway and external security validation remain open. See [architecture record](ARCHITECTURE_HARDENING_2026-09-30.md).

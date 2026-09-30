@@ -1,4 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
+
+## 2026-09-30: declare the HTML parser runtime dependency
+
+Declared `beautifulsoup4>=4.12.0` in project runtime dependencies and the legacy requirements list. Regenerated the Linux CPU hash lock with Beautiful Soup 4.15.0 and Soup Sieve 2.10, preserving all previous runtime versions and hashes. This fixes CI test collection through `src/data_prep/cleaner.py` without an ad hoc workflow install. Validation and limits: [dependency repair record](docs/progress/DEPENDENCY_REPAIR_2026-09-30.md).
+
 ## 2026-09-30: architecture verification and failure recovery
 
 Conducted an architecture verification phase targeting documented deployment gaps. Documented operational blockers (Linux container isolation, customer gateway, pinned export verification) for Windows environments. Improved worker failure recovery and operational monitoring in `src/app/server.py` by adding explicit worker exit-code tracking and structured JSON logging for timeout events. See [architecture verification record](docs/progress/ARCHITECTURE_VERIFICATION_2026-09-30.md).
@@ -51,7 +56,7 @@ Exact changes, commands, screenshots, remaining limitations and package records:
 This document tracks the step-by-step evolution of the ATS Final Boss project, from its initial prototype to its current rigorous, defense-in-depth architecture.
 
 ## Phase 1: The Initial Prototype
-**State:** The project had a brilliant conceptual foundation—using a multi-modal ensemble (Statistical, Structural, and Semantic) to defend against LLM-era HR attacks—and featured a highly polished Scrollytelling UI.
+**State:** The project had a brilliant conceptual foundationâ€”using a multi-modal ensemble (Statistical, Structural, and Semantic) to defend against LLM-era HR attacksâ€”and featured a highly polished Scrollytelling UI.
 **Issues Identified:**
 * The ML evaluation was poorly structured.
 * The ablation study compared incompatible models (Stacking Ensemble vs individual modules).
