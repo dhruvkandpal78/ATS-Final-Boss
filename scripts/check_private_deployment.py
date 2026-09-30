@@ -142,6 +142,7 @@ def validate_compose(document: Any) -> list[str]:
         "ATS_DEPLOYMENT_MODE": "private",
         "ATS_API_TOKEN_FILE": TOKEN_PATH,
         "ATS_MODELS_DIR": "/models",
+        "ATS_EMBEDDING_DIR": "/models/embedding",
     }
     for key, expected in required.items():
         if env.get(key) != expected:
@@ -156,6 +157,9 @@ def validate_compose(document: Any) -> list[str]:
     pin = env.get("ATS_CANDIDATE_MANIFEST_SHA256")
     if not isinstance(pin, str) or "${" not in pin or "ATS_CANDIDATE_MANIFEST_SHA256" not in pin or ":?" not in pin:
         errors.append("ats-review must require an externally configured ATS_CANDIDATE_MANIFEST_SHA256.")
+    embedding_pin = env.get("ATS_EMBEDDING_MANIFEST_SHA256")
+    if not isinstance(embedding_pin, str) or "${ATS_EMBEDDING_MANIFEST_SHA256:?" not in embedding_pin:
+        errors.append("ats-review must require an externally configured ATS_EMBEDDING_MANIFEST_SHA256.")
 
     secrets = document.get("secrets")
     secret_definition = secrets.get("ats_api_token") if isinstance(secrets, dict) else None

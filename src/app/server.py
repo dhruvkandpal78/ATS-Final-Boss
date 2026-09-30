@@ -48,8 +48,12 @@ class APIError(ValueError):
 def get_service():
     global _SERVICE
     if _SERVICE is None:
-        os.environ.setdefault("HF_HUB_OFFLINE", "1")
-        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+        if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
+            os.environ["HF_HUB_OFFLINE"] = "1"
+            os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        else:
+            os.environ.setdefault("HF_HUB_OFFLINE", "1")
+            os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
         from src.core.analysis_service import AnalysisService
         models = Path(os.environ.get("ATS_MODELS_DIR", str(MODELS_DIR)))
         if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
@@ -58,7 +62,9 @@ def get_service():
             pin = os.environ["ATS_CANDIDATE_MANIFEST_SHA256"]
             manifest = verify_candidate(models, pin)
             verify_policy(manifest)
-            clf, scaler, a, b, c = load_pipeline(models, expected_manifest_sha256=pin)
+            clf, scaler, a, b, c = load_pipeline(models, expected_manifest_sha256=pin,
+                embedding_dir=os.environ.get("ATS_EMBEDDING_DIR", str(models / "embedding")),
+                expected_embedding_manifest_sha256=os.environ["ATS_EMBEDDING_MANIFEST_SHA256"])
             _SERVICE = AnalysisService(mod_a=a, mod_b=b, mod_c=c, meta_clf=clf, scaler=scaler)
             _SERVICE.candidate_model = True
             _SERVICE.model_id = "candidate-" + pin.lower()[:16]
@@ -118,9 +124,26 @@ def _score(text, b_score=None, pdf_details=None):
     return get_service().analyze_text(text)
 
 
+def _silence_private_worker_output():
+    """Private child diagnostics must not bypass the content-free parent log.
+
+    This runs only in the spawned inference child. The IPC connection is a
+    separate channel; errors are still reported using bounded generic statuses.
+    """
+    logging.disable(logging.CRITICAL)
+    sink = os.open(os.devnull, os.O_WRONLY)
+    try:
+        os.dup2(sink, 1)
+        os.dup2(sink, 2)
+    finally:
+        if sink not in (1, 2):
+            os.close(sink)
+
+
 def _worker_loop(connection):
     try:
         if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
+            _silence_private_worker_output()
             # Linux private deployments additionally require cgroup limits and
             # read-only mounts. A process alone is not a security sandbox.
             import resource
@@ -415,7 +438,8 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/health":
             self._send(200, {"ok": True, "model_ready": WORKER.ready, "busy": WORKER.lock.locked()})
         elif path == "/health/ready":
-            ready = WORKER.ready and WORKER.process is not None and WORKER.process.is_alive()
+            ready = (not WORKER.stopping.is_set() and WORKER.ready and
+                     WORKER.process is not None and WORKER.process.is_alive())
             self._send(200 if ready else 503, {"ready": ready})
         elif path.startswith("/assets/"):
             assets = (ROOT / "src" / "app" / "assets").resolve()

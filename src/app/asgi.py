@@ -26,6 +26,7 @@ from starlette.concurrency import run_in_threadpool
 
 from src.app.security import RequestBudget, SecuritySettings
 from src.app.http_contract import SECURITY_HEADERS
+from src.app.startup import WARMUP_TEXT, require_warmup_result, warmup_pdf_payload
 from src.app.server import (
     APIError, INDEX_PATH, INFERENCE_TIMEOUT, MAX_BODY_BYTES, MAX_FILE_BYTES,
     MAX_PAGES, MAX_TEXT_CHARS, MODELS_DIR, ROOT, ModelWorker, validate_payload,
@@ -51,7 +52,9 @@ def _headers(scope_headers: list[tuple[bytes, bytes]]) -> Message:
 
 def _worker_ready(worker: object) -> bool:
     process = getattr(worker, "process", None)
-    return bool(getattr(worker, "ready", False) and process is not None and process.is_alive())
+    stopping = getattr(worker, "stopping", None)
+    return bool(not (stopping is not None and stopping.is_set()) and
+                getattr(worker, "ready", False) and process is not None and process.is_alive())
 
 
 def _response(status: int, body: dict | str | bytes, media_type: str = "application/json") -> Response:
@@ -77,7 +80,7 @@ async def _read_payload(request: Request, headers: Message) -> object:
         raise APIError(400, "Request body must not be empty.")
     if length > MAX_BODY_BYTES:
         raise APIError(413, "Request exceeds the 7 MiB encoded-body limit.")
-    if headers.get_content_type() != "application/json":
+    if len(headers.get_all("Content-Type", [])) != 1 or headers.get_content_type() != "application/json":
         raise APIError(415, "Use application/json.")
     body = bytearray()
     try:
@@ -93,8 +96,8 @@ async def _read_payload(request: Request, headers: Message) -> object:
     if len(body) != length:
         raise APIError(400, "Incomplete request body.")
     try:
-        return json.loads(body)
-    except (ValueError, UnicodeDecodeError):
+        return await run_in_threadpool(json.loads, body)
+    except (ValueError, UnicodeDecodeError, RecursionError):
         raise APIError(400, "Invalid JSON payload.") from None
 
 
@@ -119,8 +122,11 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                         await run_in_threadpool(lambda: verify_policy(verify_candidate(models, pin)))
                     else:
                         await run_in_threadpool(private_startup_check)
-                    # A synthetic text request proves that the pinned worker can load and respond.
-                    await run_in_threadpool(worker.run, {"text": "Synthetic startup readiness check."})
+                    text_result = await run_in_threadpool(worker.run, {"text": WARMUP_TEXT})
+                    require_warmup_result(text_result)
+                    pdf_payload = await run_in_threadpool(warmup_pdf_payload)
+                    pdf_result = await run_in_threadpool(worker.run, pdf_payload)
+                    require_warmup_result(pdf_result, pdf=True)
                     if not _worker_ready(worker):
                         raise RuntimeError("Private analysis worker did not become ready")
                 except Exception:

@@ -21,6 +21,8 @@ def loopback(host):
 
 def origin(value):
     try:
+        if not isinstance(value, str) or not value.isascii() or any(ord(char) <= 32 or ord(char) == 127 for char in value):
+            raise ValueError
         parsed = urlsplit(value)
         if (parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username
                 or parsed.password or parsed.path or parsed.query or parsed.fragment):
@@ -66,6 +68,8 @@ class SecuritySettings:
                 raise ValueError("Private mode requires exact HTTPS allowed origins")
             if not re.fullmatch(r"[a-fA-F0-9]{64}", os.environ.get("ATS_CANDIDATE_MANIFEST_SHA256", "")):
                 raise ValueError("Private mode requires an independently pinned candidate manifest hash")
+            if not re.fullmatch(r"[a-fA-F0-9]{64}", os.environ.get("ATS_EMBEDDING_MANIFEST_SHA256", "")):
+                raise ValueError("Private mode requires an independently pinned embedding manifest hash")
         rate = int(os.environ.get("ATS_REQUESTS_PER_MINUTE", "20"))
         memory = int(os.environ.get("ATS_WORKER_MEMORY_MIB", "4096"))
         if not 1 <= rate <= 120 or not 512 <= memory <= 16384:
@@ -76,6 +80,8 @@ class SecuritySettings:
         hosts = headers.get_all("Host", [])
         if len(hosts) != 1:
             return 400, "One Host header is required."
+        if not hosts[0].isascii() or any(ord(char) <= 32 or ord(char) == 127 for char in hosts[0]):
+            return 400, "Invalid Host header."
         try:
             parsed = urlsplit("http://" + hosts[0])
             if (parsed.hostname not in self.allowed_hosts or parsed.username or parsed.password

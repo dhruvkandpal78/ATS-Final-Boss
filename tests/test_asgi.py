@@ -30,7 +30,8 @@ class FakeWorker:
     def run(self, payload):
         self.calls.append(payload)
         self.ready = True
-        return {"status": "synthetic", "count": len(self.calls)}
+        return {"status": "complete" if "b64" in payload else "synthetic", "count": len(self.calls),
+                "score": 0.2, "modules": {name: {"status": "ok", "score": 0.2} for name in ("a", "b", "c")}}
 
     def close(self):
         self.closed = True
@@ -55,6 +56,9 @@ def test_local_routes_lazy_readiness_headers_and_shutdown():
         assert response.headers["content-security-policy"].startswith("default-src 'none'")
         assert response.headers["x-request-id"]
         assert client.get("/health/ready").json() == {"ready": True}
+        worker.stopping = threading.Event()
+        worker.stopping.set()
+        assert client.get("/health/ready").status_code == 503
         assert client.get("/api/capabilities").json()["max_file_bytes"] == asgi.MAX_FILE_BYTES
         assert client.get("/license").status_code == 200
         assert client.get("/methodology").status_code == 200
@@ -72,7 +76,8 @@ def test_private_authorization_before_body_and_budget(monkeypatch):
                           private_startup_check=lambda: checks.append("pinned"))
     with TestClient(app) as client:
         assert checks == ["pinned"]
-        assert worker.calls == [{"text": "Synthetic startup readiness check."}]
+        assert worker.calls[0] == {"text": asgi.WARMUP_TEXT}
+        assert len(worker.calls) == 2 and worker.calls[1]["filename"] == "synthetic-startup.pdf"
         assert client.get("/health/live").status_code == 200
         assert client.get("/health/ready").status_code == 401
         assert client.request("TRACE", "/health/live").status_code == 401
@@ -80,13 +85,13 @@ def test_private_authorization_before_body_and_budget(monkeypatch):
                           headers={"Content-Type": "application/json"})
         assert bad.status_code == 401
         assert "www-authenticate" in bad.headers
-        assert len(worker.calls) == 1
+        assert len(worker.calls) == 2
         headers = {"Authorization": "Bearer synthetic_test_token",
                    "Origin": "https://hr.example.test"}
         first = client.post("/analyze", json={"text": "Synthetic"}, headers=headers)
         assert first.status_code == 200
         assert client.post("/analyze", json={"text": "Another"}, headers=headers).status_code == 429
-        assert len(worker.calls) == 2
+        assert len(worker.calls) == 3
     assert worker.closed
 
 
@@ -146,3 +151,33 @@ def test_private_startup_fails_closed_when_worker_does_not_warm(monkeypatch):
         with TestClient(app):
             pass
     assert worker.closed
+
+
+def test_private_startup_rejects_success_response_with_broken_detector(monkeypatch):
+    monkeypatch.setattr(asgi.sys, "platform", "linux")
+    settings = SecuritySettings("private", ("testserver",), ("https://hr.example.test",), "token")
+    worker = FakeWorker()
+    original = worker.run
+    def broken(payload):
+        result = original(payload)
+        result["modules"]["c"]["status"] = "error"
+        return result
+    worker.run = broken
+    app = asgi.create_app(settings=settings, worker=worker, private_startup_check=lambda: None)
+    with pytest.raises(RuntimeError, match="Private startup verification failed"):
+        with TestClient(app):
+            pass
+    assert worker.closed and len(worker.calls) == 1
+
+
+def test_ambiguous_content_type_and_deep_json_do_not_reach_worker():
+    app, worker = _app()
+    with TestClient(app) as client:
+        response = client.post("/analyze", content=b"{}", headers=[
+            ("Content-Type", "application/json"), ("Content-Type", "text/plain")])
+        assert response.status_code == 415
+        deep = "[" * 1500 + "0" + "]" * 1500
+        # Python builds can parse this depth or reject it at decoder recursion.
+        # Either invalid request shape or depth rejection must stay a client error.
+        assert client.post("/analyze", content=deep, headers={"Content-Type": "application/json"}).status_code in {400, 422}
+    assert worker.calls == []

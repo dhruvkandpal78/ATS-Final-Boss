@@ -27,6 +27,8 @@ services:
       ATS_ALLOWED_ORIGINS: ${ATS_ALLOWED_ORIGINS:?Set the exact HTTPS browser origin}
       ATS_MODELS_DIR: /models
       ATS_CANDIDATE_MANIFEST_SHA256: ${ATS_CANDIDATE_MANIFEST_SHA256:?Pin candidate_manifest.json SHA-256}
+      ATS_EMBEDDING_DIR: /models/embedding
+      ATS_EMBEDDING_MANIFEST_SHA256: ${ATS_EMBEDDING_MANIFEST_SHA256:?Pin embedding_manifest.json SHA-256}
       ATS_WORKER_MEMORY_MIB: "16384"
       ATS_REQUESTS_PER_MINUTE: "20"
       HF_HOME: /models/hf-cache

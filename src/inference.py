@@ -21,7 +21,8 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
-def load_pipeline(models_dir, expected_manifest_sha256=None):
+def load_pipeline(models_dir, expected_manifest_sha256=None, *, embedding_dir=None,
+                  expected_embedding_manifest_sha256=None):
     """Load trusted local legacy artifacts and configured detectors.
 
     The caller chooses the artifact directory. Uploaded pickle files must never
@@ -36,6 +37,12 @@ def load_pipeline(models_dir, expected_manifest_sha256=None):
     if candidate:
         from src.core.artifacts import verify_candidate
         manifest = verify_candidate(model_dir, expected_manifest_sha256)
+    embedding_manifest = None
+    if embedding_dir is not None or expected_embedding_manifest_sha256 is not None:
+        if embedding_dir is None or expected_embedding_manifest_sha256 is None:
+            raise ValueError("A local embedding export and its independent pin are both required")
+        from src.core.embedding_artifacts import verify_embedding
+        embedding_manifest = verify_embedding(embedding_dir, expected_embedding_manifest_sha256)
     def artifact(name):
         value = (model_dir / name).read_bytes()
         if manifest and hashlib.sha256(value).hexdigest() != manifest["artifacts"][name]:
@@ -51,6 +58,9 @@ def load_pipeline(models_dir, expected_manifest_sha256=None):
                             (config_dir / "thresholds.json").read_bytes())
     model_cfg = json.loads(artifact("model_config.json") if candidate else
                            (config_dir / "model_config.json").read_bytes())
+    embedding_name = model_cfg.get("embedding_model", "all-MiniLM-L6-v2")
+    if embedding_manifest and embedding_manifest["model_id"] != embedding_name:
+        raise ValueError("Embedding export does not match the candidate model identity")
 
     from src.modules.module_a import KeywordDensityDetector
     from src.modules.module_b import PDFForensicsDetector
@@ -59,7 +69,7 @@ def load_pipeline(models_dir, expected_manifest_sha256=None):
     mod_a = KeywordDensityDetector()
     mod_a.threshold = thresholds["mod_a_threshold"]
     mod_c = SemanticCoherenceScorer(
-        model_name=model_cfg.get("embedding_model", "all-MiniLM-L6-v2"),
+        model_name=str(Path(embedding_dir).resolve()) if embedding_manifest else embedding_name,
         window_size=2,
     )
     mod_c.variance_threshold = thresholds["mod_c_variance_threshold"]

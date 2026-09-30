@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: embedding integrity and meaningful readiness
+
+Added an independently pinned embedding-export contract and offline freeze tool, local immutable-export loading, semantic/PDF startup coverage checks, shutdown-aware readiness, private diagnostic suppression, stricter header/content-type validation and a read-only Git publication guard. Documented the shared-container physical-memory limitation. Personal files and existing detector policy remain unchanged. See [integrity/startup record](docs/progress/INTEGRITY_STARTUP_2026-09-30.md).
+
 ## 2026-09-30: production-compatible adapter and lifecycle architecture
 
 Added a Uvicorn/Starlette private adapter, shared HTTP security headers, fail-closed model warm-up before serving, coordinated worker shutdown and spawn-failure cleanup. Added a TLS/SSO gateway template, deployment-security mutation checks, image-build/smoke CI, and reusable denominator-aware statistics. Full local suite: 218 passed; live loopback adapter smoke passed. Detection policy and consumed holdouts remain unchanged. Exact Linux/container/gateway validation remains open. See [architecture hardening record](docs/progress/ARCHITECTURE_HARDENING_2026-09-30.md).

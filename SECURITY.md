@@ -10,6 +10,8 @@ Do not include candidate documents, credentials, or personal data in a report. I
 
 The API accepts untrusted text and PDF documents. Model pickle files are executable serialization and must only be provisioned from a reviewed, access-controlled source. The candidate manifest hash supplied to the service must be pinned in the customer deployment configuration, outside the model volume. A hash detects a changed bundle relative to that pin; it does not prove who created the artifact. Never accept model files from users or the browser.
 
+Private embedding loading requires a separate independently pinned manifest for an approved safetensors export, including model identity, declared upstream revision and the exact bounded file set. It rejects code/pickle formats and symlinks, and loads that local export rather than a mutable model-name cache alias. The export must remain immutable during runtime; integrity checks do not attest publisher identity or prevent a trusted host operator from changing the mount later.
+
 The container listens on its private network interface. It has no host-published port; customer gateway traffic should be the only path to it. The trusted gateway terminates TLS, performs SSO, authorizes users, injects the API bearer token server-to-server, and applies request quotas. Never put the token in browser code, HTML, local storage, a query string, or a client-visible response.
 
 ## Current controls and limits

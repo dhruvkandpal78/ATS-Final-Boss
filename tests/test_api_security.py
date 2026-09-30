@@ -36,6 +36,10 @@ def test_private_configuration_requires_secret_origin_and_manifest_pin(monkeypat
     with pytest.raises(ValueError, match="manifest hash"):
         SecuritySettings.from_env("0.0.0.0")
     monkeypatch.setenv("ATS_CANDIDATE_MANIFEST_SHA256", "a" * 64)
+    monkeypatch.delenv("ATS_EMBEDDING_MANIFEST_SHA256", raising=False)
+    with pytest.raises(ValueError, match="embedding manifest"):
+        SecuritySettings.from_env("0.0.0.0")
+    monkeypatch.setenv("ATS_EMBEDDING_MANIFEST_SHA256", "b" * 64)
     assert SecuritySettings.from_env("0.0.0.0").mode == "private"
     monkeypatch.setenv("ATS_ALLOWED_ORIGINS", "http://hr.example.test")
     with pytest.raises(ValueError, match="HTTPS"):
@@ -58,6 +62,16 @@ def test_duplicate_host_header_denied():
     value = headers(Host="localhost")
     value["Host"] = "attacker.example"
     assert SecuritySettings().authorize(value, "GET", 8000, "/")[0] == 400
+
+
+@pytest.mark.parametrize("value", ["localhost\t", "localhost\r", "localhost\n", "local host", "l\u00f3calhost"])
+def test_host_controls_and_non_ascii_are_rejected(value):
+    assert SecuritySettings().authorize(headers(Host=value), "GET", 8000, "/")[0] == 400
+
+
+@pytest.mark.parametrize("value", ["http://localhost:\n8000", "http://localhost:\t8000", " http://localhost:8000"])
+def test_origin_controls_are_not_silently_normalized(value):
+    assert SecuritySettings().authorize(headers(Host="localhost", Origin=value), "POST", 8000, "/analyze")[0] == 403
 
 
 def test_private_authorization_and_liveness_scope():
