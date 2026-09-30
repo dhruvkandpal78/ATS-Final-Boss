@@ -19,4 +19,8 @@ The earlier automatic approval rejection applied to pushing the unrelated local 
 
 ## Publication status
 
+### Additional private-pilot payload
+
+The clean branch now also contains security commit `20744fb` (local working branch equivalent `3eceaf8`) after initial publication commit `6479c3c`. It adds authentication, Host/Origin guards, independently pinned artifacts, bounded admission, privacy-safe events, container/CI configuration, a hashed runtime lock, tests and the corresponding architecture/change/operations records. The complete outgoing tree currently has 67 added/modified source/config/test/report/documentation files, no added/modified PDFs or model/data bundles, and the previously recorded removals. The latest full local suite passed 149 tests. This is not a verified production deployment; remaining gates are recorded in the hardening document. No further push was attempted after the approval denial.
+
 The prepared branch is committed locally but **not pushed**. Automatic approval review rejected the September 30 push to the public repository `https://github.com/dhruvkandpal78/ATS-Final-Boss`, requiring explicit approval of that exact destination and the complete reviewed payload after the earlier rejection. No alternate upload method was attempted. The pending payload is the 49 reviewed project files above plus removal of the existing personal/sample PDF and unrelated-project paths; no private local history, new PDFs, data or model bundles are included. Target branch: `codex/publish-research-repair`. Main and the existing upgrade branch are unchanged.
