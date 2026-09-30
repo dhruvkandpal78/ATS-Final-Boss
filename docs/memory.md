@@ -1,5 +1,7 @@
 # Project Memory & Status Tracker
 
+> Updated 2026-09-28: the older completion narrative below is historical. Current implementation status, verification and outstanding research gates are in [progress/STATUS.md](progress/STATUS.md) and [progress/ENHANCEMENT_2026-09-26.md](progress/ENHANCEMENT_2026-09-26.md). Do not tune thresholds against test outcomes.
+
 ## Current Status
 - **Date**: Ongoing
 - **Phase**: Phase 4 (Final Codebase Polish & Write-up Preparation)

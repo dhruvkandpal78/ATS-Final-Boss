@@ -1,30 +1,84 @@
-name: ATS Final Boss CI
+name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, upgrade/paper-and-signal, 'codex/**']
   pull_request:
-    branches: [ "main" ]
+    branches: [main, upgrade/paper-and-signal]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-
+  test-and-scan:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest
-        
-    - name: Run Tests with pytest
-      run: |
-        pytest tests/
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install locked Linux CPU runtime
+        if: matrix.python-version == '3.12'
+        run: python -m pip install --require-hashes -r requirements-runtime.lock
+      - name: Install project and security tools
+        run: |
+          python -m pip install --upgrade pip "setuptools>=83.0.0"
+          python -m pip install ".[dev,security]"
+      - name: Verify regular installation and patched build tools
+        run: |
+          python - <<'PY'
+          import json
+          from importlib.metadata import distribution, version
+          from packaging.version import Version
+          record = distribution("ats-final-boss").read_text("direct_url.json")
+          assert not json.loads(record or "{}").get("dir_info", {}).get("editable", False)
+          assert Version(version("setuptools")) >= Version("83.0.0")
+          PY
+      - name: Run deterministic tests without model downloads
+        run: python -m pytest tests/ -m "not integration"
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+      - name: Check private deployment security configuration
+        run: python scripts/check_private_deployment.py
+      - name: Audit installed dependencies
+        run: python -m pip_audit --progress-spinner off
+      - name: Audit locked runtime without skipped CPU-wheel versions
+        run: python scripts/audit_runtime.py --output runtime-audit.json
+      - name: Verify exact installed private-pilot runtime
+        if: matrix.python-version == '3.12'
+        run: python scripts/audit_runtime.py --verify-installed --output installed-runtime-audit.json
+      - name: Scan application Python for high severity findings
+        # B301 is excluded because the runtime intentionally loads trusted,
+        # locally provisioned pickle artifacts; see SECURITY.md.
+        run: python -m bandit -r src/app src/core src/inference.py -lll -s B301
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Build locked runtime image without customer data
+        run: docker build --tag ats-final-boss:ci .
+      - name: Smoke test image without network or model downloads
+        run: |
+          docker run --detach --name ats-smoke --network none --read-only --user 10001:10001 --cap-drop ALL --security-opt no-new-privileges --memory 3g --cpus 2 --pids-limit 128 --tmpfs /tmp/ats-analysis:rw,noexec,nosuid,nodev,size=128m,uid=10001,gid=10001 -e ATS_DEPLOYMENT_MODE=local -e HOST=127.0.0.1 ats-final-boss:ci
+          for attempt in $(seq 1 30); do
+            if docker exec ats-smoke python -c "import json, urllib.request; result=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)); assert result == {'ok': True}"; then break; fi
+            sleep 1
+          done
+          docker exec ats-smoke python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/'); assert response.status == 200; assert response.headers['X-Content-Type-Options'] == 'nosniff'"
+      - name: Stop isolated smoke container
+        if: always()
+        run: docker stop --time 30 ats-smoke && docker rm ats-smoke

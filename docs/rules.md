@@ -5,7 +5,7 @@
 - **Explainability**: Implement `shap` to provide word-level attribution for anomalous semantic insertions, tracing back to literature on adversarial text explanation.
 - **PDF Extraction**: Use `PyMuPDF` and `pdfplumber` strictly for structural forensics. Go beyond simple 'white text' heuristics and check for text-rendering mode 3 and Optical Content Groups (OCGs) set to OFF.
 - **Ensemble Learning**: Use `scikit-learn` Logistic Regression as a lightweight meta-classifier to combine heterogeneous anomaly scores.
-- **Thresholding**: Use simple percentiles (e.g., 95th percentile) calculated *only* on the validation split.
+- **Thresholding**: Use P95 of clean validation examples, calculated only on the source-disjoint validation split. Require both labeled classes for validation diagnostics. Reject zero/nonfinite thresholds instead of substituting arbitrary constants. Detection-threshold calibration does not establish probability calibration.
 
 ## 2. What to Avoid (Anti-Patterns & Scope Limits)
 - **NO Model-Level Defenses**: Do not attempt to fine-tune the MiniLM models, the downstream ATS screener, or implement adversarial training. This project's novelty is explicitly positioned as an **input-level, model-agnostic pre-filter**.

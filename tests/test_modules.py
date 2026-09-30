@@ -27,17 +27,20 @@ def test_module_b_zero_bbox():
     mod = PDFForensicsDetector()
     # Test internal span analysis directly to avoid needing real PDFs
     span = {"bbox": (10, 10, 10, 10), "size": 12, "color": 0}
-    rect = type('Rect', (object,), {'width': 800, 'height': 600})()
-    flags = mod._analyze_span(span, rect, set())
+    import fitz
+    rect = fitz.Rect(0, 0, 800, 600)
+    flags = mod._analyze_trace(span, rect, [], [], set())
     assert flags["zero_sized_bbox"] is True
 
 def test_module_b_out_of_bounds():
     mod = PDFForensicsDetector()
     span = {"bbox": (-10, -10, -5, -5), "size": 12, "color": 0}
-    rect = type('Rect', (object,), {'width': 800, 'height': 600})()
-    flags = mod._analyze_span(span, rect, set())
+    import fitz
+    rect = fitz.Rect(0, 0, 800, 600)
+    flags = mod._analyze_trace(span, rect, [], [], set())
     assert flags["out_of_bounds"] is True
 
+@pytest.mark.integration
 def test_module_c_clean():
     mod = SemanticCoherenceScorer()
     mod.variance_threshold = 0.05
@@ -45,6 +48,7 @@ def test_module_c_clean():
     res = mod.predict(text)
     assert res['is_flagged'] is False
 
+@pytest.mark.integration
 def test_module_c_injection():
     mod = SemanticCoherenceScorer()
     mod.variance_threshold = 0.05

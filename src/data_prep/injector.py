@@ -318,6 +318,7 @@ def run_injection_pipeline():
             adversarial_rows.append(
                 {
                     "resume_id": f"ADV_{attack_type}_{str(i).zfill(4)}",
+                    "source_id": row["resume_id"],
                     "category": row["category"],
                     "original_text": original_text,
                     "poisoned_text": poisoned_text,
@@ -339,11 +340,12 @@ def run_injection_pipeline():
     # Build the combined full dataset (clean + adversarial)
     # ---------------------------------------------------------------------------
     df_clean_labeled = df_clean[["resume_id", "category", "clean_text", "word_count"]].copy()
+    df_clean_labeled["source_id"] = df_clean_labeled["resume_id"]
     df_clean_labeled = df_clean_labeled.rename(columns={"clean_text": "text"})
     df_clean_labeled["attack_type"] = "CLEAN"
     df_clean_labeled["is_adversarial"] = 0
 
-    df_adv_labeled = df_adversarial[["resume_id", "category", "poisoned_text", "word_count", "attack_type"]].copy()
+    df_adv_labeled = df_adversarial[["resume_id", "source_id", "category", "poisoned_text", "word_count", "attack_type"]].copy()
     df_adv_labeled = df_adv_labeled.rename(columns={"poisoned_text": "text"})
     df_adv_labeled["is_adversarial"] = 1
 

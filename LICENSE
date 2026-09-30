@@ -1,21 +1,46 @@
-MIT License
+ATS FINAL BOSS - RIGHTS AND PERMISSIONS NOTICE
+Effective for newly added original material: 26 September 2026
 
-Copyright (c) 2026 Dhruv Kandpal
+Copyright (c) 2026 Dhruv Kandpal. All rights reserved to the extent of
+copyrightable rights held by the named owner, subject to the exceptions below.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. NEW ORIGINAL MATERIAL
+For original project code, interface assets, and documentation first added in
+this enhancement after baseline commit
+a0c2982dfdf2358c39b415c237eb4338eeb98de3, and not previously licensed to you under
+other terms, no permission is granted by this notice to reproduce, modify,
+redistribute, sell, sublicense, or use that material in another product.
+Obtain the copyright owner's prior written permission for those uses.
+You may view the project and interact with an authorized demonstration for
+personal evaluation. This is not an open-source license.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. PREVIOUSLY MIT-LICENSED MATERIAL
+Material previously made available under the MIT License remains subject to
+that license for recipients entitled to it. This notice does not revoke or
+restrict permissions already granted under the MIT License. The prior notice
+is preserved in LICENSE-MIT-LEGACY.txt and repository history. Modified files
+may contain both legacy MIT material and new reserved-rights additions; this
+notice does not impose new restrictions on the legacy material itself.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. THIRD-PARTY MATERIAL AND LEGAL EXCEPTIONS
+Libraries, model weights, datasets, sample documents, reference images, and
+other third-party material remain owned by their respective rightsholders and
+subject to their own terms. They are not claimed as exclusive project property.
+Nothing here overrides applicable statutory exceptions, rights granted by
+hosting-platform terms, or a separately agreed written license. Copyright does
+not provide exclusive ownership of general ideas, methods, or functionality.
+
+4. ATTRIBUTION AND ENFORCEMENT
+Do not falsely represent protected original project material as your own work,
+or remove legally required attribution from copies you are entitled to make.
+The owner reserves the right to pursue available legal remedies for actual
+infringement. This notice does not itself establish liability, impose a fine,
+or guarantee that any particular use is infringing or enforceable.
+
+5. NO WARRANTY
+The project is provided AS IS, without warranties to the extent permitted by
+law. It is a research tool and must not be treated as an automated hiring
+judgment or a guarantee of document authenticity.
+
+For permission requests, contact the repository owner through
+https://github.com/dhruvkandpal78 . Additional context: docs/OWNERSHIP.md.

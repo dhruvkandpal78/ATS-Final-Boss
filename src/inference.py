@@ -1,147 +1,130 @@
-"""
-inference.py — Real-Time Resume Screening Demo
-==============================================
-Provides a command-line interface (CLI) to run a single resume (text or PDF)
-through the entire detection pipeline (Modules A, B, C + Meta-Classifier).
-Perfect for live Capstone demonstrations.
+"""CLI adapter for the canonical analysis service.
+
+Usage: ``python -m src.inference resume.txt --json``. The CLI and HTTP API use
+the same service result; neither performs its own scaling or policy overrides.
 """
 
-import sys
-import os
+from __future__ import annotations
+
 import argparse
-import pickle
+import json
 import logging
-from termcolor import colored
+from pathlib import Path
+import pickle
+import hashlib
+import sys
 
-# Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+logging.basicConfig(level=logging.ERROR)
 
-from src.modules.module_a import KeywordDensityDetector
-from src.modules.module_b import PDFForensicsDetector
-from src.modules.module_c import SemanticCoherenceScorer
-from src.evaluation.evaluate import simulate_module_b_proxy
+# Support both ``python -m src.inference`` and the documented direct script path.
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-logging.basicConfig(level=logging.ERROR) # Suppress debug logs for clean CLI output
 
-def print_banner():
-    print(colored("=" * 60, "cyan", attrs=["bold"]))
-    print(colored("  AI RESUME SCREENING & ADVERSARIAL DETECTION SYSTEM  ", "cyan", attrs=["bold"]))
-    print(colored("=" * 60, "cyan", attrs=["bold"]))
+def load_pipeline(models_dir, expected_manifest_sha256=None, *, embedding_dir=None,
+                  expected_embedding_manifest_sha256=None):
+    """Load trusted local legacy artifacts and configured detectors.
 
-def load_pipeline(models_dir):
-    try:
-        with open(os.path.join(models_dir, "meta_classifier.pkl"), "rb") as f:
-            meta_clf = pickle.load(f)
-        with open(os.path.join(models_dir, "scaler.pkl"), "rb") as f:
-            scaler = pickle.load(f)
-    except FileNotFoundError:
-        print(colored("[ERROR] Trained models not found. Run evaluate.py first.", "red"))
-        sys.exit(1)
-        
-    import json
-    config_dir = os.path.join(os.path.dirname(__file__), "..", "configs")
-    try:
-        with open(os.path.join(config_dir, "thresholds.json"), "r") as f:
-            thresholds = json.load(f)
-        with open(os.path.join(config_dir, "model_config.json"), "r") as f:
-            model_cfg = json.load(f)
-    except FileNotFoundError:
-        print(colored("[ERROR] Config files missing. Run evaluate.py to generate them.", "red"))
-        sys.exit(1)
+    The caller chooses the artifact directory. Uploaded pickle files must never
+    be passed here. Missing artifacts raise a normal exception for adapters to
+    report without terminating a process during import or a request.
+    """
+    model_dir = Path(models_dir)
+    candidate = (model_dir / "candidate_manifest.json").is_file()
+    if expected_manifest_sha256 is not None and not candidate:
+        raise ValueError("Pinned deployment requires a candidate bundle; legacy pickle artifacts are unsupported")
+    manifest = None
+    if candidate:
+        from src.core.artifacts import verify_candidate
+        manifest = verify_candidate(model_dir, expected_manifest_sha256)
+    embedding_manifest = None
+    if embedding_dir is not None or expected_embedding_manifest_sha256 is not None:
+        if embedding_dir is None or expected_embedding_manifest_sha256 is None:
+            raise ValueError("A local embedding export and its independent pin are both required")
+        from src.core.embedding_artifacts import verify_embedding
+        embedding_manifest = verify_embedding(embedding_dir, expected_embedding_manifest_sha256)
+    def artifact(name):
+        value = (model_dir / name).read_bytes()
+        if manifest and hashlib.sha256(value).hexdigest() != manifest["artifacts"][name]:
+            raise ValueError("Candidate artifact changed before use: " + name)
+        return value
+    # Deserialize the exact verified bytes, avoiding a reopen race after hashing.
+    # Pickle remains code execution: only operator-approved immutable bundles.
+    meta_clf = pickle.loads(artifact("meta_classifier.pkl"))
+    scaler = pickle.loads(artifact("scaler.pkl"))
+
+    config_dir = model_dir if candidate else Path(__file__).resolve().parents[1] / "configs"
+    thresholds = json.loads(artifact("thresholds.json") if candidate else
+                            (config_dir / "thresholds.json").read_bytes())
+    model_cfg = json.loads(artifact("model_config.json") if candidate else
+                           (config_dir / "model_config.json").read_bytes())
+    embedding_name = model_cfg.get("embedding_model", "all-MiniLM-L6-v2")
+    if embedding_manifest and embedding_manifest["model_id"] != embedding_name:
+        raise ValueError("Embedding export does not match the candidate model identity")
+
+    from src.modules.module_a import KeywordDensityDetector
+    from src.modules.module_b import PDFForensicsDetector
+    from src.modules.module_c import SemanticCoherenceScorer
 
     mod_a = KeywordDensityDetector()
-    mod_a.threshold = thresholds.get("mod_a_threshold", 0.08)
-    
-    mod_c = SemanticCoherenceScorer(model_name=model_cfg.get("embedding_model", "all-MiniLM-L6-v2"), window_size=2)
-    mod_c.variance_threshold = thresholds.get("mod_c_variance_threshold", 0.015)
-    
+    mod_a.threshold = thresholds["mod_a_threshold"]
+    mod_c = SemanticCoherenceScorer(
+        model_name=str(Path(embedding_dir).resolve()) if embedding_manifest else embedding_name,
+        window_size=2,
+    )
+    mod_c.variance_threshold = thresholds["mod_c_variance_threshold"]
     mod_b = PDFForensicsDetector()
-    
     return meta_clf, scaler, mod_a, mod_b, mod_c
 
-def run_inference(file_path: str):
-    print_banner()
-    print(colored(f"\nAnalyzing File: {os.path.basename(file_path)}", "yellow"))
-    print("-" * 60)
-    
-    models_dir = os.path.join(os.path.dirname(__file__), "..", "results", "models")
-    meta_clf, scaler, mod_a, mod_b, mod_c = load_pipeline(models_dir)
-    
-    is_pdf = file_path.lower().endswith(".pdf")
-    text_content = ""
-    
-    # 1. Module B (Structural Forensics)
-    print(colored("[Module B] Executing Deep Structural Forensics...", "blue"))
-    if is_pdf:
-        b_res = mod_b.analyze_pdf(file_path)
-        b_score = b_res.get('anomaly_score', 0.0)
-        
-        # Actually extract text from the PDF
-        import fitz
-        try:
-            doc = fitz.open(file_path)
-            text_content = " ".join(page.get_text() for page in doc)
-            doc.close()
-        except Exception as e:
-            print(colored(f"[ERROR] Failed to extract text from PDF: {e}", "red"))
-            text_content = ""
-            
-        print(colored("  -> PDF structural analysis complete.", "green"))
-    else:
-        # Load text file
-        with open(file_path, "r", encoding="utf-8") as f:
-            text_content = f.read()
-        b_score = simulate_module_b_proxy(text_content)
-        print(colored("  -> Text file detected. Running CSV structural simulation...", "green"))
-        
-    print(f"  -> Structural Anomaly Score: {b_score:.4f}")
 
-    if not text_content.strip():
-        print(colored("[WARNING] No text extracted. Using empty string.", "yellow"))
-        text_content = " "
-        
-    # 2. Module A (Keyword Density)
-    print(colored("\n[Module A] Executing Statistical Density Analysis...", "blue"))
-    a_res = mod_a.predict(text_content)
-    a_score = a_res['anomaly_score']
-    print(f"  -> Keyword Density Anomaly Score: {a_score:.4f}")
-    
-    # 3. Module C (Semantic Coherence)
-    print(colored("\n[Module C] Executing Semantic Coherence Scoring (MiniLM-L6-v2)...", "blue"))
-    c_res = mod_c.predict(text_content)
-    c_score = c_res['anomaly_score']
-    print(f"  -> Semantic Variance Score: {c_score:.4f}")
-    
-    # 4. Meta-Classifier
-    print(colored("\n[Meta-Classifier] Aggregating multi-modal signals...", "blue"))
-    import pandas as pd
-    features = pd.DataFrame([{
-        "Module_A_Score": a_score,
-        "Module_B_Score": b_score,
-        "Module_C_Score": c_score
-    }])
-    
-    is_attack = bool(meta_clf.predict(features)[0])
-    attack_proba = float(meta_clf.predict_proba(features)[0][1])
-    
-    print("-" * 60)
-    if is_attack:
-        print(colored(f"[!] ALERT: ADVERSARIAL ATTACK DETECTED [!]", "red", attrs=["bold"]))
-        print(colored(f"Confidence: {attack_proba * 100:.2f}%", "red"))
-        print(colored("Reason: This resume exhibits synthetic keyword stuffing or prompt injection traits.", "red"))
+def analyze_file(file_path: str, service=None):
+    """Return the same versioned dictionary the API returns for this input."""
+    from src.core.analysis_service import AnalysisService
+
+    path = Path(file_path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Input file not found: {path}")
+    if service is None:
+        service = AnalysisService(str(Path(__file__).resolve().parents[1] / "results" / "models"))
+    if path.suffix.lower() == ".pdf":
+        return service.analyze_pdf(str(path))
+    if path.suffix.lower() == ".txt":
+        return service.analyze_text(path.read_text(encoding="utf-8"))
+    raise ValueError("Supported file types are .txt and .pdf")
+
+
+def run_inference(file_path: str, service=None, json_output: bool = False):
+    result = analyze_file(file_path, service=service)
+    if json_output:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
-        print(colored(f"[OK] PASSED: LEGITIMATE RESUME [OK]", "green", attrs=["bold"]))
-        print(colored(f"Adversarial Probability: {attack_proba * 100:.2f}%", "green"))
-        
-    print(colored("=" * 60, "cyan", attrs=["bold"]))
+        print(f"Analysis: {Path(file_path).name}")
+        print(f"Status: {result['status']}")
+        print(f"Decision: {result['decision'].replace('_', ' ')}")
+        if result["score"] is None:
+            print("Model score: Not available")
+        else:
+            print(f"Experimental model score: {result['score']:.4f} (uncalibrated)")
+        for key, module in result["modules"].items():
+            value = "Not available" if module["score"] is None else f"{module['score']:.4f}"
+            print(f"Module {key.upper()}: {module['status']} | {value}")
+        for limitation in result["coverage"]["limitations"]:
+            print(f"Limitation: {limitation}")
+    return result
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Inspect document-manipulation signals in a resume.")
+    parser.add_argument("file", help="Path to a .txt or .pdf resume")
+    parser.add_argument("--json", action="store_true", help="Emit the versioned JSON result")
+    args = parser.parse_args(argv)
+    try:
+        run_inference(args.file, json_output=args.json)
+    except (FileNotFoundError, UnicodeError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run adversarial detection on a single resume.")
-    parser.add_argument("file", help="Path to the resume file (.txt or .pdf) to analyze.")
-    args = parser.parse_args()
-    
-    if not os.path.exists(args.file):
-        print(colored(f"Error: File '{args.file}' not found.", "red"))
-        sys.exit(1)
-        
-    run_inference(args.file)
+    raise SystemExit(main())

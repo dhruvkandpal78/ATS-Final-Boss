@@ -6,6 +6,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from src.inference import load_pipeline
 
+@pytest.mark.integration
 def test_pipeline_loading():
     # Just verify that the pipeline can load without crashing
     models_dir = os.path.join(os.path.dirname(__file__), "..", "results", "models")

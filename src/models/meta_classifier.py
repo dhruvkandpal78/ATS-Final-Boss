@@ -1,12 +1,10 @@
 """
 meta_classifier.py — Advanced Ensemble Combined Scoring Layer
 ==============================================================
-A high-performance meta-classifier that combines heterogeneous anomaly
-scores (Statistical, Structural, Semantic) from Modules A, B, and C
-into a single calibrated decision using a Stacking Ensemble of:
-    1. XGBoost (Gradient Boosting) — captures non-linear feature interactions
-    2. Random Forest — robust bagging for variance reduction
-    3. Logistic Regression — stable linear baseline
+A meta-classifier that combines heterogeneous anomaly scores (Statistical,
+Structural, Semantic) from Modules A, B, and C using a stacking ensemble.
+The default base estimators are Random Forest and Logistic Regression.
+XGBoost is optional and must be enabled explicitly.
 
 The final prediction is made by a Logistic Regression meta-learner
 that stacks the outputs of all three base classifiers (Stacking Generalization).
@@ -20,32 +18,39 @@ import os
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import cross_val_score
-
-try:
-    from xgboost import XGBClassifier
-    HAS_XGBOOST = True
-except ImportError:
-    HAS_XGBOOST = False
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 class EnsembleMetaClassifier:
-    def __init__(self):
+    def __init__(self, use_xgboost: bool = False, n_jobs: int = 1):
+        """Create the lightweight default ensemble.
+
+        XGBoost is optional and loaded only when explicitly enabled. Parallelism
+        defaults to one worker to keep local inference and tests predictable.
+        """
+        if not isinstance(n_jobs, int) or n_jobs < 1:
+            raise ValueError("n_jobs must be a positive integer.")
         self.model = None
         self.scaler = StandardScaler()
+        self.use_xgboost = bool(use_xgboost)
+        self.n_jobs = n_jobs
 
-    def _build_stacking_clf(self):
+    def _build_stacking_clf(self, cv: int):
         """
-        Builds a StackingClassifier with XGBoost + RandomForest as base
-        estimators and LogisticRegression as the final meta-learner.
-        Falls back to RF + LR stacking if XGBoost is not installed.
+        Build a stacking classifier with an inner CV fold count sized for the
+        available minority class. XGBoost is included only by explicit request.
         """
         estimators = []
 
-        if HAS_XGBOOST:
+        if self.use_xgboost:
+            try:
+                from xgboost import XGBClassifier
+            except ImportError as exc:
+                raise ImportError(
+                    "XGBoost was requested but is not installed. Install the optional models extra."
+                ) from exc
             xgb = XGBClassifier(
                 n_estimators=200,
                 max_depth=4,
@@ -56,12 +61,11 @@ class EnsembleMetaClassifier:
                 eval_metric='logloss',
                 use_label_encoder=False,
                 random_state=42,
+                n_jobs=self.n_jobs,
                 verbosity=0
             )
             estimators.append(('xgb', xgb))
             logger.info("    -> XGBoost loaded.")
-        else:
-            logger.warning("    -> XGBoost not found. Using RF + LR only.")
 
         rf = RandomForestClassifier(
             n_estimators=300,
@@ -70,7 +74,7 @@ class EnsembleMetaClassifier:
             min_samples_leaf=2,
             class_weight='balanced',
             random_state=42,
-            n_jobs=-1
+            n_jobs=self.n_jobs
         )
         estimators.append(('rf', rf))
         logger.info("    -> Random Forest loaded.")
@@ -94,59 +98,81 @@ class EnsembleMetaClassifier:
         stack = StackingClassifier(
             estimators=estimators,
             final_estimator=meta_learner,
-            cv=5,                   # 5-fold internal cross-validation
+            cv=cv,
             stack_method='predict_proba',
             passthrough=True,       # also pass raw features to meta-learner
-            n_jobs=-1
+            n_jobs=self.n_jobs
         )
         return stack
 
-    def train(self, X_val: pd.DataFrame, y_val: pd.Series):
+    def train(self, X_train: pd.DataFrame, y_train: pd.Series):
         """
-        Trains the Stacking Ensemble meta-classifier on the validation
-        split's module scores. Uses internal 5-fold CV to prevent leakage.
+        Fit the ensemble on the supplied training rows.
+
+        Stacking uses stratified out-of-fold predictions internally. No outer
+        cross-validation score is reported here: callers should evaluate on a
+        separately held-out validation split with the complete preprocessing
+        pipeline to avoid scaler leakage and misleading nested-CV claims.
         """
-        logger.info(f"Training Advanced Stacking Meta-Classifier on {len(X_val)} samples...")
+        if not isinstance(X_train, pd.DataFrame):
+            X_train = pd.DataFrame(X_train)
+        if X_train.empty or X_train.shape[1] == 0:
+            raise ValueError("Training features must contain at least one row and one column.")
+        if X_train.isna().any().any():
+            raise ValueError("Training features must not contain missing values.")
+        try:
+            feature_values = X_train.to_numpy(dtype=float)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Training features must be numeric.") from exc
+        if not np.isfinite(feature_values).all():
+            raise ValueError("Training features must contain only finite values.")
+
+        y_array = np.asarray(y_train)
+        if y_array.ndim != 1 or len(y_array) != len(X_train):
+            raise ValueError("Training labels must be one-dimensional and match the feature row count.")
+        if pd.isna(y_array).any() or not np.isin(y_array, [0, 1]).all():
+            raise ValueError("Training labels must contain only binary values 0 and 1.")
+        classes, counts = np.unique(y_array, return_counts=True)
+        if len(classes) != 2:
+            raise ValueError("Training requires examples from both classes 0 and 1.")
+        minority_count = int(counts.min())
+        if minority_count < 2:
+            raise ValueError("Training requires at least two examples from each class for stacking CV.")
+
+        inner_cv = min(5, minority_count)
+        logger.info(
+            "Training stacking meta-classifier on %d rows with %d-fold internal CV...",
+            len(X_train), inner_cv,
+        )
         logger.info("Building ensemble stack...")
 
-        # Scale features
-        X_scaled = self.scaler.fit_transform(X_val)
+        # The scaler is fitted only on the rows supplied for model training.
+        X_scaled = self.scaler.fit_transform(X_train)
 
-        # Handle class imbalance for XGBoost
-        if HAS_XGBOOST:
-            neg_count = np.sum(y_val == 0)
-            pos_count = np.sum(y_val == 1)
-            if pos_count > 0:
-                scale_pos = neg_count / pos_count
-            else:
-                scale_pos = 1.0
-            logger.info(f"    -> Class balance: neg={neg_count}, pos={pos_count}, scale_pos_weight={scale_pos:.2f}")
+        stack = self._build_stacking_clf(cv=inner_cv)
 
-        stack = self._build_stacking_clf()
-
-        # Set XGBoost scale_pos_weight dynamically
-        if HAS_XGBOOST:
+        # Set XGBoost scale_pos_weight dynamically when explicitly enabled.
+        if self.use_xgboost:
+            neg_count = int(np.sum(y_array == 0))
+            pos_count = int(np.sum(y_array == 1))
+            scale_pos = neg_count / pos_count
             stack.set_params(xgb__scale_pos_weight=scale_pos)
 
-        # Train
-        stack.fit(X_scaled, y_val)
+        stack.fit(X_scaled, y_array)
         self.model = stack
-
-        # Report cross-validated performance
-        cv_scores = cross_val_score(stack, X_scaled, y_val, cv=3, scoring='f1')
-        logger.info(f"Training complete. 3-Fold CV F1: {cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})")
+        logger.info("Training complete. No held-out performance metric was computed.")
 
         # Log feature importance from XGBoost if available
-        if HAS_XGBOOST:
+        if self.use_xgboost:
             xgb_model = stack.named_estimators_['xgb']
-            feature_names = X_val.columns.tolist()
+            feature_names = X_train.columns.tolist()
             importances = xgb_model.feature_importances_
             importance_dict = dict(zip(feature_names, importances))
             logger.info(f"XGBoost Feature Importances: {importance_dict}")
 
         # Log RF feature importance
         rf_model = stack.named_estimators_['rf']
-        feature_names = X_val.columns.tolist()
+        feature_names = X_train.columns.tolist()
         rf_importances = rf_model.feature_importances_
         rf_importance_dict = dict(zip(feature_names, rf_importances))
         logger.info(f"Random Forest Feature Importances: {rf_importance_dict}")

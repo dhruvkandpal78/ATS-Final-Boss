@@ -1,0 +1,63 @@
+services:
+  ats-review:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: ats-final-boss:private-pilot
+    container_name: ats-review
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    read_only: true
+    user: "10001:10001"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 3g
+    cpus: 2.0
+    expose:
+      - "8000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8000"
+      ATS_DEPLOYMENT_MODE: private
+      ATS_API_TOKEN_FILE: /run/secrets/ats_api_token
+      ATS_ALLOWED_HOSTS: ${ATS_ALLOWED_HOSTS:?Set the private pilot DNS host}
+      ATS_ALLOWED_ORIGINS: ${ATS_ALLOWED_ORIGINS:?Set the exact HTTPS browser origin}
+      ATS_MODELS_DIR: /models
+      ATS_CANDIDATE_MANIFEST_SHA256: ${ATS_CANDIDATE_MANIFEST_SHA256:?Pin candidate_manifest.json SHA-256}
+      ATS_EMBEDDING_DIR: /models/embedding
+      ATS_EMBEDDING_MANIFEST_SHA256: ${ATS_EMBEDDING_MANIFEST_SHA256:?Pin embedding_manifest.json SHA-256}
+      ATS_WORKER_MEMORY_MIB: "16384"
+      ATS_REQUESTS_PER_MINUTE: "20"
+      HF_HOME: /models/hf-cache
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      TMPDIR: /tmp/ats-analysis
+    secrets:
+      - ats_api_token
+    volumes:
+      - type: bind
+        source: ${ATS_MODELS_PATH:?Set an absolute path to provisioned model artifacts}
+        target: /models
+        read_only: true
+    tmpfs:
+      - /tmp/ats-analysis:rw,noexec,nosuid,nodev,size=128m,mode=700,uid=10001,gid=10001
+    networks:
+      - pilot-private
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os, urllib.request; req=urllib.request.Request('http://127.0.0.1:8000/health/live', headers={'Host': os.environ['ATS_ALLOWED_HOSTS'].split(',')[0].strip()}); urllib.request.urlopen(req, timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+secrets:
+  ats_api_token:
+    file: ${ATS_API_TOKEN_FILE:?Set the path to a protected token file}
+
+networks:
+  pilot-private:
+    name: ats-pilot-private
+    internal: true
