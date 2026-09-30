@@ -1,13 +1,16 @@
 # Issue Ledger
 
+- [x] Regular wheel packages UI/configs/notices; live installed-runtime check now runs outside the checkout in CI.
+
 - [x] Private HTTP adapter uses Uvicorn/Starlette, bounded requests and fail-closed startup warm-up.
 - [x] Worker stop admission, cancellation and spawn-failure cleanup coordinated under lifecycle lock.
 - [x] Deployment configuration weakening is detected by mutation-tested offline checks; this does not verify runtime isolation.
 
 - [x] Local network binding, Host/Origin validation and private-route authentication implemented with regression coverage.
 - [x] Private model loading requires independently pinned manifest and verified artifact bytes; executable pickle remains trusted-only.
-- [ ] Linux container/resource-limit execution, gateway integration, exact locked installation and external penetration testing require release evidence.
-- [ ] Source-only GitHub publication remains blocked by managed approval review; no push occurred.
+- [x] Locked Linux CPU installation and non-root/offline container smoke verified by hosted CI; this smoke does not load a real approved model or establish containment under attack.
+- [ ] Real model/resource stress containment, customer gateway integration and external penetration testing still require release evidence.
+- [x] Reviewed source-only publication merged in PR #2; all Python/container CI checks passed. No new personal PDFs were included. Older public Git history is not erased.
 
 Updated 2026-09-30. Evidence: [enhancement record](ENHANCEMENT_2026-09-26.md), [research repair](RESEARCH_REPAIR_2026-09-30.md), and [controlled PDF benchmark](CONTROLLED_PDF_BENCHMARK_2026-09-30.md). Checked items mean the named implementation defect is addressed, not that every research release gate is complete.
 

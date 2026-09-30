@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+September 30 installed runtime: UI/assets/configs now packaged; public notices resolve in regular installs; CLI/API/private preflight share the operator model directory. Live wheel smoke outside checkout passed; offline suite 262 passed. CI adds the same installed-runtime check. See [portable runtime record](PORTABLE_RUNTIME_2026-09-30.md).
+
 September 30 merge resolution: current main incorporated into the publication branch, preserving the enhanced runtime/API tests and existing synthetic fixtures. ReportLab requirements addition retained. Local offline verification and hosted mergeability/CI recorded in [merge resolution](MERGE_RESOLUTION_2026-09-30.md).
 
 September 30 CI installation repair: regular wheel installation, explicit non-editable metadata check and setuptools>=83.0.0 build floor added. Local packaging and audit unit checks passed. Hosted run 36708469548 passed all three jobs for implementation commit 672dd85. See [CI installation record](CI_INSTALL_REPAIR_2026-09-30.md).

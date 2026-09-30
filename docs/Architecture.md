@@ -76,3 +76,7 @@ The maintained frontend is the vanilla application in `src/app/`; the older `web
 Policy 1.0's first controlled holdout had 13/24 no-added-attack false positives. Policy 2.0's fresh holdout had 0/200 such false positives and detected 100/100 scripted attacks across 100 source groups. Samples differ, so this is not a paired improvement estimate. Natural labels, near-duplicate/person-level independence, new attack families and calibrated probabilities remain unverified. See [precision research record](progress/PRECISION_POLICY_2026-09-30.md).
 
 Personal resumes, downloaded datasets, local candidate weights and unrelated personal projects are excluded from new publication changes. Synthetic test fixtures remain part of the test suite. Existing GitHub history may still contain PDFs published in earlier commits; removing current tracked paths does not rewrite that history.
+
+## Installed package resource contract
+
+Regular wheels include src/app/index.html, maintained CSS/JavaScript assets, the existing configs JSON package and unchanged license notices in dist-info/licenses. Adapters resolve the same resources in checkouts and installed packages; public notice names are allowlisted. A shared runtime path helper resolves ATS_MODELS_DIR for CLI, worker and private startup without changing candidate integrity or detector policy. CI launches the installed ASGI service outside the checkout and asserts no model process is spawned by the static smoke. This verifies packaging and lifecycle, not approved-model compatibility or physical-memory containment.
