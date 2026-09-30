@@ -18,7 +18,7 @@ python scripts/doctor.py
 python src/app/server.py
 ```
 
-Open http://127.0.0.1:8000. The interface has a light theme inspired by the supplied white/lavender reference and a persistent charcoal/orange dark theme. The maintained frontend is `src/app/index.html` and `src/app/assets/`; no frontend build step is required. Existing `web/dist` files are historical and are not served.
+Open http://127.0.0.1:8000. The interface has a light theme inspired by the supplied white/lavender reference and a persistent charcoal/orange dark theme. The maintained frontend is `src/app/index.html` and `src/app/assets/`; no frontend build step is required.
 
 The private deployment image uses `python -m src.app.asgi`, a single-process Uvicorn/Starlette adapter with bounded inference, admission controls and private startup warm-up. The standard-library server above remains the lightweight local demo. Run `python scripts/check_private_deployment.py` before reviewing a private Compose deployment. The gateway example delegates identity verification to the customer's SSO authorizer; it is not an installed SSO integration.
 
@@ -46,7 +46,7 @@ Findings expose detector, category, uncertainty and available source anchors. Te
 
 ## Local processing limits
 
-The local server binds to loopback by default. It accepts JSON text or a base64 PDF (`POST /analyze`), with limits of 5 MiB raw PDF, 7 MiB encoded request, 20 PDF pages, and 100,000 input characters. Semantic scoring is limited to 20,000 characters with explicit partial coverage. One isolated model worker runs at a time; saturation returns 429, and a 90-second deadline terminates and resets the worker. Temporary uploads are deleted on normal completion, errors, and worker timeout. Browser cancellation stops waiting; server work ends on completion or deadline.
+The local server binds to loopback by default. It accepts JSON text or a base64 PDF (`POST /analyze`), with limits of 5 MiB raw PDF, 7 MiB encoded request, 20 PDF pages, and 100,000 input characters. Semantic scoring is limited to 20,000 characters with explicit partial coverage. One isolated model worker runs at a time; saturation returns 429, and a 90-second deadline terminates and resets the worker. Repeated attempted worker crashes, timeouts or internal failures trigger a 5-to-60-second capped recovery delay with Retry-After guidance; cooldown requests do not initiate another analysis attempt. Successful validated replies reset recovery. Temporary uploads are deleted on normal completion, errors, and worker timeout. Browser cancellation stops waiting; server work ends on completion or deadline.
 
 Only the theme preference persists in browser storage. The frontend does not store resume history. JSON export omits submitted source text; findings may still contain document-derived information. Lab demonstrations are explicitly unavailable until validated. The stdlib server is a local demo, not a public production deployment.
 

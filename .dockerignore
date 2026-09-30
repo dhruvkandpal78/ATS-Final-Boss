@@ -27,3 +27,11 @@ PROJECTS FOR CV
 *.token
 *.secret
 deploy/secrets
+.agents
+.codex
+.claude
+.cursor
+.aws
+skills-lock.json
+web
+docs/archive

@@ -1,5 +1,11 @@
 # ATS Final Boss - Development Journey & Iterations
 
+Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
+
+## 2026-09-30: bounded worker recovery and public tree cleanup
+
+Added capped recovery backoff, dynamic retry guidance and content-free recovery health. Removed unused/broken developer scripts, assistant launch configuration and the unserved generated frontend; archived historical planning records and strengthened publication/build exclusions. Research evidence and Git history remain intact. See [recovery and cleanup record](docs/progress/RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).
+
 ## 2026-09-30: data-only worker boundary and explicit PDF visibility coverage
 
 Replaced pickle-based worker messages with bounded, versioned JSON and whole-frame deadline handling. Added correlated response checks, generic child-error mapping, a bounded disabled-route response fix and explicit API visibility limits without changing policy scores or thresholds. Validation and remaining containment/research gaps: [worker boundary record](docs/progress/WORKER_BOUNDARY_2026-09-30.md).

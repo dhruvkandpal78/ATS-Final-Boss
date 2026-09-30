@@ -7,9 +7,10 @@ MAX_JSON_DEPTH = 64
 
 
 class HTTPContractError(ValueError):
-    def __init__(self, status, message):
+    def __init__(self, status, message, *, retry_after=None):
         super().__init__(message)
         self.status = status
+        self.retry_after = retry_after
 
 
 def decode_json_body(raw):

@@ -33,6 +33,7 @@ from src.app.worker_protocol import (
     PROTOCOL_VERSION, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ProtocolError,
     encode_message, receive_message, validate_request, validate_response,
 )
+from src.app.worker_recovery import WorkerRecovery
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -191,6 +192,10 @@ class ModelWorker:
         self.process = None
         self.connection = None
         self.ready = False
+        self.recovery = WorkerRecovery(lambda: monotonic())
+
+    def recovery_snapshot(self):
+        return self.recovery.snapshot()
 
     def _close_locked(self):
         """Dispose of the worker while the request lock is held."""
@@ -242,9 +247,15 @@ class ModelWorker:
             raise APIError(503, "Analysis service is stopping.")
         if not self.lock.acquire(blocking=False):
             raise APIError(429, "Another document is being analyzed. Retry shortly.")
+        attempted = False
         try:
             if self.stopping.is_set():
                 raise APIError(503, "Analysis service is stopping.")
+            retry_after = self.recovery.remaining()
+            if retry_after:
+                raise APIError(503, "Analysis is temporarily unavailable while the worker recovers. Retry shortly.",
+                               retry_after=retry_after)
+            attempted = True
             if self.process is None or not self.process.is_alive():
                 self._close_locked()
                 context = mp.get_context("spawn")
@@ -327,12 +338,21 @@ class ModelWorker:
                     self.ready = status == 200
                     if status != 200:
                         raise APIError(status, result["error"])
+                    self.recovery.succeeded()
                     return result
                 except (EOFError, OSError, ProtocolError) as exc:
                     exitcode = self.process.exitcode if self.process else None
                     logger.error(json.dumps({"event": "worker_crash", "error_type": type(exc).__name__, "exitcode": exitcode}))
                     self._close_locked()
                     raise APIError(503, "The analysis worker stopped. Please retry.") from None
+        except APIError as exc:
+            if attempted and exc.status in (503, 504) and not self.stopping.is_set():
+                delay = self.recovery.failed()
+                self._close_locked()
+                exc.retry_after = delay
+                logger.warning(json.dumps({"event": "worker_recovery_backoff", "retry_after_seconds": delay,
+                                           "consecutive_failures": self.recovery.consecutive_failures}))
+            raise
         finally:
             self.lock.release()
 
@@ -431,7 +451,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def _send(self, code, body, ctype="application/json; charset=utf-8"):
+    def _send(self, code, body, ctype="application/json; charset=utf-8", *, retry_after=None):
         if isinstance(body, dict):
             body = json.dumps(body, allow_nan=False)
         data = body.encode("utf-8") if isinstance(body, str) else body
@@ -445,8 +465,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(name, value)
         if code == 401:
             self.send_header("WWW-Authenticate", 'Bearer realm="resume-inspection"')
-        if code in (429, 503):
-            self.send_header("Retry-After", "5")
+        if retry_after is not None or code in (429, 503):
+            self.send_header("Retry-After", str(retry_after if retry_after is not None else 5))
         self.end_headers()
         route = urlsplit(getattr(self, "path", "")).path
         known_routes = {"/", "/analyze", "/health", "/health/live", "/health/ready",
@@ -478,7 +498,8 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/health/live":
             self._send(200, {"ok": True})
         elif path == "/health":
-            self._send(200, {"ok": True, "model_ready": WORKER.ready, "busy": WORKER.lock.locked()})
+            self._send(200, {"ok": True, "model_ready": WORKER.ready, "busy": WORKER.lock.locked(),
+                             "worker_recovery": WORKER.recovery_snapshot()})
         elif path == "/health/ready":
             ready = (not WORKER.stopping.is_set() and WORKER.ready and
                      WORKER.process is not None and WORKER.process.is_alive())
@@ -521,7 +542,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise APIError(400, "Invalid JSON payload.") from None
             self._send(200, WORKER.run(payload))
         except APIError as exc:
-            self._send(exc.status, {"error": str(exc)})
+            self._send(exc.status, {"error": str(exc)}, retry_after=exc.retry_after)
         except socket.timeout:
             self._send(408, {"error": "Request upload timed out."})
         except Exception:

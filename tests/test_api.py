@@ -122,6 +122,21 @@ def test_expensive_labs_disabled(http_server, monkeypatch):
     assert request(http_server, "POST", "/red-blue", "{}")[0] == 404
 
 
+def test_worker_cooldown_header_on_local_adapter(http_server, monkeypatch):
+    def recovering(payload):
+        raise server.APIError(503, "Worker recovering.", retry_after=40)
+    monkeypatch.setattr(server.WORKER, "run", recovering)
+    connection = http.client.HTTPConnection(*http_server, timeout=5)
+    try:
+        connection.request("POST", "/analyze", json.dumps({"text": "Synthetic context"}),
+                           {"Content-Type": "application/json"})
+        response = connection.getresponse()
+        assert response.status == 503 and response.getheader("Retry-After") == "40"
+        response.read()
+    finally:
+        connection.close()
+
+
 def test_worker_deadline_terminates_and_cleans_tempfiles(monkeypatch):
     directories = []
     class Connection:

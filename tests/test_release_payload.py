@@ -60,6 +60,8 @@ def test_clean_text_change_passes(synthetic_root):
     "resume.pdf", "models.pkl", "data/synthetic.csv", "results/output.json",
     "results/candidates/model.bin", "PROJECTS FOR CV/sample.txt", "capture.webm",
     ".env", ".env.production", "secrets/api.conf", "private-key.pem",
+    ".agents/local.md", ".codex/config.toml", ".claude/launch.json", ".cursor/settings.json",
+    ".aws/config", "skills-lock.json", "web/dist/assets/stale.js",
 ])
 def test_prohibited_paths_are_rejected_without_opening_content(synthetic_root, path):
     repo, base = make_repo(synthetic_root)
@@ -85,6 +87,19 @@ def test_deleted_personal_pdf_from_base_is_allowed(synthetic_root):
     base = git(repo, "rev-parse", "HEAD")
     (repo / "resume.pdf").unlink()
     commit_all(repo, "remove pre-existing sample")
+    assert validate_range(repo, base) == []
+
+
+@pytest.mark.parametrize("path", [".claude/launch.json", "web/dist/stale.js"])
+def test_removing_preexisting_scaffolding_is_allowed(synthetic_root, path):
+    repo, _ = make_repo(synthetic_root)
+    target = repo / path
+    target.parent.mkdir(parents=True)
+    target.write_text("synthetic legacy configuration", encoding="utf-8")
+    commit_all(repo, "pre-existing scaffolding")
+    base = git(repo, "rev-parse", "HEAD")
+    target.unlink()
+    commit_all(repo, "remove scaffolding")
     assert validate_range(repo, base) == []
 
 

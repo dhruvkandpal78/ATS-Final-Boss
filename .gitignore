@@ -11,7 +11,7 @@ venv/
 env/
 ENV/
 
-# Datasets & generated data — regenerate via download_dataset.py + src/data_prep/
+# Datasets & generated data — acquire public PDFs with scripts/acquire_resume_dataset.py
 data/
 
 # Model/HuggingFace caches
@@ -25,7 +25,7 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Binary model artifacts — regenerate via run_experiments.py
+# Binary model artifacts — generated locally by research workflows
 *.pkl
 
 # Local research candidates include source hashes and machine-specific paths.
@@ -59,3 +59,12 @@ node_modules/
 .pytest_cache/
 build/
 dist/
+
+# Local assistant launch settings and historical generated frontend bundle
+.claude/
+.agents/
+.codex/
+.cursor/
+.aws/
+skills-lock.json
+web/dist/

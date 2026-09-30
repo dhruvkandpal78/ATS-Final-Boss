@@ -1,7 +1,7 @@
 # ATS Final Boss — Capstone Project Review 2
 ### 12-Slide Deck Structure | Rubric-Mapped | Co-Presenter Script (Dhruv + Ashton)
 
-> Source of truth: `dhruvkandpal78/ATS-Final-Boss` (README.md, PRD.md, Architecture.md, DESIGN_RATIONALE.md, phases.md, ethics.md, `src/`, `results/`). Every metric below is pulled verbatim from `results/evaluation_report.md` and `results/plots/`. Assumption: your co-presenter is **Ashton** (your documented capstone collaborator) — swap the name if that's wrong.
+> Historical review artifact. Its original planning sources are preserved under `archive/`; claims and metrics are not current release guidance. Assumption: your co-presenter is **Ashton** (your documented capstone collaborator) — swap the name if that's wrong.
 
 ---
 
@@ -83,7 +83,7 @@ The two gap/objective flip-cards collapse and re-form into a 4-column comparison
 | Fairness auditing | Not publicly disclosed | Not standard practice | Not applicable | EEOC 80% Rule disparate-impact audit built in |
 | Deployability | N/A | Blocked by closed ATS internals | Trivial but trivially evaded | Drop-in, CPU-only, no API key |
 
-- Honest scoping note (for rigor, not padding): commercial ATS internals are proprietary, so this survey benchmarks against **documented approaches and published defense paradigms**, not against a reverse-engineered commercial product — stated explicitly as a limitation in `PRD.md`.
+- Honest scoping note (for rigor, not padding): commercial ATS internals are proprietary, so this survey benchmarks against **documented approaches and published defense paradigms**, not against a reverse-engineered commercial product — stated explicitly as a limitation in `archive/PRD.md`.
 
 **Co-Presenter Script:**
 - **Ashton:** "We compared four categories: the commercial status quo, the academic model-level alternative, the naive baseline everyone assumes ATS already does, and us."
@@ -98,7 +98,7 @@ The two gap/objective flip-cards collapse and re-form into a 4-column comparison
 The comparison table from Slide 4 dissolves into a single funnel diagram: three colored streams (orange/green/purple, matching your app's actual module color-coding) converge into one blue node labeled "Meta-Classifier" — this is the *first physical appearance* of the funnel shape that Slide 6's architecture diagram will expand.
 
 **Slide Content:**
-- Three reasons a pre-filter beats hardening the screener (from `DESIGN_RATIONALE.md`):
+- Three reasons a pre-filter beats hardening the screener (from `archive/DESIGN_RATIONALE.md`):
   1. **Commercial ATS are closed** — you cannot retrain Workday/Greenhouse; a model-level defense you can't deploy is not a defense
   2. **Retraining is brittle** — every new attack variant needs a new fine-tune; an input-level detector generalizes across downstream models
   3. **Separation of concerns** — a model-agnostic detector sits in front of *any* ranker, open-source or proprietary, as a drop-in guard

@@ -156,7 +156,8 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                     response = _response(200, {"ok": True})
                 elif path == "/health":
                     response = _response(200, {"ok": True, "model_ready": worker.ready,
-                                               "busy": worker.lock.locked()})
+                                               "busy": worker.lock.locked(),
+                                               "worker_recovery": getattr(worker, "recovery_snapshot", lambda: {})()})
                 elif path == "/health/ready":
                     ready = _worker_ready(worker)
                     response = _response(200 if ready else 503, {"ready": ready})
@@ -183,6 +184,8 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                 response = _response(405, {"error": "Method not allowed."})
         except APIError as exc:
             response = _response(exc.status, {"error": str(exc)})
+            if exc.retry_after is not None:
+                response.headers["Retry-After"] = str(exc.retry_after)
         except Exception:
             response = _response(503, {"error": "Analysis is currently unavailable."})
 
@@ -191,7 +194,7 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
         response.headers["Connection"] = "close"
         if response.status_code == 401:
             response.headers["WWW-Authenticate"] = 'Bearer realm="resume-inspection"'
-        if response.status_code in (429, 503):
+        if response.status_code in (429, 503) and "Retry-After" not in response.headers:
             response.headers["Retry-After"] = "5"
         logger.info(json.dumps({
             "event": "http_response", "request_id": request_id,

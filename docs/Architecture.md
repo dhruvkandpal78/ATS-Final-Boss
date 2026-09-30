@@ -77,7 +77,7 @@ The legacy synthetic structural-proxy experiment path uses training/validation o
 - Contracts/regressions: `tests/`, `configs/`, `.github/workflows/ci.yml`.
 - Team records: `CHANGELOG.md`, `docs/progress/`, aggregate `results/reports/`.
 
-The maintained frontend is the vanilla application in `src/app/`; the older `web/dist/` build is historical. Light/dark themes, evidence filters, source highlighting and explicit advisory labels are implemented.
+The maintained frontend is the vanilla application in `src/app/`; the older generated `web/dist/` build was removed from the current public tree; its prior state remains in Git history. Light/dark themes, evidence filters, source highlighting and explicit advisory labels are implemented.
 
 Policy 1.0's first controlled holdout had 13/24 no-added-attack false positives. Policy 2.0's fresh holdout had 0/200 such false positives and detected 100/100 scripted attacks across 100 source groups. Samples differ, so this is not a paired improvement estimate. Natural labels, near-duplicate/person-level independence, new attack families and calibrated probabilities remain unverified. See [precision research record](progress/PRECISION_POLICY_2026-09-30.md).
 
@@ -92,3 +92,7 @@ Regular wheels include src/app/index.html, maintained CSS/JavaScript assets, the
 Both maintained HTTP adapters use one strict body-header validator before reading JSON. Transfer-Encoding is unsupported; Content-Length must occur once, contain decimal digits and stay within the body limit; Content-Type must occur once and be application/json. Malformed deeply nested JSON returns 400. Worker crash events record exception type and exit code rather than raw exception text. Synthetic transport tests exercise rejection before inference.
 
 The historical Streamlit dashboard is a separate proxy experiment; it uses local font fallbacks and explicitly labels its uncalibrated scores. It is not a supported company deployment. The [customer release gate](COMPANY_RELEASE_GATE.md) records the operational evidence still required for the single-organization pilot. See [the change record](progress/COMPANY_HTTP_HARDENING_2026-09-30.md).
+
+## Recovery admission
+
+The worker applies request-driven 5/10/20/40/60-second capped backoff after attempted 503/504 work, including transport failure and timeouts. Cooldown requests receive 503 and the remaining Retry-After without restarting the worker or extending recovery. Client errors do not trip the circuit; successful validated replies reset it. Health exposes only recovery counts/timing, with readiness false after disposal. Recovery resets on HTTP process restart and does not provide separate physical memory isolation. See [recovery and cleanup](progress/RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).
