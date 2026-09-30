@@ -19,6 +19,10 @@ The supplied review explicitly relied on README and older PR snippets, not curre
 
 ## Publication scope
 
-The free static website export is an interface preview: no backend, uploads or fabricated analysis. Hugging Face currently requires a paid plan to create Docker compute Spaces; Static Spaces remain free. See [preview guide](../PUBLIC_PREVIEW.md) and official [hosting rules](https://huggingface.co/docs/hub/en/spaces-overview), checked September 30, 2026.
+The user cancelled static publication; the Hugging Face preview was removed and GitHub Pages disabled. The optional static exporter is only a design-preview tool: no backend, uploads or fabricated analysis. Hugging Face currently requires a paid plan to create Docker compute Spaces; Static Spaces remain free. See [preview guide](../PUBLIC_PREVIEW.md) and official [hosting rules](https://huggingface.co/docs/hub/en/spaces-overview), checked September 30, 2026.
 
 Local test results and hosted CI evidence for this patch are recorded in [the implementation record](COMPANY_HTTP_HARDENING_2026-09-30.md). Customer launch is governed by [the release checklist](../COMPANY_RELEASE_GATE.md).
+
+## Architecture continuation
+
+Data-only bounded worker messages and full reply deadlines now harden the native-worker trust boundary; additive API visibility metadata clarifies supported trace completion. See [implementation and verification](WORKER_BOUNDARY_2026-09-30.md). Independent labels, OCR/full visibility, classifier validation and separate physical-memory containment remain open.

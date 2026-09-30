@@ -46,6 +46,25 @@ def test_hidden_note_and_experimental_model_do_not_accuse_but_instruction_does(t
     assert result["policy_version"] == "2.0"
 
 
+def test_pdf_visibility_coverage_distinguishes_trace_completion_from_unsupported_checks(tmp_path):
+    path = tmp_path / "visible.pdf"
+    with fitz.open() as doc:
+        page = doc.new_page()
+        page.insert_text((50, 50), "Python SQL AWS Docker Kubernetes engineer. Built reliable data services.")
+        doc.save(path)
+
+    result = subject().analyze_pdf(str(path))
+
+    assert result["coverage"]["pdf_visibility"] == {
+        "trace_analysis": "completed",
+        "pixel_visibility": "unsupported",
+        "optional_content_analysis": "incomplete",
+        "ocr": "not_implemented",
+    }
+    # Additive reporting must preserve the existing module coverage contract.
+    assert result["modules"]["b"]["coverage_status"] == "complete"
+
+
 @pytest.mark.parametrize("text", [
     "Skills: Python Java SQL AWS Docker Kubernetes machine learning deep learning.",
     "Python developer. Built Python services. Maintained Python pipelines. Mentored Python engineers.",

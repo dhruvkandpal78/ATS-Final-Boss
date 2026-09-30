@@ -1,4 +1,6 @@
 # Status: enhancement implementation verified; research release gates remain open
+September 30 architecture continuation: bounded data-only IPC replaces pickle; reply framing/JSON parsing is deadline-controlled. API exposes supported trace checks separately from missing full visibility/OCR. Detector policy and thresholds unchanged. See [worker boundary record](WORKER_BOUNDARY_2026-09-30.md) for verification and remaining gates.
+
 
 September 30 company continuation: shared strict request validation, worker crash-log minimization and historical-dashboard clarification added. Static scoped app scan at the preceding revision found no confirmed boundary crossing; customer deployment and physical-memory containment remain unverified. Current patch verification is recorded in [the company HTTP record](COMPANY_HTTP_HARDENING_2026-09-30.md), with customer acceptance tracked in [the release gate](../COMPANY_RELEASE_GATE.md).
 

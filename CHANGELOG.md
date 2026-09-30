@@ -1,5 +1,10 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: data-only worker boundary and explicit PDF visibility coverage
+
+Replaced pickle-based worker messages with bounded, versioned JSON and whole-frame deadline handling. Added correlated response checks, generic child-error mapping, a bounded disabled-route response fix and explicit API visibility limits without changing policy scores or thresholds. Validation and remaining containment/research gaps: [worker boundary record](docs/progress/WORKER_BOUNDARY_2026-09-30.md).
+
+
 ## 2026-09-30: cancel static hosting and repair portable preview checks
 
 Cancelled the Hugging Face static publication at the user's request; confirmed the Space URL returns 404. Disabled GitHub Pages and removed the uncommitted automatic-static workflow. Retained the optional source-only exporter with flat-file support; fixed its outside-workspace assertion to work on Linux as well as Windows. This does not deploy resume analysis. See [preview status](docs/PUBLIC_PREVIEW.md).

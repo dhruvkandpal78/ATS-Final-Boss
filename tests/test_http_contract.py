@@ -109,10 +109,10 @@ def test_worker_crash_log_excludes_exception_message(caplog):
             pass
 
     class Connection:
-        def send(self, payload):
+        def send_bytes(self, payload):
             pass
 
-        def poll(self, timeout):
+        def recv_bytes(self, maxlength):
             raise OSError("private candidate content and C:/sensitive/path")
 
         def close(self):

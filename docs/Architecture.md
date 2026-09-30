@@ -44,6 +44,12 @@ The worker owns its process and pipe under a request lock. A stop event cancels 
 
 Private embedding exports have their own independently pinned integrity contract and are loaded from a reviewed local safetensors directory. Startup exercises multi-sentence semantic encoding and a synthetic PDF, then checks detector statuses and classifier coverage before serving. Readiness respects stop admission, and private child diagnostics cannot bypass redacted parent response logs. Shared container memory remains a containment limitation; the worker virtual-address limit must not be interpreted as a physical-RAM bound.
 
+## Worker message contract
+
+Both HTTP adapters share the persistent worker. Versioned JSON bytes replace executable pickle IPC, with 7 MiB plus 8 KiB request envelopes and 8 MiB replies. A per-request identifier prevents stale responses; invalid framing, nesting, non-finite values and response envelopes dispose of the worker. Send and entire reply parsing are covered by the configured inference deadline, followed by bounded termination/cleanup waits. Error messages are parent-owned constants. This is not separate physical-memory containment. See [the boundary change record](progress/WORKER_BOUNDARY_2026-09-30.md).
+
+PDF responses expose `coverage.pdf_visibility` separately from supported Module B trace completion. Pixel visibility, complete optional-content reasoning and OCR are not implemented in the production detector. The experimental raster tool remains outside policy/model inference.
+
 ## Evidence, policy and score
 
 - Module A computes token-aware skill density and concentration. Module C uses off-the-shelf MiniLM sentence-window coherence plus normalized, locally contextual instruction patterns. Positive P95 thresholds come only from source-disjoint clean validation examples; invalid/zero thresholds disable the affected score.

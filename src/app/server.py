@@ -29,6 +29,10 @@ if str(ROOT) not in sys.path:
 from src.app.security import SecuritySettings, RequestBudget
 from src.app.http_contract import HTTPContractError, SECURITY_HEADERS, decode_json_body, json_request_length
 from src.core.runtime_paths import models_directory, notice_path
+from src.app.worker_protocol import (
+    PROTOCOL_VERSION, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ProtocolError,
+    encode_message, receive_message, validate_request, validate_response,
+)
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -150,20 +154,29 @@ def _worker_loop(connection):
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
             resource.setrlimit(resource.RLIMIT_NOFILE, (128, 128))
         while True:
-            payload, directory = connection.recv()
+            message = receive_message(connection, MAX_REQUEST_BYTES)
+            payload, directory = validate_request(message)
+            status = 200
             try:
                 result = analyze_payload(payload, directory)
-                connection.send((200, result))
             except APIError as exc:
-                connection.send((exc.status, {"error": str(exc)}))
+                status, result = exc.status, {}
             except (ImportError, FileNotFoundError, OSError):
-                connection.send((503, {"error": "Analysis dependencies are unavailable. Run scripts/doctor.py locally."}))
+                status, result = 503, {}
             except ValueError:
-                connection.send((422, {"error": "The document could not be analyzed. Check its format and configured limits."}))
+                status, result = 422, {}
             except Exception:
                 # No resume text, local paths, exception messages or traces in responses/logs.
-                connection.send((503, {"error": "Analysis could not be completed. Check the local model setup and retry."}))
-    except (EOFError, BrokenPipeError):
+                status, result = 503, {}
+            response = {"version": PROTOCOL_VERSION, "request_id": message["request_id"],
+                        "status": status, "result": result}
+            try:
+                encoded = encode_message(response, MAX_RESPONSE_BYTES)
+            except ProtocolError:
+                response.update(status=503, result={})
+                encoded = encode_message(response, MAX_RESPONSE_BYTES)
+            connection.send_bytes(encoded)
+    except (EOFError, OSError, ProtocolError):
         pass
     finally:
         connection.close()
@@ -254,11 +267,15 @@ class ModelWorker:
             with tempfile.TemporaryDirectory(prefix="ats-analysis-") as directory:
                 try:
                     deadline = monotonic() + self.timeout
+                    request_id = uuid4().hex
+                    encoded = encode_message({"version": PROTOCOL_VERSION,
+                                              "request_id": request_id,
+                                              "payload": payload, "directory": directory}, MAX_REQUEST_BYTES)
                     sending_errors = []
                     connection = self.connection
                     def send_request():
                         try:
-                            connection.send((payload, directory))
+                            connection.send_bytes(encoded)
                         except (EOFError, BrokenPipeError, OSError) as exc:
                             sending_errors.append(exc)
                     sender = threading.Thread(target=send_request, daemon=True)
@@ -271,27 +288,47 @@ class ModelWorker:
                         self._close_locked()
                         sender.join(timeout=1)
                         raise APIError(503, "Analysis service is stopping.")
-                    if sender.is_alive():
+                    if sender.is_alive() or monotonic() >= deadline:
                         logger.error(json.dumps({"event": "worker_busy_timeout", "timeout": self.timeout}))
                         self._close_locked()
                         sender.join(timeout=1)
                         raise APIError(504, "Analysis worker did not accept the request within its deadline.")
                     if sending_errors:
                         raise sending_errors[0]
-                    while not self.connection.poll(min(0.2, max(0, deadline - monotonic()))):
+                    replies, receiving_errors = [], []
+                    def receive_reply():
+                        try:
+                            replies.append(validate_response(
+                                receive_message(connection, MAX_RESPONSE_BYTES), request_id))
+                        except (EOFError, OSError, ProtocolError) as exc:
+                            receiving_errors.append(exc)
+                    receiver = threading.Thread(target=receive_reply, daemon=True)
+                    receiver.start()
+                    # poll() may see only a frame header; recv() can then block
+                    # indefinitely. Bound the entire frame read and JSON parse.
+                    while receiver.is_alive():
+                        receiver.join(timeout=min(0.2, max(0, deadline - monotonic())))
                         if self.stopping.is_set():
                             self._close_locked()
+                            receiver.join(timeout=1)
                             raise APIError(503, "Analysis service is stopping.")
                         if monotonic() >= deadline:
                             logger.error(json.dumps({"event": "worker_execution_timeout", "timeout": self.timeout}))
                             self._close_locked()
-                            raise APIError(504, "Analysis exceeded its 90-second deadline. Try a shorter document.")
-                    status, result = self.connection.recv()
+                            receiver.join(timeout=1)
+                            raise APIError(504, "Analysis exceeded its configured deadline. Try a shorter document.")
+                    if monotonic() >= deadline:
+                        logger.error(json.dumps({"event": "worker_execution_timeout", "timeout": self.timeout}))
+                        self._close_locked()
+                        raise APIError(504, "Analysis exceeded its configured deadline. Try a shorter document.")
+                    if receiving_errors:
+                        raise receiving_errors[0]
+                    status, result = replies[0]
                     self.ready = status == 200
                     if status != 200:
                         raise APIError(status, result["error"])
                     return result
-                except (EOFError, BrokenPipeError, OSError) as exc:
+                except (EOFError, OSError, ProtocolError) as exc:
                     exitcode = self.process.exitcode if self.process else None
                     logger.error(json.dumps({"event": "worker_crash", "error_type": type(exc).__name__, "exitcode": exitcode}))
                     self._close_locked()
@@ -466,6 +503,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self._guard(urlsplit(self.path).path):
             return
         if urlsplit(self.path).path != "/analyze":
+            self._discard_small_body()
             self._send(404, {"error": "Not found. Experimental lab endpoints are disabled."})
             return
         try:

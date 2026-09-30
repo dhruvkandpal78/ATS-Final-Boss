@@ -90,7 +90,13 @@ class AnalysisService:
     def analyze_pdf(self, file_path: str, include_previews: bool = False) -> AnalysisResult:
         """Bound PDF parsing and return structured coverage on unsupported input."""
         started = perf_counter()
-        coverage = {"pages_total": None, "pages_analyzed": 0, "limitations": []}
+        coverage = {"pages_total": None, "pages_analyzed": 0, "limitations": [],
+                    "pdf_visibility": {
+                        "trace_analysis": "unavailable",
+                        "pixel_visibility": "unknown",
+                        "optional_content_analysis": "incomplete",
+                        "ocr": "not_implemented",
+                    }}
         if self.mod_b is None:
             return self._unscorable("pdf", coverage, "pdf_detector_unavailable", started)
         try:
@@ -139,6 +145,14 @@ class AnalysisService:
             coverage["limitations"].append("PDF structural analysis failed.")
         else:
             coverage["limitations"].extend(str(item) for item in b_raw.get("limitations", []) if item)
+            capabilities = b_raw.get("capabilities")
+            capabilities = capabilities if isinstance(capabilities, dict) else {}
+            coverage["pdf_visibility"].update({
+                "trace_analysis": "completed",
+                "pixel_visibility": ("supported" if capabilities.get("pixel_visibility") is True else
+                                     "unsupported" if capabilities.get("pixel_visibility") is False else "unknown"),
+                "optional_content_analysis": "complete" if capabilities.get("optional_content_complete") is True else "incomplete",
+            })
 
         if not text.strip():
             coverage["limitations"].append("No extractable text; OCR and semantic analysis are unavailable.")

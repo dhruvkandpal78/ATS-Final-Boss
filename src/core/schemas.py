@@ -1,6 +1,6 @@
 """The versioned, JSON-compatible result contract shared by all adapters."""
 
-from typing import Any, Dict, List, Literal, Optional, TypedDict
+from typing import Any, Dict, List, Literal, NotRequired, Optional, TypedDict
 
 
 Decision = Literal["no_signals_detected", "review_recommended", "insufficient_evidence"]
@@ -41,6 +41,7 @@ class CoverageInfo(TypedDict):
     pages_total: Optional[int]
     pages_analyzed: Optional[int]
     limitations: List[str]
+    pdf_visibility: NotRequired[Dict[str, str]]
 
 
 class AnalysisResult(TypedDict, total=False):
