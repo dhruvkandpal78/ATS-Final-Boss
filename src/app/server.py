@@ -274,6 +274,7 @@ class ModelWorker:
                         sender.join(timeout=1)
                         raise APIError(503, "Analysis service is stopping.")
                     if sender.is_alive():
+                        logger.error(json.dumps({"event": "worker_busy_timeout", "timeout": self.timeout}))
                         self._close_locked()
                         sender.join(timeout=1)
                         raise APIError(504, "Analysis worker did not accept the request within its deadline.")
@@ -284,6 +285,7 @@ class ModelWorker:
                             self._close_locked()
                             raise APIError(503, "Analysis service is stopping.")
                         if monotonic() >= deadline:
+                            logger.error(json.dumps({"event": "worker_execution_timeout", "timeout": self.timeout}))
                             self._close_locked()
                             raise APIError(504, "Analysis exceeded its 90-second deadline. Try a shorter document.")
                     status, result = self.connection.recv()
@@ -291,7 +293,9 @@ class ModelWorker:
                     if status != 200:
                         raise APIError(status, result["error"])
                     return result
-                except (EOFError, BrokenPipeError, OSError):
+                except (EOFError, BrokenPipeError, OSError) as exc:
+                    exitcode = self.process.exitcode if self.process else None
+                    logger.error(json.dumps({"event": "worker_crash", "error": str(exc), "exitcode": exitcode}))
                     self._close_locked()
                     raise APIError(503, "The analysis worker stopped. Please retry.") from None
         finally:

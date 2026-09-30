@@ -1,4 +1,7 @@
 # ATS Final Boss - Development Journey & Iterations
+## 2026-09-30: architecture verification and failure recovery
+
+Conducted an architecture verification phase targeting documented deployment gaps. Documented operational blockers (Linux container isolation, customer gateway, pinned export verification) for Windows environments. Improved worker failure recovery and operational monitoring in `src/app/server.py` by adding explicit worker exit-code tracking and structured JSON logging for timeout events. See [architecture verification record](docs/progress/ARCHITECTURE_VERIFICATION_2026-09-30.md).
 
 ## 2026-09-30: embedding integrity and meaningful readiness
 
