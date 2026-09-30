@@ -2,7 +2,7 @@
 
 ## 1. What to Use (Methodologies & Libraries)
 - **Pre-trained Models**: Use `sentence-transformers/all-MiniLM-L6-v2` entirely off-the-shelf to measure semantic coherence.
-- **Explainability**: Implement `shap` to provide word-level attribution for anomalous semantic insertions, tracing back to literature on adversarial text explanation.
+- **Explainability**: Findings and source anchors locate observations. SHAP attribution is unimplemented; do not present highlights as causal explanations.
 - **PDF Extraction**: Use `PyMuPDF` and `pdfplumber` strictly for structural forensics. Go beyond simple 'white text' heuristics and check for text-rendering mode 3 and Optical Content Groups (OCGs) set to OFF.
 - **Ensemble Learning**: Use `scikit-learn` Logistic Regression as a lightweight meta-classifier to combine heterogeneous anomaly scores.
 - **Thresholding**: Use P95 of clean validation examples, calculated only on the source-disjoint validation split. Require both labeled classes for validation diagnostics. Reject zero/nonfinite thresholds instead of substituting arbitrary constants. Detection-threshold calibration does not establish probability calibration.
@@ -14,10 +14,10 @@
 
 ## 3. Generative AI & Attack Simulation
 - **Adversarial Ranking Attacks**: Treat keyword stuffing explicitly as an adversarial ranking attack (manipulating a document's retrieval rank), not just a classification error.
-- **Type D Attack Generation**: Use an LLM with a *fixed* prompt template and *fixed* temperature (0.3) to generate LLM-obfuscated stuffing. Log the exact prompt to ensure full reproducibility.
+- **Attack Generation**: The maintained generators create controlled, scripted edits. No external LLM injector is supported. Any future external generation workflow requires explicit data-use permission and recorded model revision, prompt, parameters and provenance; generated attacks do not establish natural attack performance.
 - **Dual-Use Ethics**: The dataset generation scripts are dual-use (they create adversarial attacks). Maintain ethical disclosure norms when documenting this process.
 
 ## 4. Evaluation Rigor & Error Handling
 - **Fairness Assumptions**: The fairness audit uses lexical diversity proxies based on adjacent domains (e.g., AI-text detection bias). State explicitly that this is testing a hypothesis on whether known failure modes transfer to this detector type.
 - **Confidence Intervals**: Report confidence intervals (bootstrap the test set ~1,000 times) instead of single point estimates to mitigate the noise inherent in a 400-500 sample synthetic dataset.
-- **Robustness**: Handle missing PDF physical attributes gracefully without crashing the pipeline, flagging missing layers as anomalous or neutral.
+- **Robustness**: Report unavailable or incomplete PDF coverage explicitly. Missing evidence does not prove manipulation or cleanliness.
