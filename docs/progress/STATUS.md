@@ -1,5 +1,13 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+September 30 policy 2.0: advisory anomalies no longer independently recommend review. A new frozen holdout of 100 source groups yielded 0/200 no-added-attack false positives and 100/100 known added attacks detected. This is a controlled source benchmark, not general real-world certification; the group-level one-sided 95% false-positive upper bound is 2.95%. See [precision policy record](PRECISION_POLICY_2026-09-30.md). The earlier result below remains the historical policy 1.0 baseline.
+
+September 30 controlled benchmark: 12/12 known inserted attacks detected, but 13/24 no-added-attack rows flagged by the frozen review policy. The benign structural confounder failure is documented in [CONTROLLED_PDF_BENCHMARK_2026-09-30.md](CONTROLLED_PDF_BENCHMARK_2026-09-30.md). Natural manipulation accuracy and calibrated probability remain open.
+
+September 30: percentile calibration, real-PDF candidate workflow, frozen bundle checks, guarded holdout access, text anchors and PDF previews implemented. Public Kaggle corpus acquired but not manipulation-labeled. 116 tests passed; synthetic candidate smoke run passed. See [research repair](RESEARCH_REPAIR_2026-09-30.md).
+
+September 29 follow-up: invalid keyword calibration now explicitly suppresses keyword/combined scoring; 92 tests pass. The saved zero threshold still requires validation-only recalibration. See [follow-up record](ENHANCEMENT_2026-09-29.md).
+
 Date: 2026-09-28 (implementation began 2026-09-26). Source: a0c2982dfdf2358c39b415c237eb4338eeb98de3.
 
 This replaces the previous unsupported claim that every release gate was complete. The application enhancement covers shared inference, truthful coverage, bounded API execution, detector fixes, source-group splitting, repeatable tests, and a responsive interface with light/dark themes.

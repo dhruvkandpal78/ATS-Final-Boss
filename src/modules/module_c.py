@@ -4,6 +4,8 @@ import re
 import unicodedata
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from src.modules.calibration import clean_validation_threshold
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -22,42 +24,21 @@ class SemanticCoherenceScorer:
             raise
         self.variance_threshold = None
 
-    def calibrate(self, val_df, objective: str = "f1"):
-        variances = []
-        for text in val_df['text']:
-            scores = self._score_coherence(text)
-            variances.append(scores['variance'])
-            
-        variances = np.array(variances)
-        labels = val_df['is_adversarial'].values
-        
-        best_f1 = 0
-        best_threshold = 0
-        min_score, max_score = np.min(variances), np.max(variances)
-        if min_score == max_score:
-            self.variance_threshold = min_score
-            return self.variance_threshold
-            
-        candidates = np.linspace(min_score, max_score, 100)
-        
-        for cand in candidates:
-            preds = (variances > cand).astype(int)
-            tp = np.sum((preds == 1) & (labels == 1))
-            fp = np.sum((preds == 1) & (labels == 0))
-            fn = np.sum((preds == 0) & (labels == 1))
-            
-            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-            f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-            
-            if f1 > best_f1:
-                best_f1 = f1
-                best_threshold = cand
-                
-        if best_f1 == 0:
-            best_threshold = np.percentile(variances, 95)
-            
-        self.variance_threshold = best_threshold
+    def calibrate(self, val_df, objective: str = "percentile"):
+        """Calibrate the threshold to clean-validation P95 only."""
+        self.variance_threshold = None
+        if objective != "percentile":
+            raise ValueError("Module C only supports objective='percentile'; F1 calibration is not permitted.")
+        if not isinstance(val_df, pd.DataFrame) or not {"text", "is_adversarial"}.issubset(val_df.columns):
+            raise ValueError("Validation data must be a DataFrame with 'text' and 'is_adversarial' columns.")
+        if val_df.empty or not val_df["text"].map(lambda value: isinstance(value, str)).all():
+            raise ValueError("Validation data must contain non-empty rows with string text values.")
+
+        variances = np.asarray([self._score_coherence(text)["variance"] for text in val_df["text"]], dtype=float)
+        self.variance_threshold = clean_validation_threshold(
+            variances, val_df["is_adversarial"].to_numpy(), "Module C"
+        )
+        logger.info("Module C threshold calibrated to clean-validation P95: %.6g", self.variance_threshold)
         return self.variance_threshold
 
     def _get_sentences(self, text: str) -> list:
@@ -113,17 +94,18 @@ class SemanticCoherenceScorer:
         return {"variance": float(variance), "mean_similarity": float(mean_sim), "truncated": truncated}
 
     def predict(self, text: str) -> dict:
-        if self.variance_threshold is None:
-            raise ValueError("Module C must be calibrated before prediction.")
+        if (isinstance(self.variance_threshold, bool)
+                or not isinstance(self.variance_threshold, (int, float, np.number))
+                or not np.isfinite(self.variance_threshold) or self.variance_threshold <= 0):
+            raise ValueError("Module C requires a positive finite clean-validation threshold before prediction.")
 
         scores = self._score_coherence(text)
         variance = scores['variance']
+        if not np.isfinite(variance) or variance < 0:
+            raise ValueError("Module C produced an invalid semantic score.")
         is_variance_anomalous = variance > self.variance_threshold
 
-        if self.variance_threshold > 0:
-            semantic_score = min(1.0, variance / (self.variance_threshold * 2))
-        else:
-            semantic_score = 1.0 if variance > 0 else 0.0
+        semantic_score = min(1.0, variance / (self.variance_threshold * 2))
 
         n_cues = self._injection_signal(text)
         injection_score = min(1.0, n_cues * 0.5)
@@ -151,11 +133,8 @@ class SemanticCoherenceScorer:
         r"<!--\s*system",
         r"you\s+must\s+(output|print|return)",
         r"rank\s+(this\s+candidate\s+)?(as\s+)?#?1",
-        r"top\s+match",
         r"hire\s+immediately",
         r"match\s+score:\s*100",
-        r"as\s+an\s+ai",
-        r"new\s+instructions?",
         r"do\s+not\s+reject",
         r"administrator\s+instructions?",
         r"override\s+the\s+screening"

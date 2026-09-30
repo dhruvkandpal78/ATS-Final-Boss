@@ -14,7 +14,7 @@ class FakeService:
         return {"decision": "review_recommended", "model_proba": 0.12,
                 "policy_decision": True, "modules": {"b": {"status": "not_applicable", "score": None}}}
 
-    def analyze_pdf(self, path):
+    def analyze_pdf(self, path, include_previews=False):
         assert Path(path).read_bytes().startswith(b"%PDF-")
         return {"input_mode": "pdf"}
 
@@ -48,7 +48,7 @@ def test_pdf_cleanup_success_and_failure(service, tmp_path, monkeypatch):
     payload = {"filename": "resume.pdf", "b64": base64.b64encode(b"%PDF-1.7\n").decode()}
     assert server.analyze_payload(payload, tmp_path)["input_mode"] == "pdf"
     assert list(tmp_path.iterdir()) == []
-    def fail(path):
+    def fail(path, **kwargs):
         raise ValueError("parse failed")
     monkeypatch.setattr(server._SERVICE, "analyze_pdf", fail)
     with pytest.raises(ValueError):

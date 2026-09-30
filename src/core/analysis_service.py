@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import math
+import hashlib
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, Optional
@@ -17,12 +18,13 @@ from uuid import uuid4
 import pandas as pd
 
 from src.core.schemas import AnalysisResult
+from src.core.evidence import instruction_spans
+from src.core.review_policy import POLICY_VERSION, keyword_repetition
 
 
 FEATURE_ORDER = ("Module_A_Score", "Module_B_Score", "Module_C_Score")
 MAX_PDF_PAGES = 20
 MAX_TEXT_CHARS = 100_000
-POLICY_VERSION = "1.0"
 MODEL_ID = "legacy-three-feature-v1"
 
 MODULE_META = {
@@ -56,10 +58,16 @@ def _anchor(page_index: Optional[int] = None, bbox: Optional[list] = None) -> Di
 class AnalysisService:
     def __init__(self, models_dir: Optional[str] = None, mod_a=None, mod_b=None,
                  mod_c=None, meta_clf=None, scaler=None):
+        self.model_id = MODEL_ID if meta_clf is not None else None
+        self.candidate_model = False
         if models_dir is not None:
             # Local trusted artifacts only. Never pass uploaded model files here.
             from src.inference import load_pipeline
             meta_clf, scaler, mod_a, mod_b, mod_c = load_pipeline(models_dir)
+            manifest = Path(models_dir) / "candidate_manifest.json"
+            self.candidate_model = manifest.is_file()
+            self.model_id = ("candidate-" + hashlib.sha256(manifest.read_bytes()).hexdigest()[:16]
+                             if self.candidate_model else MODEL_ID)
         self.mod_a = mod_a
         self.mod_b = mod_b
         self.mod_c = mod_c
@@ -79,7 +87,7 @@ class AnalysisService:
         return self._analyze(text, "text", None, None, {"pages_total": None,
                              "pages_analyzed": None, "limitations": []})
 
-    def analyze_pdf(self, file_path: str) -> AnalysisResult:
+    def analyze_pdf(self, file_path: str, include_previews: bool = False) -> AnalysisResult:
         """Bound PDF parsing and return structured coverage on unsupported input."""
         started = perf_counter()
         coverage = {"pages_total": None, "pages_analyzed": 0, "limitations": []}
@@ -138,6 +146,15 @@ class AnalysisService:
         hidden_groups = raw_details.get("hidden_ocg_groups", 0) if isinstance(raw_details, dict) else 0
         result = self._analyze(text, "pdf", b_raw, None, coverage,
                                force_partial=truncated or pages_without_text > 0 or hidden_groups > 0)
+        if include_previews:
+            from src.core.pdf_preview import build_evidence_previews
+            try:
+                result["previews"] = build_evidence_previews(file_path, result["findings"])
+                if result["findings"]:
+                    coverage["limitations"].append("Evidence previews are limited to three finding pages and 2 MiB; highlights locate traces, not proof of intent.")
+            except Exception:
+                result["previews"] = []
+                coverage["limitations"].append("PDF evidence preview could not be rendered.")
         result["timings_ms"]["total"] = round((perf_counter() - started) * 1000, 2)
         return result
 
@@ -180,6 +197,28 @@ class AnalysisService:
                 if detector is None:
                     modules[key] = _module(key, "unsupported", reason="Detector unavailable.")
                     continue
+                threshold_name = "threshold" if key == "a" else "variance_threshold"
+                if hasattr(detector, threshold_name):
+                    threshold = getattr(detector, threshold_name)
+                    try:
+                        valid = not isinstance(threshold, (bool, str)) and math.isfinite(threshold) and threshold > 0
+                    except TypeError:
+                        valid = False
+                    if not valid:
+                        reason = ("Keyword" if key == "a" else "Semantic") + " calibration is unavailable. Configure a positive threshold using source-disjoint validation data."
+                        modules[key] = _module(key, "unsupported", reason=reason)
+                        coverage["limitations"].append(reason)
+                        if key == "c" and callable(getattr(detector, "_injection_signal", None)):
+                            cues = detector._injection_signal(text)
+                            c_raw = {"injection_cues": cues}
+                            modules[key]["injection_cues"] = cues
+                            if cues:
+                                findings.append({"id": "c-instruction-1", "detector": "c",
+                                    "category": "direct_instruction", "severity": "high",
+                                    "explanation_method": "pattern_rule",
+                                    "explanation": "Text contains a direct instruction pattern aimed at a reviewer or screening system.",
+                                    "anchor": _anchor(), "uncertainty": "The pattern alone does not establish intent."})
+                        continue
                 try:
                     raw = detector.predict(text)
                     score = _finite_score(raw.get("anomaly_score"))
@@ -250,7 +289,26 @@ class AnalysisService:
             else:
                 coverage["limitations"].append("PDF structural score is unavailable.")
 
+        # Anchors refer to the exact submitted text, never normalized positions.
+        # PDF extraction offsets are not page coordinates and are not exposed as such.
+        if mode == "text" and c_raw.get("injection_cues", 0) > 0:
+            spans = instruction_spans(text, self.mod_c)
+            if spans:
+                template = next((item for item in findings if item["category"] == "direct_instruction"), None)
+                if template is not None:
+                    findings.remove(template)
+                    for index, span in enumerate(spans, 1):
+                        findings.append({**template, "id": f"c-instruction-{index}",
+                                         "anchor": {**_anchor(), **span}})
+        repetition = keyword_repetition(text, self.mod_a) if text.strip() else None
+        if repetition:
+            findings.append({"id": "a-repetition-1", "detector": "a",
+                "category": "keyword_repetition", "severity": "high",
+                "explanation_method": "pattern_rule",
+                "explanation": "A skill-dominated token sequence repeats contiguously at least eight times over at least 32 tokens.",
+                "anchor": _anchor(), "uncertainty": "Exact repetition warrants inspection but does not establish intent."})
         for finding in findings:
+            finding["review_trigger"] = finding["category"] in ("direct_instruction", "keyword_repetition")
             modules[finding["detector"]]["evidence_ids"].append(finding["id"])
 
         score = None
@@ -263,9 +321,13 @@ class AnalysisService:
         if mode == "text":
             coverage["limitations"].append("No validated text-only model; PDF structural evidence is not applicable.")
         elif score is not None:
-            coverage["limitations"].append("Experimental score: legacy model used synthetic structural proxies in training and is not calibrated on real PDFs.")
+            coverage["limitations"].append(
+                "Experimental candidate score: trained on PDF features, but probability calibration and independent real-world validation are not established."
+                if self.candidate_model else
+                "Experimental score: legacy model used synthetic structural proxies in training and is not calibrated on real PDFs.")
 
-        rule_density = modules["a"].get("flagged", False)
+        density_advisory = modules["a"].get("flagged", False)
+        rule_density = repetition is not None
         rule_injection = modules["c"].get("injection_cues", 0) > 0
         structural_details = modules["b"].get("details") or {}
         explicit_structure = any(
@@ -278,21 +340,24 @@ class AnalysisService:
         complete = mode == "pdf" and not force_partial and not semantic_truncated and all(modules[key]["status"] == "ok" for key in ("a", "b", "c"))
         reason_codes = []
         if rule_density:
-            reason_codes.append("keyword_density_signal")
+            reason_codes.append("keyword_repetition_signal")
         if rule_injection:
             reason_codes.append("direct_instruction_cue")
         if rule_structure:
-            reason_codes.append("strong_pdf_structure_signal")
+            reason_codes.append("pdf_structure_advisory")
+        if density_advisory:
+            reason_codes.append("keyword_density_advisory")
         if model_decision:
-            reason_codes.append("model_signal")
+            reason_codes.append("experimental_model_advisory")
         if not complete:
             reason_codes.append("analysis_incomplete" if mode == "pdf" else "text_model_unavailable")
-        if rule_density or rule_injection or rule_structure or model_decision:
+        if rule_density or rule_injection:
             decision = "review_recommended"
         elif complete and score is not None:
             decision = "no_signals_detected"
         else:
             decision = "insufficient_evidence"
+        coverage["limitations"].append("Policy 2.0 requires direct instruction cues or sustained skill repetition for review. Structural, density and experimental model anomalies remain advisory; subtle attacks may be missed.")
 
         if mode == "text":
             status = "partial"
@@ -307,7 +372,7 @@ class AnalysisService:
             "schema_version": "2.0", "analysis_id": str(uuid4()),
             "created_at": datetime.now(timezone.utc).isoformat(),
             "status": status, "input_mode": mode,
-            "model": {"id": MODEL_ID if self.meta_clf is not None else None, "calibrated": False},
+            "model": {"id": self.model_id if self.meta_clf is not None else None, "calibrated": False},
             "policy_version": POLICY_VERSION, "score": score,
             "score_kind": "model_score" if score is not None else "unavailable",
             "decision": decision, "reason_codes": reason_codes,

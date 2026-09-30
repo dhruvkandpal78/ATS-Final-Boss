@@ -91,7 +91,7 @@ def analyze_payload(payload, temp_dir=None):
         path = file.name
         file.write(value)
     try:
-        return service.analyze_pdf(path)
+        return service.analyze_pdf(path, include_previews=True)
     finally:
         Path(path).unlink(missing_ok=True)
 

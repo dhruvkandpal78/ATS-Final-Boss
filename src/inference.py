@@ -28,12 +28,16 @@ def load_pipeline(models_dir):
     report without terminating a process during import or a request.
     """
     model_dir = Path(models_dir)
+    candidate = (model_dir / "candidate_manifest.json").is_file()
+    if candidate:
+        from src.core.artifacts import verify_candidate
+        verify_candidate(model_dir)
     with (model_dir / "meta_classifier.pkl").open("rb") as handle:
         meta_clf = pickle.load(handle)
     with (model_dir / "scaler.pkl").open("rb") as handle:
         scaler = pickle.load(handle)
 
-    config_dir = Path(__file__).resolve().parents[1] / "configs"
+    config_dir = model_dir if candidate else Path(__file__).resolve().parents[1] / "configs"
     with (config_dir / "thresholds.json").open("r", encoding="utf-8") as handle:
         thresholds = json.load(handle)
     with (config_dir / "model_config.json").open("r", encoding="utf-8") as handle:

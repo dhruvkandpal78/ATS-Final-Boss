@@ -8,6 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from src.evaluation.evaluate import (extract_features, research_policy_predictions,
                                      validation_degradation_curve)
 from src.modules.module_a import KeywordDensityDetector
+from src.evaluation.evaluate_holdout import evaluate_on_dataframe
 
 
 class StubSemanticScorer:
@@ -15,6 +16,26 @@ class StubSemanticScorer:
         cue = int("ignore all previous instructions" in text.lower())
         return {"anomaly_score": float(cue) * 0.7,
                 "injection_cues": cue}
+
+
+def test_holdout_reports_confounder_false_positives_by_source():
+    class Service:
+        def analyze_pdf(self, path):
+            return {"status": "complete", "score": 0.8 if "attack" in path else 0.2,
+                    "decision": "review_recommended" if "attack" in path or "confounder" in path
+                    else "no_signals_detected"}
+
+    rows = []
+    for source in range(5):
+        for family, label in (("unchanged", 0), ("confounder", 0), ("attack", 1)):
+            rows.append({"source_id": str(source), "pdf_path": f"{source}-{family}.pdf",
+                         "family": family, "is_adversarial": label})
+    metrics = evaluate_on_dataframe(pd.DataFrame(rows), Service())
+    assert metrics["TP"] == 5 and metrics["FP"] == 5
+    assert metrics["TN"] == 5 and metrics["FN"] == 0
+    assert metrics["False-positive rate"] == 0.5
+    assert metrics["family_counts"]["confounder"]["flagged"] == 5
+    assert metrics["group_bootstrap_95pct"]["False-positive rate"] == [0.5, 0.5]
 
 def test_extract_features():
     df = pd.DataFrame({

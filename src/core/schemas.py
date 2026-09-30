@@ -23,6 +23,7 @@ class Finding(TypedDict):
     explanation: str
     anchor: Anchor
     uncertainty: str
+    review_trigger: bool
 
 
 class ModuleResult(TypedDict, total=False):

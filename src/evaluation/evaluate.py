@@ -1,13 +1,7 @@
-"""
-evaluate.py — Phase 3: End-to-End Evaluation Runner
-===================================================
-Orchestrates the entire evaluation pipeline:
-    1. Loads train/val/test splits.
-    2. Calibrates Modules A and C on the VAL set.
-    3. Generates anomaly scores for Modules A, B, and C on all splits.
-    4. Trains the Meta-Classifier on the VAL set scores.
-    5. Evaluates the Meta-Classifier strictly on the TEST set.
-    6. Generates metrics, ROC-AUC plots, and the Adversarial Degradation plot.
+"""Historical synthetic text-proxy research runner.
+
+This path is intentionally isolated from deployed PDF artifacts and never opens
+the held-out test split. Its Module B marker is not physical PDF evidence.
 """
 
 import pandas as pd
@@ -15,9 +9,14 @@ import numpy as np
 import os
 import logging
 import random
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
 from tqdm import tqdm
 import sys
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
 
 # Add src to path so we can import our modules
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -25,7 +24,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 from src.modules.module_a import KeywordDensityDetector
 from src.modules.module_c import SemanticCoherenceScorer
 from src.models.meta_classifier import EnsembleMetaClassifier
-from src.evaluation.metrics import evaluate_predictions, bootstrap_f1
 from src.evaluation.curves import plot_roc_curves, plot_degradation_curve
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)-7s | %(message)s')
@@ -136,132 +134,97 @@ def validation_degradation_curve(df_val: pd.DataFrame, mod_a, mod_c, meta_clf,
 # ---------------------------------------------------------------------------
 # Main Evaluation Pipeline
 # ---------------------------------------------------------------------------
-def run_evaluation():
-    logger.info("=" * 60)
-    logger.info("PHASE 3: END-TO-END EVALUATION")
-    logger.info("=" * 60)
-    
-    # 1. Load Splits
-    logger.info("Loading dataset splits...")
-    df_train = pd.read_csv(os.path.join(SPLITS_DIR, "train.csv"))
-    df_val = pd.read_csv(os.path.join(SPLITS_DIR, "val.csv"))
-    df_test = pd.read_csv(os.path.join(SPLITS_DIR, "test.csv"))
-    
-    # 2. Initialize Modules
-    logger.info("Initializing detection modules...")
+def validate_proxy_splits(df_train: pd.DataFrame, df_val: pd.DataFrame) -> None:
+    """Require explicit source lineage and two classes without touching test data."""
+    for name, frame in (("train", df_train), ("validation", df_val)):
+        required = {"source_id", "text", "is_adversarial"}
+        if frame.empty or not required.issubset(frame.columns):
+            raise ValueError(f"{name} proxy split needs source_id, text and is_adversarial")
+        if frame["source_id"].isna().any() or not frame["source_id"].astype(str).str.strip().all():
+            raise ValueError(f"{name} proxy split has missing source lineage")
+        if set(frame["is_adversarial"]) != {0, 1}:
+            raise ValueError(f"{name} proxy split must contain both known labels")
+    train_ids = set(df_train["source_id"].astype(str).str.strip().str.casefold())
+    val_ids = set(df_val["source_id"].astype(str).str.strip().str.casefold())
+    if train_ids & val_ids:
+        raise ValueError("Proxy train and validation source groups overlap")
+
+
+def run_evaluation(train_path=None, validation_path=None, output_root=None):
+    """Run isolated train/validation research on synthetic text proxies only."""
+    train_path = Path(train_path or Path(SPLITS_DIR) / "train.csv").resolve()
+    validation_path = Path(validation_path or Path(SPLITS_DIR) / "val.csv").resolve()
+    for path in (train_path, validation_path):
+        if any(token in path.name.casefold() for token in ("test", "holdout")):
+            raise ValueError("Proxy development refuses test/holdout-named input")
+    df_train = pd.read_csv(train_path)
+    df_val = pd.read_csv(validation_path)
+    validate_proxy_splits(df_train, df_val)
+
     mod_a = KeywordDensityDetector()
-    mod_c = SemanticCoherenceScorer(model_name='all-MiniLM-L6-v2', window_size=2)
-    
-    # 3. Calibrate on Validation Set
-    logger.info("--- CALIBRATION PHASE ---")
-    mod_a.calibrate(df_val, objective='f1')
-    mod_c.calibrate(df_val, objective='f1')
-    
-    # Save calibrated thresholds to config
-    import json
-    config_dir = os.path.join(os.path.dirname(__file__), "..", "..", "configs")
-    os.makedirs(config_dir, exist_ok=True)
-    with open(os.path.join(config_dir, "thresholds.json"), "w") as f:
-        json.dump({
-            "mod_a_threshold": float(mod_a.threshold),
-            "mod_c_variance_threshold": float(mod_c.variance_threshold)
-        }, f, indent=4)
-    logger.info("Saved calibrated thresholds to configs/thresholds.json")
-    
-    # 4. Extract Features
-    logger.info("--- FEATURE EXTRACTION PHASE ---")
-    logger.info("Processing Training Set...")
-    X_train = extract_features(df_train, mod_a, mod_c)
-    y_train = df_train['is_adversarial'].values
-    
-    logger.info("Processing Test Set...")
-    X_test = extract_features(df_test, mod_a, mod_c)
-    y_test = df_test['is_adversarial'].values
-    
-    # 5. Train Meta-Classifier
-    logger.info("--- META-CLASSIFIER TRAINING PHASE ---")
-    meta_clf = EnsembleMetaClassifier()
-    # We only pass the required ML features to train()
-    ml_features = ['Module_A_Score', 'Module_B_Score', 'Module_C_Score']
-    meta_clf.train(X_train[ml_features], y_train)
-    meta_clf.save_model(os.path.join(RESULTS_DIR, "models"))
-    
-    # 6. Evaluate on Test Set
-    logger.info("--- FINAL TEST SET EVALUATION ---")
-    y_pred = meta_clf.predict(X_test[ml_features])
-    y_proba_meta = meta_clf.predict_proba(X_test[ml_features])
-    
-    # Standard metrics
-    metrics = evaluate_predictions(y_test, y_pred, module_name="Meta-Classifier")
-    
-    # Calculate policy rules for test set
-    y_pred_policy = y_pred.copy()
-    for i, row in X_test.reset_index(drop=True).iterrows():
-        if row['Injection_Cues'] > 0 or row['Module_B_Score'] >= 0.9:
-            y_pred_policy[i] = 1
-            
-    # Calculate confusion matrix for policy
-    from sklearn.metrics import confusion_matrix
-    cm = confusion_matrix(y_test, y_pred_policy)
-    
-    # Dump results.json
-    per_sample = []
-    for i in range(len(y_test)):
-        per_sample.append({
-            "index": i,
-            "split": "test",
-            "true_label": int(y_test[i]),
-            "module_a_score": float(X_test['Module_A_Score'].iloc[i]),
-            "module_b_score": float(X_test['Module_B_Score'].iloc[i]),
-            "module_c_score": float(X_test['Module_C_Score'].iloc[i]),
-            "injection_cues": int(X_test['Injection_Cues'].iloc[i]),
-            "model_probability": float(y_proba_meta[i]),
-            "model_decision": bool(y_pred[i]),
-            "policy_decision": bool(y_pred_policy[i])
-        })
-        
-    results_out = {
-        "confusion_matrix": {
-            "tn": int(cm[0][0]) if cm.shape == (2,2) else 0,
-            "fp": int(cm[0][1]) if cm.shape == (2,2) else 0,
-            "fn": int(cm[1][0]) if cm.shape == (2,2) else 0,
-            "tp": int(cm[1][1]) if cm.shape == (2,2) else 0
-        },
-        "samples": per_sample
+    mod_c = SemanticCoherenceScorer(model_name="all-MiniLM-L6-v2", window_size=2)
+    # Both modules now require clean-validation positive percentile calibration.
+    a_threshold = float(mod_a.calibrate(df_val))
+    c_threshold = float(mod_c.calibrate(df_val))
+    if not all(np.isfinite(value) and value > 0 for value in (a_threshold, c_threshold)):
+        raise ValueError("Proxy validation calibration is unavailable; no artifacts were written")
+
+    train_x = extract_features(df_train, mod_a, mod_c)
+    val_x = extract_features(df_val, mod_a, mod_c)
+    train_y = df_train["is_adversarial"].to_numpy(dtype=int)
+    val_y = df_val["is_adversarial"].to_numpy(dtype=int)
+    model = EnsembleMetaClassifier()
+    model.train(train_x[RESEARCH_MODEL_FEATURES], train_y)
+    model_predictions = np.asarray(model.predict(val_x[RESEARCH_MODEL_FEATURES]), dtype=int)
+    policy_predictions = research_policy_predictions(val_x, model)
+    scores = np.asarray(model.predict_proba(val_x[RESEARCH_MODEL_FEATURES]), dtype=float)
+    metrics = {
+        "split": "validation", "input_mode": "synthetic_text_proxy", "n": int(len(df_val)),
+        "model_precision": float(precision_score(val_y, model_predictions, zero_division=0)),
+        "model_recall": float(recall_score(val_y, model_predictions, zero_division=0)),
+        "model_f1": float(f1_score(val_y, model_predictions, zero_division=0)),
+        "model_roc_auc": float(roc_auc_score(val_y, scores)),
+        "policy_precision": float(precision_score(val_y, policy_predictions, zero_division=0)),
+        "policy_recall": float(recall_score(val_y, policy_predictions, zero_division=0)),
+        "policy_f1": float(f1_score(val_y, policy_predictions, zero_division=0)),
     }
-    
-    import json
-    with open(os.path.join(RESULTS_DIR, "results.json"), "w") as f:
-        json.dump(results_out, f, indent=2)
-        
-    logger.info("Saved ML evaluation artifact to results/results.json")
-    
-    # Bootstrapped F1 for rigor
-    bootstrap_f1(y_test, y_pred, n_iterations=1000)
-    
-    # Generate ROC curves for comparison (Module A, C vs Meta)
-    # We use raw extracted scores as probabilities for individual modules for the ROC curve
-    proba_dict = {
-        'Module A': X_test['Module_A_Score'].values,
-        'Module C': X_test['Module_C_Score'].values,
-        'Meta-Classifier': y_proba_meta
-    }
-    plot_roc_curves(y_test, proba_dict, os.path.join(RESULTS_DIR, "plots", "roc_curves.png"))
-    
-    # 7. Synthetic validation stress test. The final test split is never used
-    # for selecting the mutation budget or building this curve.
-    logger.info("Running synthetic degradation study on a fixed validation subset...")
+    output_root = Path(output_root or Path(RESULTS_DIR) / "research_proxy").resolve()
+    deployed = (Path(RESULTS_DIR) / "models").resolve()
+    if output_root == deployed or deployed in output_root.parents:
+        raise ValueError("Research output cannot overwrite deployed model artifacts")
+    output_root.mkdir(parents=True, exist_ok=True)
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
+    output = output_root / f"proxy-{run_id}"
+    output.mkdir(exist_ok=False)
+    model.save_model(str(output))
+    (output / "thresholds.json").write_text(json.dumps({
+        "mod_a_threshold": a_threshold,
+        "mod_c_variance_threshold": c_threshold,
+        "calibration": "clean_validation_p95",
+    }, indent=2), encoding="utf-8")
+    (output / "validation_metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+    def file_hash(path):
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    (output / "research_manifest.json").write_text(json.dumps({
+        "kind": "synthetic_text_proxy_research", "created_at": datetime.now(timezone.utc).isoformat(),
+        "train_manifest_sha256": file_hash(train_path),
+        "validation_manifest_sha256": file_hash(validation_path),
+        "train_source_hashes": sorted(hashlib.sha256(str(item).strip().casefold().encode()).hexdigest()
+                                      for item in set(df_train["source_id"])),
+        "validation_source_hashes": sorted(hashlib.sha256(str(item).strip().casefold().encode()).hexdigest()
+                                           for item in set(df_val["source_id"])),
+        "artifact_hashes": {name: file_hash(output / name) for name in
+                            ("meta_classifier.pkl", "scaler.pkl", "thresholds.json", "validation_metrics.json")},
+        "warning": "Synthetic Module B markers are not PDF structural evidence; validation is not an independent benchmark.",
+    }, indent=2), encoding="utf-8")
     try:
-        degradation = validation_degradation_curve(df_val, mod_a, mod_c, meta_clf)
+        degradation = validation_degradation_curve(df_val, mod_a, mod_c, model)
     except ValueError as exc:
-        logger.warning("Validation degradation study unavailable: %s", exc)
+        logger.warning("Validation degradation plot unavailable: %s", exc)
     else:
-        plot_degradation_curve(degradation["budgets"], degradation["f1"],
-                               os.path.join(RESULTS_DIR, "plots", "degradation_curve.png"))
-    
-    logger.info("=" * 60)
-    logger.info("EVALUATION COMPLETE. ALL PLOTS SAVED TO /results/plots/")
-    logger.info("=" * 60)
+        plot_degradation_curve(degradation["budgets"], degradation["f1"], str(output / "degradation_curve.png"))
+    logger.info("Synthetic proxy research output: %s", output)
+    return output
 
 if __name__ == "__main__":
     run_evaluation()

@@ -1,5 +1,25 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: architecture record and source-only publication
+
+Replaced the outdated architecture plan with the implemented runtime, policy/score separation, evidence and frozen PDF research workflow. Added publication exclusions for personal PDFs/projects and a [GitHub handoff record](docs/progress/GITHUB_PUBLICATION_2026-09-30.md). The reviewed publication branch removes personal resume paths from its current tree without merging unrelated local history; older GitHub history remains unchanged.
+
+## 2026-09-30: precision-focused policy 2.0
+
+Changed standalone structural, keyword-density and experimental-model alarms to advisory evidence. Review now requires a direct instruction cue or sustained skill repetition; removed three ambiguous phrase cues and clarified findings in the UI. Froze policy code hashes and evaluated once on 100 fresh source groups: 0/200 no-added-attack PDFs flagged, 100/100 controlled attacks detected. The group-level false-positive upper bound is 2.95%; natural attack accuracy and cheating probability remain unvalidated. See [precision policy record](docs/progress/PRECISION_POLICY_2026-09-30.md) for the exact methods, tradeoffs, hashes and checks.
+
+## 2026-09-30: controlled PDF benchmark and paper record
+
+Built a deterministic source-disjoint PDF benchmark from 48 public resume layouts and paired controlled variants. Trained an isolated candidate and ran its frozen policy once on 12 reserved source groups. Holdout detected 12/12 known inserted attacks but flagged 13/24 no-added-attack rows, including every benign structural confounder. Added per-family counts, false-positive rate and source-group intervals to the evaluator. This is a controlled edit benchmark, not natural-manipulation accuracy. See [the benchmark record](docs/progress/CONTROLLED_PDF_BENCHMARK_2026-09-30.md).
+
+## 2026-09-30: calibration, PDF research workflow and inspectable evidence
+
+Implemented clean-validation percentile calibration, isolated real-PDF candidate training, hash-verified bundles, guarded final evaluation, exact text anchors, evidence filtering and bounded PDF previews. Acquired 2,484 public Kaggle PDFs with unreviewed labels and provenance. Full offline suite: 116 passed; synthetic candidate training/reload passed. Real-world accuracy and calibrated probability remain unverified. See [detailed repair record](docs/progress/RESEARCH_REPAIR_2026-09-30.md).
+
+## 2026-09-29: invalid-calibration safety
+
+Prevented zero keyword thresholds from producing misleading maximum signals. Invalid keyword calibration now yields explicit missing coverage and no combined percentage, while available evidence remains reviewable. Added threshold diagnostics and regression coverage. See [follow-up record](docs/progress/ENHANCEMENT_2026-09-29.md).
+
 ## 2026-09-26 to 2026-09-28: correctness, runtime, interface and ownership
 
 - Unified CLI/API analysis, fixed scaling and class-probability selection, separated policy from score, and made missing/partial coverage explicit.

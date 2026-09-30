@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 from importlib.metadata import version, PackageNotFoundError
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -10,6 +11,24 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = {"numpy": "numpy", "pandas": "pandas", "sklearn": "scikit-learn",
             "sentence_transformers": "sentence-transformers", "torch": "torch",
             "fitz": "PyMuPDF", "pdfplumber": "pdfplumber"}
+
+
+def check_thresholds(path):
+    """Inspect calibration without loading models or evaluating documents."""
+    try:
+        values = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(values, dict):
+            raise ValueError("Expected object")
+    except (OSError, ValueError):
+        return [{"name": "detector_thresholds", "ok": False, "detail": "Missing or malformed threshold configuration."}]
+    checks = []
+    for key in ("mod_a_threshold", "mod_c_variance_threshold"):
+        value = values.get(key)
+        valid = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
+        checks.append({"name": key, "ok": valid, "detail":
+                       "Positive finite threshold; validation provenance still required." if valid else
+                       "Invalid threshold; recalibrate on source-disjoint validation data before scoring."})
+    return checks
 
 
 def diagnose():
@@ -27,6 +46,7 @@ def diagnose():
         path = ROOT / relative
         checks.append({"name": relative, "ok": path.is_file(),
                        "detail": hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else "missing"})
+    checks.extend(check_thresholds(ROOT / "configs/thresholds.json"))
     # Cache inspection only: a directory alone does not prove model compatibility.
     try:
         from huggingface_hub import try_to_load_from_cache
