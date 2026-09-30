@@ -31,9 +31,10 @@ class ControlReader(HTMLParser):
             self.header_after_banner = self.banner_seen
 
 
-def cleanup_output(output):
+def cleanup_output(output, *, flat=False):
     # Explicitly remove this test's known files; never recursively clean a path.
-    for relative in [*COPY_MAP.values(), "README.md"]:
+    targets = ([Path(name).name for name in COPY_MAP.values()] if flat else list(COPY_MAP.values()))
+    for relative in [*targets, "README.md"]:
         candidate = output / relative
         if candidate.is_file():
             candidate.unlink()
@@ -95,6 +96,21 @@ class PublicPreviewTests(unittest.TestCase):
         finally:
             cleanup_output(output)
 
+    def test_flat_export_places_seven_files_at_root_with_relative_assets(self):
+        output = export_preview(ROOT / ".test-tmp" / "preview-test-flat", flat=True)
+        try:
+            expected = {"README.md", *(Path(name).name for name in COPY_MAP.values())}
+            actual = {path.name for path in output.iterdir() if path.is_file()}
+            self.assertEqual(actual, expected)
+            self.assertEqual(len(actual), 7)
+            html = (output / "index.html").read_text(encoding="utf-8")
+            self.assertIn('href="style.css"', html)
+            self.assertIn('src="theme.js"', html)
+            self.assertIn('src="preview.js"', html)
+            self.assertFalse((output / "assets").exists())
+        finally:
+            cleanup_output(output, flat=True)
+
     def test_export_refuses_existing_output_and_paths_outside_workspace(self):
         output = ROOT / ".test-tmp" / "preview-test-existing"
         output.mkdir(parents=True)
@@ -104,7 +120,7 @@ class PublicPreviewTests(unittest.TestCase):
         finally:
             output.rmdir()
         with self.assertRaises(ValueError):
-            export_preview(Path("C:/outside-public-preview"))
+            export_preview(ROOT.parent / "outside-public-preview")
 
 
 if __name__ == "__main__":

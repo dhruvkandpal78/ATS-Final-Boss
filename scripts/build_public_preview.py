@@ -98,7 +98,7 @@ def disable_preview_controls(html: str) -> str:
     return html
 
 
-def export_preview(output: Path) -> Path:
+def export_preview(output: Path, *, flat: bool = False) -> Path:
     output = output.expanduser().resolve()
     root = ROOT.resolve()
     if output == root or root not in output.parents:
@@ -106,9 +106,11 @@ def export_preview(output: Path) -> Path:
     if output.exists():
         raise FileExistsError("Output directory already exists; choose a new path")
 
+    copy_map = ({source: Path(target).name for source, target in COPY_MAP.items()}
+                if flat else COPY_MAP)
     output.mkdir(parents=True)
     try:
-        for source_name, target_name in COPY_MAP.items():
+        for source_name, target_name in copy_map.items():
             source = ROOT / source_name
             target = output / target_name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -119,8 +121,12 @@ def export_preview(output: Path) -> Path:
                 if html.count("<body>") != 1:
                     raise ValueError("Maintained document body changed; review exporter before use")
                 html = html.replace(EXPECTED_SCRIPT, STATIC_SCRIPT)
-                html = html.replace('href="/assets/style.css"', 'href="assets/style.css"')
-                html = html.replace('src="/assets/theme.js"', 'src="assets/theme.js"')
+                style_path = "style.css" if flat else "assets/style.css"
+                theme_path = "theme.js" if flat else "assets/theme.js"
+                preview_path = "preview.js" if flat else "assets/preview.js"
+                html = html.replace(STATIC_SCRIPT, f'<script defer src="{preview_path}"></script>')
+                html = html.replace('href="/assets/style.css"', f'href="{style_path}"')
+                html = html.replace('src="/assets/theme.js"', f'src="{theme_path}"')
                 html = html.replace('href="/license"', 'href="LICENSE"')
                 html = html.replace('href="/license-legacy"', 'href="LICENSE-MIT-LEGACY.txt"')
                 html = html.replace(
@@ -139,7 +145,7 @@ def export_preview(output: Path) -> Path:
                     raise ValueError(f"Allowlisted source is not a regular workspace file: {source_name}")
                 shutil.copyfile(source, target)
 
-        style = output / "assets" / "style.css"
+        style = output / ("style.css" if flat else "assets/style.css")
         with style.open("a", encoding="utf-8", newline="") as css:
             css.write(
                 "\n/* Static-host preview notice */\n"
@@ -161,14 +167,13 @@ def export_preview(output: Path) -> Path:
         )
     except Exception:
         # Remove only the explicit files and directories created by this run.
-        for target_name in [*COPY_MAP.values(), "README.md"]:
+        for target_name in [*copy_map.values(), "README.md"]:
             candidate = output / target_name
             if candidate.is_file():
                 candidate.unlink()
-        for dirname in ("assets",):
-            candidate = output / dirname
-            if candidate.is_dir() and not any(candidate.iterdir()):
-                candidate.rmdir()
+        candidate = output / "assets"
+        if candidate.is_dir() and not any(candidate.iterdir()):
+            candidate.rmdir()
         if output.is_dir() and not any(output.iterdir()):
             output.rmdir()
         raise
@@ -179,8 +184,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT,
                         help="new output directory inside the repository workspace")
+    parser.add_argument("--flat", action="store_true",
+                        help="place all seven upload files at the output root for browser-based publishing")
     args = parser.parse_args()
-    print(export_preview(args.output))
+    print(export_preview(args.output, flat=args.flat))
 
 
 if __name__ == "__main__":

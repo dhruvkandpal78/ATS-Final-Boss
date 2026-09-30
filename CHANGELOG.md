@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: cancel static hosting and repair portable preview checks
+
+Cancelled the Hugging Face static publication at the user's request; confirmed the Space URL returns 404. Disabled GitHub Pages and removed the uncommitted automatic-static workflow. Retained the optional source-only exporter with flat-file support; fixed its outside-workspace assertion to work on Linux as well as Windows. This does not deploy resume analysis. See [preview status](docs/PUBLIC_PREVIEW.md).
+
 ## 2026-09-30: company-pilot request contract and operational release gates
 
 Unified strict request-header validation and UTF-8 JSON with a 64-level nesting bound for both maintained servers; removed raw exception text from crash events. Historical Streamlit uses local fonts and labels proxy scores. Added fail-closed regressions, adaptive cue diagnostics, separate experimental rendered-PDF inspection, clearer PDF coverage, a documentation map, customer acceptance checklist and static website exporter. No general readiness or zero-false-positive claim. See [the change record](docs/progress/COMPANY_HTTP_HARDENING_2026-09-30.md) and [current-code review response](docs/progress/CURRENT_REVIEW_2026-09-30.md).
