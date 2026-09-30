@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: resolve main/publication merge conflicts
+
+Merged current main into the enhanced publication branch, preserving the shared runtime, deterministic API suite and byte-identical synthetic PDF fixtures. Retained the main ReportLab requirements addition. Details and verification: [merge resolution record](docs/progress/MERGE_RESOLUTION_2026-09-30.md).
+
 ## 2026-09-30: regular CI installation and patched build tools
 
 Changed CI to a regular project install with metadata verification and a setuptools fixed-version floor. Removed the editable audit exclusion while preserving strict lock checks. The actual preceding failure was vulnerable runner setuptools; Python 3.12 and container jobs passed. See [CI installation repair](docs/progress/CI_INSTALL_REPAIR_2026-09-30.md).

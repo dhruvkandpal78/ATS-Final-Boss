@@ -10,6 +10,7 @@ torch>=2.0.0  # Required backend for sentence-transformers
 # PDF Forensics
 PyMuPDF>=1.23.0  # Note: import fitz
 pdfplumber>=0.10.0
+reportlab>=4.0.0
 
 # Visualization (ROC-AUC, PR Curves, Degradation plots)
 matplotlib>=3.7.0

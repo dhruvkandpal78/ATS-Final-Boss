@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+September 30 merge resolution: current main incorporated into the publication branch, preserving the enhanced runtime/API tests and existing synthetic fixtures. ReportLab requirements addition retained. Local offline verification and hosted mergeability/CI recorded in [merge resolution](MERGE_RESOLUTION_2026-09-30.md).
+
 September 30 CI installation repair: regular wheel installation, explicit non-editable metadata check and setuptools>=83.0.0 build floor added. Local packaging and audit unit checks passed. Hosted run 36708469548 passed all three jobs for implementation commit 672dd85. See [CI installation record](CI_INSTALL_REPAIR_2026-09-30.md).
 
 September 30 dependency repair: declared Beautiful Soup in runtime metadata, synchronized legacy requirements and regenerated the hashed Linux CPU lock (59 packages, all previous pins/hashes preserved). Offline publication suite: 259 passed, one Windows symlink skip, three integration tests deselected. Parser hash/install smoke and runtime audit passed; the revised full Linux CI run remains pending. See [dependency repair record](DEPENDENCY_REPAIR_2026-09-30.md).
