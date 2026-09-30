@@ -23,3 +23,5 @@ These changes do not alter the frozen detector policy or establish improved dete
 ## Git handoff
 
 Commit code, architecture, tests and change records together so the research teammate can trace implementation changes. Exclude personal PDFs, datasets, model artifacts, secrets, unrelated projects and private local history. Publication uses the existing clean remote-based branch; no force push or history rewrite is authorized.
+
+Working commit `a113389`; clean publication equivalent `5bc8338`. The exact publication checkout passed 215 offline tests in 24.11 seconds, excluding three cached-model integrations. Complete working-checkout suite passed 218. The pending public payload contains 77 added/modified project files plus previously recorded removals; outgoing-object and credential-pattern checks found no prohibited files or matching credential patterns. Push remains pending managed destination/payload approval, not silently substituted with another upload method.
