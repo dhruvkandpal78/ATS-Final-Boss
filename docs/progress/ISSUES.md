@@ -1,5 +1,10 @@
 # Issue Ledger
 
+- [x] Local network binding, Host/Origin validation and private-route authentication implemented with regression coverage.
+- [x] Private model loading requires independently pinned manifest and verified artifact bytes; executable pickle remains trusted-only.
+- [ ] Linux container/resource-limit execution, gateway integration, exact locked installation and external penetration testing require release evidence.
+- [ ] Source-only GitHub publication remains blocked by managed approval review; no push occurred.
+
 Updated 2026-09-30. Evidence: [enhancement record](ENHANCEMENT_2026-09-26.md), [research repair](RESEARCH_REPAIR_2026-09-30.md), and [controlled PDF benchmark](CONTROLLED_PDF_BENCHMARK_2026-09-30.md). Checked items mean the named implementation defect is addressed, not that every research release gate is complete.
 
 - [x] **F01** Inference preprocessing differs: one shared CLI/API service; scaling and positive-class regression tests (B02-B03).

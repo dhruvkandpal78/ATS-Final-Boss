@@ -1,32 +1,50 @@
-name: ATS Final Boss CI
+name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main, upgrade/paper-and-signal, 'codex/**']
   pull_request:
-    branches: [ "main" ]
+    branches: [main, upgrade/paper-and-signal]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
-
+  test-and-scan:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-        
-    - name: Run Tests with pytest
-      run: |
-        pytest tests/ -m "not integration"
-      env:
-        HF_HUB_OFFLINE: "1"
-        TRANSFORMERS_OFFLINE: "1"
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install locked Linux CPU runtime
+        if: matrix.python-version == '3.12'
+        run: python -m pip install --require-hashes -r requirements-runtime.lock
+      - name: Install project and security tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,security]"
+      - name: Run deterministic tests without model downloads
+        run: python -m pytest tests/ -m "not integration"
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+      - name: Audit installed dependencies
+        run: python -m pip_audit --progress-spinner off --skip-editable
+      - name: Audit locked runtime without skipped CPU-wheel versions
+        run: python scripts/audit_runtime.py --output runtime-audit.json
+      - name: Verify exact installed private-pilot runtime
+        if: matrix.python-version == '3.12'
+        run: python scripts/audit_runtime.py --verify-installed --output installed-runtime-audit.json
+      - name: Scan application Python for high severity findings
+        # B301 is excluded because the runtime intentionally loads trusted,
+        # locally provisioned pickle artifacts; see SECURITY.md.
+        run: python -m bandit -r src/app src/core src/inference.py -lll -s B301

@@ -6,6 +6,8 @@ Copyright © 2026 Dhruv Kandpal. New original enhancements have reserved-rights 
 
 ## Run locally
 
+Python 3.11 or newer is required. For the proposed single-company customer pilot, see [private deployment](docs/PRIVATE_PILOT.md), [security policy](SECURITY.md), and [customer strategy](docs/CUSTOMER_PILOT_STRATEGY.md). This deployment foundation still requires a verified Linux build and customer gateway integration before real resume processing.
+
 ```powershell
 python -m pip install -e ".[dev]"
 python scripts/doctor.py

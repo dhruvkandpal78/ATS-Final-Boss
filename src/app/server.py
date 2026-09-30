@@ -14,15 +14,19 @@ import multiprocessing as mp
 import os
 from pathlib import Path
 import socket
+import signal
 import sys
 import tempfile
 import threading
+from time import monotonic
+from uuid import uuid4
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlsplit, unquote
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from src.app.security import SecuritySettings, RequestBudget
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -46,7 +50,19 @@ def get_service():
         os.environ.setdefault("HF_HUB_OFFLINE", "1")
         os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
         from src.core.analysis_service import AnalysisService
-        _SERVICE = AnalysisService(str(MODELS_DIR))
+        models = Path(os.environ.get("ATS_MODELS_DIR", str(MODELS_DIR)))
+        if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
+            from src.core.artifacts import verify_policy, verify_candidate
+            from src.inference import load_pipeline
+            pin = os.environ["ATS_CANDIDATE_MANIFEST_SHA256"]
+            manifest = verify_candidate(models, pin)
+            verify_policy(manifest)
+            clf, scaler, a, b, c = load_pipeline(models, expected_manifest_sha256=pin)
+            _SERVICE = AnalysisService(mod_a=a, mod_b=b, mod_c=c, meta_clf=clf, scaler=scaler)
+            _SERVICE.candidate_model = True
+            _SERVICE.model_id = "candidate-" + pin.lower()[:16]
+        else:
+            _SERVICE = AnalysisService(str(models))
     return _SERVICE
 
 
@@ -103,6 +119,14 @@ def _score(text, b_score=None, pdf_details=None):
 
 def _worker_loop(connection):
     try:
+        if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
+            # Linux private deployments additionally require cgroup limits and
+            # read-only mounts. A process alone is not a security sandbox.
+            import resource
+            memory = int(os.environ.get("ATS_WORKER_MEMORY_MIB", "4096")) * 1024 * 1024
+            resource.setrlimit(resource.RLIMIT_AS, (memory, memory))
+            resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+            resource.setrlimit(resource.RLIMIT_NOFILE, (128, 128))
         while True:
             payload, directory = connection.recv()
             try:
@@ -160,8 +184,24 @@ class ModelWorker:
                 child.close()
             with tempfile.TemporaryDirectory(prefix="ats-analysis-") as directory:
                 try:
-                    self.connection.send((payload, directory))
-                    if not self.connection.poll(self.timeout):
+                    deadline = monotonic() + self.timeout
+                    sending_errors = []
+                    connection = self.connection
+                    def send_request():
+                        try:
+                            connection.send((payload, directory))
+                        except (EOFError, BrokenPipeError, OSError) as exc:
+                            sending_errors.append(exc)
+                    sender = threading.Thread(target=send_request, daemon=True)
+                    sender.start()
+                    sender.join(timeout=max(0, deadline - monotonic()))
+                    if sender.is_alive():
+                        self.close()
+                        sender.join(timeout=1)
+                        raise APIError(504, "Analysis worker did not accept the request within its deadline.")
+                    if sending_errors:
+                        raise sending_errors[0]
+                    if not self.connection.poll(max(0, deadline - monotonic())):
                         self.close()
                         raise APIError(504, "Analysis exceeded its 90-second deadline. Try a shorter document.")
                     status, result = self.connection.recv()
@@ -179,12 +219,93 @@ class ModelWorker:
 WORKER = ModelWorker()
 
 
+class BoundedHTTPServer(ThreadingHTTPServer):
+    """Bound accepted connection threads, including slow request headers."""
+    daemon_threads = False
+    request_queue_size = 16
+
+    def __init__(self, address, handler, security=None, max_connections=8):
+        self.security = security or SecuritySettings()
+        self.request_budget = RequestBudget(self.security.requests_per_minute)
+        self.slots = threading.BoundedSemaphore(max_connections)
+        super().__init__(address, handler)
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            try:
+                # Consume at most one small already-arriving header fragment.
+                # Closing with unread TCP data can discard the 503 on Windows.
+                request.settimeout(0.05)
+                try:
+                    request.recv(8192)
+                except socket.timeout:
+                    pass
+                request.settimeout(1)
+                request.sendall(b"HTTP/1.0 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\nRetry-After: 5\r\n\r\n")
+            except OSError:
+                pass
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except Exception:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "ATSLocal"
+    sys_version = ""
+
+    def _guard(self, path):
+        settings = getattr(self.server, "security", SecuritySettings())
+        rejected = settings.authorize(self.headers, self.command, self.server.server_port, path)
+        if rejected:
+            self._discard_small_body()
+            self._send(rejected[0], {"error": rejected[1]})
+            return False
+        if self.command == "POST" and hasattr(self.server, "request_budget"):
+            if not self.server.request_budget.consume():
+                self._discard_small_body()
+                self._send(429, {"error": "Request budget exceeded. Retry later."})
+                return False
+        return True
+
+    def _discard_small_body(self):
+        """Drain a bounded small rejected body without parsing or processing it.
+
+        Closing with unread incoming bytes can discard the response on Windows.
+        Neither a large payload nor a slow sender may delay authorization denial.
+        """
+        if self.command != "POST" or self.headers.get("Transfer-Encoding"):
+            return
+        lengths = self.headers.get_all("Content-Length", [])
+        if len(lengths) != 1:
+            return
+        try:
+            length = int(lengths[0])
+            if 0 < length <= 8192:
+                self.connection.settimeout(0.05)
+                self.rfile.read(length)
+        except (ValueError, OSError):
+            pass
+        finally:
+            self.connection.settimeout(15)
+
+    def send_error(self, code, message=None, explain=None):
+        self._send(code, {"error": "The HTTP request could not be accepted."})
 
     def setup(self):
         super().setup()
         self.connection.settimeout(15)
+        self.request_id = str(uuid4())
+        self.started_at = monotonic()
 
     def log_message(self, *args):
         pass
@@ -197,13 +318,26 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Request-Id", self.request_id)
+        self.send_header("Connection", "close")
+        self.close_connection = True
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+        self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+        if code == 401:
+            self.send_header("WWW-Authenticate", 'Bearer realm="resume-inspection"')
         if code in (429, 503):
             self.send_header("Retry-After", "5")
         self.end_headers()
+        route = urlsplit(getattr(self, "path", "")).path
+        known_routes = {"/", "/analyze", "/health", "/health/live", "/health/ready",
+                        "/api/capabilities", "/methodology", "/lab", "/ownership"}
+        logger.info(json.dumps({"event": "http_response", "request_id": self.request_id,
+            "method": getattr(self, "command", None) if getattr(self, "command", None) in ("GET", "POST") else "other",
+            "route": route if route in known_routes else "other", "status": code,
+            "duration_ms": round((monotonic() - self.started_at) * 1000, 2)}))
         try:
             self.wfile.write(data)
         except (BrokenPipeError, ConnectionResetError, socket.timeout):
@@ -211,6 +345,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
+        if not self._guard(path):
+            return
         if path in ("/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership"):
             try:
                 self._send(200, INDEX_PATH.read_text(encoding="utf-8"), "text/html; charset=utf-8")
@@ -219,8 +355,13 @@ class Handler(BaseHTTPRequestHandler):
         elif path in ("/license", "/license-legacy"):
             notice = ROOT / ("LICENSE" if path == "/license" else "LICENSE-MIT-LEGACY.txt")
             self._send(200, notice.read_text(encoding="utf-8"), "text/plain; charset=utf-8")
+        elif path == "/health/live":
+            self._send(200, {"ok": True})
         elif path == "/health":
             self._send(200, {"ok": True, "model_ready": WORKER.ready, "busy": WORKER.lock.locked()})
+        elif path == "/health/ready":
+            ready = WORKER.ready and WORKER.process is not None and WORKER.process.is_alive()
+            self._send(200 if ready else 503, {"ready": ready})
         elif path.startswith("/assets/"):
             assets = (ROOT / "src" / "app" / "assets").resolve()
             target = (assets / unquote(path[len("/assets/"):])).resolve()
@@ -238,6 +379,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "Not found."})
 
     def do_POST(self):
+        if not self._guard(urlsplit(self.path).path):
+            return
         if urlsplit(self.path).path != "/analyze":
             self._send(404, {"error": "Not found. Experimental lab endpoints are disabled."})
             return
@@ -274,17 +417,28 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     port = int(os.environ.get("PORT", "8000"))
     host = os.environ.get("HOST", "127.0.0.1")
-    server = ThreadingHTTPServer((host, port), Handler)
+    settings = SecuritySettings.from_env(host)
+    if settings.mode == "private" and sys.platform != "linux":
+        raise ValueError("Private mode requires a resource-limited Linux container; native demo mode stays local")
+    if settings.mode == "private":
+        from src.core.artifacts import verify_candidate, verify_policy
+        bundle = Path(os.environ.get("ATS_MODELS_DIR", str(MODELS_DIR)))
+        verify_policy(verify_candidate(bundle, os.environ["ATS_CANDIDATE_MANIFEST_SHA256"]))
+    server = BoundedHTTPServer((host, port), Handler, settings)
+    def stop(signum, frame):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, stop)
     print(f"ATS Final Boss: http://{host}:{port} (models load on first analysis)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
-        server.server_close()
         WORKER.close()
+        server.server_close()
 
 
 if __name__ == "__main__":

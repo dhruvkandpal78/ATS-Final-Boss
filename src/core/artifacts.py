@@ -21,9 +21,15 @@ def verify_policy(manifest, root=None):
             raise ValueError("Policy code changed after candidate freeze: " + name)
 
 
-def verify_candidate(directory):
+def verify_candidate(directory, expected_manifest_sha256=None):
     directory = Path(directory)
-    manifest = json.loads((directory / "candidate_manifest.json").read_text(encoding="utf-8"))
+    raw_manifest = (directory / "candidate_manifest.json").read_bytes()
+    if expected_manifest_sha256 is not None:
+        import hmac
+        actual_manifest = hashlib.sha256(raw_manifest).hexdigest()
+        if not hmac.compare_digest(actual_manifest, expected_manifest_sha256.lower()):
+            raise ValueError("Candidate manifest does not match the independent trust pin")
+    manifest = json.loads(raw_manifest)
     if (manifest.get("schema_version") != "1.0" or manifest.get("kind") != "real_pdf_candidate"
             or manifest.get("input_mode") != "pdf" or manifest.get("feature_order") != FEATURE_ORDER):
         raise ValueError("Incompatible candidate feature contract")

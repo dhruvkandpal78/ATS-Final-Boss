@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-09-30: private-company pilot security foundation
+
+Added guarded local/private deployment modes, Host/Origin checks, secret-file authentication, externally pinned model verification, bounded connections/request admission, content-free response audit events and Linux resource-limit/container configuration. Added a hashed Linux CPU runtime lock, advisory/static checks, CI and security/operations/customer-strategy documentation. The proposed first customer is a technical staffing agency or midsized recruiting team. This is a pilot foundation; Docker, customer SSO/TLS, exact Linux runtime and independent security validation remain release gates. Personal resumes remain excluded from publication. See [hardening record](docs/progress/PRIVATE_PILOT_HARDENING_2026-09-30.md).
+
 ## 2026-09-30: architecture record and source-only publication
 
 Replaced the outdated architecture plan with the implemented runtime, policy/score separation, evidence and frozen PDF research workflow. Added publication exclusions for personal PDFs/projects and a [GitHub handoff record](docs/progress/GITHUB_PUBLICATION_2026-09-30.md). The reviewed publication branch removes personal resume paths from its current tree without merging unrelated local history; older GitHub history remains unchanged.

@@ -11,6 +11,7 @@ import json
 import logging
 from pathlib import Path
 import pickle
+import hashlib
 import sys
 
 logging.basicConfig(level=logging.ERROR)
@@ -20,7 +21,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
-def load_pipeline(models_dir):
+def load_pipeline(models_dir, expected_manifest_sha256=None):
     """Load trusted local legacy artifacts and configured detectors.
 
     The caller chooses the artifact directory. Uploaded pickle files must never
@@ -29,19 +30,27 @@ def load_pipeline(models_dir):
     """
     model_dir = Path(models_dir)
     candidate = (model_dir / "candidate_manifest.json").is_file()
+    if expected_manifest_sha256 is not None and not candidate:
+        raise ValueError("Pinned deployment requires a candidate bundle; legacy pickle artifacts are unsupported")
+    manifest = None
     if candidate:
         from src.core.artifacts import verify_candidate
-        verify_candidate(model_dir)
-    with (model_dir / "meta_classifier.pkl").open("rb") as handle:
-        meta_clf = pickle.load(handle)
-    with (model_dir / "scaler.pkl").open("rb") as handle:
-        scaler = pickle.load(handle)
+        manifest = verify_candidate(model_dir, expected_manifest_sha256)
+    def artifact(name):
+        value = (model_dir / name).read_bytes()
+        if manifest and hashlib.sha256(value).hexdigest() != manifest["artifacts"][name]:
+            raise ValueError("Candidate artifact changed before use: " + name)
+        return value
+    # Deserialize the exact verified bytes, avoiding a reopen race after hashing.
+    # Pickle remains code execution: only operator-approved immutable bundles.
+    meta_clf = pickle.loads(artifact("meta_classifier.pkl"))
+    scaler = pickle.loads(artifact("scaler.pkl"))
 
     config_dir = model_dir if candidate else Path(__file__).resolve().parents[1] / "configs"
-    with (config_dir / "thresholds.json").open("r", encoding="utf-8") as handle:
-        thresholds = json.load(handle)
-    with (config_dir / "model_config.json").open("r", encoding="utf-8") as handle:
-        model_cfg = json.load(handle)
+    thresholds = json.loads(artifact("thresholds.json") if candidate else
+                            (config_dir / "thresholds.json").read_bytes())
+    model_cfg = json.loads(artifact("model_config.json") if candidate else
+                           (config_dir / "model_config.json").read_bytes())
 
     from src.modules.module_a import KeywordDensityDetector
     from src.modules.module_b import PDFForensicsDetector

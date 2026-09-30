@@ -33,7 +33,7 @@ def check_thresholds(path):
 
 def diagnose():
     checks = []
-    checks.append({"name": "python", "ok": sys.version_info >= (3, 9), "detail": sys.version.split()[0]})
+    checks.append({"name": "python", "ok": sys.version_info >= (3, 11), "detail": sys.version.split()[0]})
     for module, distribution in PACKAGES.items():
         available = importlib.util.find_spec(module) is not None
         try:

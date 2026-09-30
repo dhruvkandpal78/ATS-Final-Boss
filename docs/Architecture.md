@@ -33,6 +33,8 @@ The CLI and HTTP worker use `src/core/analysis_service.py`; adapters do not inve
 
 Uploaded documents are untrusted data. Candidate weights are trusted local artifacts, never uploaded documents. Candidate bundles are hash-checked before pickle deserialization; hashes detect accidental changes, not replacement of both artifacts and manifests by an attacker.
 
+Private mode additionally requires an independently pinned manifest digest, verifies policy hashes, and deserializes the exact verified bytes. It requires Linux resource limits and an authenticated customer gateway. Host/Origin guards, bearer authentication, connection limits and a global request budget apply before analysis. Local mode refuses network-wide binding. The proposed container is non-root, read-only and resource-limited; Docker execution and customer SSO/TLS integration remain unverified. See [private pilot guide](PRIVATE_PILOT.md).
+
 ## Evidence, policy and score
 
 - Module A computes token-aware skill density and concentration. Module C uses off-the-shelf MiniLM sentence-window coherence plus normalized, locally contextual instruction patterns. Positive P95 thresholds come only from source-disjoint clean validation examples; invalid/zero thresholds disable the affected score.
