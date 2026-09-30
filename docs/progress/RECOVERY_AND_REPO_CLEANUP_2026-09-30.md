@@ -1,0 +1,25 @@
+# Worker recovery and public repository cleanup - 2026-09-30
+
+## Architecture improvement
+
+The previous worker boundary patch bounded messages and deadlines but allowed an immediate new expensive attempt after every native crash, timeout, spawn failure or internal 503. The maintained worker now applies capped exponential recovery delays: 5, 10, 20, 40, then 60 seconds. Only attempted work with 503/504 advances backoff. Requests denied during cooldown do not spawn, send, extend the delay or increment failures. Successful schema-valid responses reset recovery; client format/validation errors do not trip it. Failed workers are disposed of and readiness remains false until successful recovery. Shutdown is not recorded as a failure.
+
+Both HTTP adapters propagate the actual Retry-After delay on failures/cooldown rather than always suggesting five seconds. Authenticated private `/health` exposes only cooldown, saturated failure count and remaining seconds. Public liveness remains exactly `{ok: true}`. No document-derived data or exception content is added to logs/health. This is request-driven recovery, not a background restart scheduler. Container restarts reset in-memory recovery state; no high-availability guarantee follows.
+
+These changes do not alter detector thresholds, policy 2.0, candidate scoring, feature computation, training data, holdout access or benchmark results. Physical worker memory still shares the container cgroup with the parent. Backoff mitigates repeated expensive attempts; it does not solve independent physical-memory containment or native-code sandboxing.
+
+## Public tree cleanup
+
+Removed unreferenced ask_astra.py, unpinned legacy download_dataset.py, broken run_all.ps1, assistant launch configuration and the unserved generated web/dist bundle from the current public tree. The maintained application remains src/app. Supported acquisition/training/evaluation commands are documented in README and the documentation map. Removal is a reversible Git-tree change, not an erasure of prior public history.
+
+Moved the root Antigravity proposal and older design/PRD/phases/memory/rationale documents into docs/archive without changing their historical contents. The archive index distinguishes past proposals from current implementation. Updated current documentation and capstone links. Dated progress records, existing report provenance and license notices remain intact for the research teammate. Old script names/claims in dated reports and changelog entries describe that historical state, not a currently supported runner.
+
+.gitignore and .dockerignore exclude local assistant/account configuration, generated legacy frontend output and local skill locks. The offline publication guard rejects newly added/modified assistant/account configuration and legacy generated bundles, including sensitive additions subsequently removed in an outgoing commit range. Removal of pre-existing tracked scaffolding is permitted. No personal PDFs, datasets, model weights, credentials, unrelated projects or private local history are included. This guard checks a narrow range; it does not erase or certify all existing remote history.
+
+## Verification
+
+Focused synthetic recovery, HTTP-adapter, boundary, readiness and lifecycle tests: 90 passed, one Windows skip for the POSIX partial-frame test. Independent read-only review found no concrete defect in capped backoff, cooldown admission, reset-on-success, retry headers or cleanup. New publication-guard tests exercise rejected paths and permitted deletion of old scaffolding. Final Windows Python 3.14.6 offline suite: **351 passed, 2 skipped, 3 integration tests deselected**. Skips are the Windows symlink limitation and POSIX-only partial-frame test; the Starlette test-client deprecation warning remains. High-severity Bandit scan passed (two low-severity observations; trusted model-artifact B301 exception retained). Canonical/updated documentation links and the offline private Compose shape check passed. Implementation `c4ef4229209c4ff88e22479a96ecbb85e946d14c` passed hosted push run [36752270599](https://github.com/dhruvkandpal78/ATS-Final-Boss/actions/runs/36752270599) and PR run [36752276211](https://github.com/dhruvkandpal78/ATS-Final-Boss/actions/runs/36752276211). Each Linux Python 3.11/3.12 suite reported **353 passed, 3 integration tests deselected**. Installed-wheel smoke, dependency audits, exact pinned Python 3.12 runtime verification, high-severity scan and isolated container smoke passed. Runtime source is unchanged in this documentation-only verification follow-up. These checks do not load customer-approved models or prove customer-host memory containment. No personal documents or model downloads are used.
+
+## Remaining release gates
+
+Separate physical-memory/native OOM containment, real approved-model compatibility, customer gateway/SSO and host controls, full pixel/OCR/clipping/occlusion coverage, independent natural labels, adaptive multilingual/classifier validation and calibrated probability remain open. The repo is cleaner and operational recovery is stronger; this does not establish a gap-free or company-ready release.

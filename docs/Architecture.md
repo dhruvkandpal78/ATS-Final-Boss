@@ -44,6 +44,12 @@ The worker owns its process and pipe under a request lock. A stop event cancels 
 
 Private embedding exports have their own independently pinned integrity contract and are loaded from a reviewed local safetensors directory. Startup exercises multi-sentence semantic encoding and a synthetic PDF, then checks detector statuses and classifier coverage before serving. Readiness respects stop admission, and private child diagnostics cannot bypass redacted parent response logs. Shared container memory remains a containment limitation; the worker virtual-address limit must not be interpreted as a physical-RAM bound.
 
+## Worker message contract
+
+Both HTTP adapters share the persistent worker. Versioned JSON bytes replace executable pickle IPC, with 7 MiB plus 8 KiB request envelopes and 8 MiB replies. A per-request identifier prevents stale responses; invalid framing, nesting, non-finite values and response envelopes dispose of the worker. Send and entire reply parsing are covered by the configured inference deadline, followed by bounded termination/cleanup waits. Error messages are parent-owned constants. This is not separate physical-memory containment. See [the boundary change record](progress/WORKER_BOUNDARY_2026-09-30.md).
+
+PDF responses expose `coverage.pdf_visibility` separately from supported Module B trace completion. Pixel visibility, complete optional-content reasoning and OCR are not implemented in the production detector. The experimental raster tool remains outside policy/model inference.
+
 ## Evidence, policy and score
 
 - Module A computes token-aware skill density and concentration. Module C uses off-the-shelf MiniLM sentence-window coherence plus normalized, locally contextual instruction patterns. Positive P95 thresholds come only from source-disjoint clean validation examples; invalid/zero thresholds disable the affected score.
@@ -71,7 +77,7 @@ The legacy synthetic structural-proxy experiment path uses training/validation o
 - Contracts/regressions: `tests/`, `configs/`, `.github/workflows/ci.yml`.
 - Team records: `CHANGELOG.md`, `docs/progress/`, aggregate `results/reports/`.
 
-The maintained frontend is the vanilla application in `src/app/`; the older `web/dist/` build is historical. Light/dark themes, evidence filters, source highlighting and explicit advisory labels are implemented.
+The maintained frontend is the vanilla application in `src/app/`; the older generated `web/dist/` build was removed from the current public tree; its prior state remains in Git history. Light/dark themes, evidence filters, source highlighting and explicit advisory labels are implemented.
 
 Policy 1.0's first controlled holdout had 13/24 no-added-attack false positives. Policy 2.0's fresh holdout had 0/200 such false positives and detected 100/100 scripted attacks across 100 source groups. Samples differ, so this is not a paired improvement estimate. Natural labels, near-duplicate/person-level independence, new attack families and calibrated probabilities remain unverified. See [precision research record](progress/PRECISION_POLICY_2026-09-30.md).
 
@@ -80,3 +86,13 @@ Personal resumes, downloaded datasets, local candidate weights and unrelated per
 ## Installed package resource contract
 
 Regular wheels include src/app/index.html, maintained CSS/JavaScript assets, the existing configs JSON package and unchanged license notices in dist-info/licenses. Adapters resolve the same resources in checkouts and installed packages; public notice names are allowlisted. A shared runtime path helper resolves ATS_MODELS_DIR for CLI, worker and private startup without changing candidate integrity or detector policy. CI launches the installed ASGI service outside the checkout and asserts no model process is spawned by the static smoke. This verifies packaging and lifecycle, not approved-model compatibility or physical-memory containment.
+
+## Request contract and customer acceptance
+
+Both maintained HTTP adapters use one strict body-header validator before reading JSON. Transfer-Encoding is unsupported; Content-Length must occur once, contain decimal digits and stay within the body limit; Content-Type must occur once and be application/json. Malformed deeply nested JSON returns 400. Worker crash events record exception type and exit code rather than raw exception text. Synthetic transport tests exercise rejection before inference.
+
+The historical Streamlit dashboard is a separate proxy experiment; it uses local font fallbacks and explicitly labels its uncalibrated scores. It is not a supported company deployment. The [customer release gate](COMPANY_RELEASE_GATE.md) records the operational evidence still required for the single-organization pilot. See [the change record](progress/COMPANY_HTTP_HARDENING_2026-09-30.md).
+
+## Recovery admission
+
+The worker applies request-driven 5/10/20/40/60-second capped backoff after attempted 503/504 work, including transport failure and timeouts. Cooldown requests receive 503 and the remaining Retry-After without restarting the worker or extending recovery. Client errors do not trip the circuit; successful validated replies reset it. Health exposes only recovery counts/timing, with readiness false after disposal. Recovery resets on HTTP process restart and does not provide separate physical memory isolation. See [recovery and cleanup](progress/RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).

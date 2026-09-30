@@ -1,5 +1,24 @@
 # ATS Final Boss - Development Journey & Iterations
 
+Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
+
+## 2026-09-30: bounded worker recovery and public tree cleanup
+
+Added capped recovery backoff, dynamic retry guidance and content-free recovery health. Removed unused/broken developer scripts, assistant launch configuration and the unserved generated frontend; archived historical planning records and strengthened publication/build exclusions. Research evidence and Git history remain intact. See [recovery and cleanup record](docs/progress/RECOVERY_AND_REPO_CLEANUP_2026-09-30.md).
+
+## 2026-09-30: data-only worker boundary and explicit PDF visibility coverage
+
+Replaced pickle-based worker messages with bounded, versioned JSON and whole-frame deadline handling. Added correlated response checks, generic child-error mapping, a bounded disabled-route response fix and explicit API visibility limits without changing policy scores or thresholds. Validation and remaining containment/research gaps: [worker boundary record](docs/progress/WORKER_BOUNDARY_2026-09-30.md).
+
+
+## 2026-09-30: cancel static hosting and repair portable preview checks
+
+Cancelled the Hugging Face static publication at the user's request; confirmed the Space URL returns 404. Disabled GitHub Pages and removed the uncommitted automatic-static workflow. Retained the optional source-only exporter with flat-file support; fixed its outside-workspace assertion to work on Linux as well as Windows. This does not deploy resume analysis. See [preview status](docs/PUBLIC_PREVIEW.md).
+
+## 2026-09-30: company-pilot request contract and operational release gates
+
+Unified strict request-header validation and UTF-8 JSON with a 64-level nesting bound for both maintained servers; removed raw exception text from crash events. Historical Streamlit uses local fonts and labels proxy scores. Added fail-closed regressions, adaptive cue diagnostics, separate experimental rendered-PDF inspection, clearer PDF coverage, a documentation map, customer acceptance checklist and static website exporter. No general readiness or zero-false-positive claim. See [the change record](docs/progress/COMPANY_HTTP_HARDENING_2026-09-30.md) and [current-code review response](docs/progress/CURRENT_REVIEW_2026-09-30.md).
+
 ## 2026-09-30: make installed wheels serve the complete runtime
 
 Packaged the maintained UI/assets, default configs and existing license notices. Added distribution-aware notice resolution and shared CLI/API/private startup model-path handling. CI now serves the actual installed wheel outside the checkout to detect missing resources. Offline suite: 262 passed; installed live smoke passed. Details and limits: [portable runtime record](docs/progress/PORTABLE_RUNTIME_2026-09-30.md).

@@ -13,7 +13,6 @@ import logging
 import mimetypes
 import os
 from pathlib import Path
-import re
 import sys
 from time import monotonic
 from uuid import uuid4
@@ -25,7 +24,7 @@ from starlette.routing import Route
 from starlette.concurrency import run_in_threadpool
 
 from src.app.security import RequestBudget, SecuritySettings
-from src.app.http_contract import SECURITY_HEADERS
+from src.app.http_contract import SECURITY_HEADERS, decode_json_body, json_request_length
 from src.core.runtime_paths import models_directory, notice_path
 from src.app.startup import WARMUP_TEXT, require_warmup_result, warmup_pdf_payload
 from src.app.server import (
@@ -65,24 +64,7 @@ def _response(status: int, body: dict | str | bytes, media_type: str = "applicat
 
 
 async def _read_payload(request: Request, headers: Message) -> object:
-    if headers.get("Transfer-Encoding") is not None:
-        raise APIError(400, "Transfer-Encoding is unsupported.")
-    lengths = headers.get_all("Content-Length", [])
-    if len(lengths) != 1:
-        raise APIError(411, "One Content-Length header is required.")
-    try:
-        value = lengths[0]
-        if not re.fullmatch(r"[0-9]+", value):
-            raise ValueError
-        length = int(value)
-    except ValueError:
-        raise APIError(400, "Invalid Content-Length.") from None
-    if length <= 0:
-        raise APIError(400, "Request body must not be empty.")
-    if length > MAX_BODY_BYTES:
-        raise APIError(413, "Request exceeds the 7 MiB encoded-body limit.")
-    if len(headers.get_all("Content-Type", [])) != 1 or headers.get_content_type() != "application/json":
-        raise APIError(415, "Use application/json.")
+    length = json_request_length(headers, MAX_BODY_BYTES)
     body = bytearray()
     try:
         async with asyncio.timeout(15):
@@ -97,7 +79,7 @@ async def _read_payload(request: Request, headers: Message) -> object:
     if len(body) != length:
         raise APIError(400, "Incomplete request body.")
     try:
-        return await run_in_threadpool(json.loads, body)
+        return await run_in_threadpool(decode_json_body, body)
     except (ValueError, UnicodeDecodeError, RecursionError):
         raise APIError(400, "Invalid JSON payload.") from None
 
@@ -174,7 +156,8 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                     response = _response(200, {"ok": True})
                 elif path == "/health":
                     response = _response(200, {"ok": True, "model_ready": worker.ready,
-                                               "busy": worker.lock.locked()})
+                                               "busy": worker.lock.locked(),
+                                               "worker_recovery": getattr(worker, "recovery_snapshot", lambda: {})()})
                 elif path == "/health/ready":
                     ready = _worker_ready(worker)
                     response = _response(200 if ready else 503, {"ready": ready})
@@ -201,6 +184,8 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                 response = _response(405, {"error": "Method not allowed."})
         except APIError as exc:
             response = _response(exc.status, {"error": str(exc)})
+            if exc.retry_after is not None:
+                response.headers["Retry-After"] = str(exc.retry_after)
         except Exception:
             response = _response(503, {"error": "Analysis is currently unavailable."})
 
@@ -209,7 +194,7 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
         response.headers["Connection"] = "close"
         if response.status_code == 401:
             response.headers["WWW-Authenticate"] = 'Bearer realm="resume-inspection"'
-        if response.status_code in (429, 503):
+        if response.status_code in (429, 503) and "Retry-After" not in response.headers:
             response.headers["Retry-After"] = "5"
         logger.info(json.dumps({
             "event": "http_response", "request_id": request_id,

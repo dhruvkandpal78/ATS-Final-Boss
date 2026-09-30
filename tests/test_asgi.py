@@ -43,6 +43,21 @@ def _app(worker=None, settings=None):
     return asgi.create_app(worker=worker, settings=settings), worker
 
 
+def test_worker_cooldown_retry_guidance_and_readiness():
+    class RecoveringWorker(FakeWorker):
+        def run(self, payload):
+            raise asgi.APIError(503, "Worker recovering.", retry_after=40)
+        def recovery_snapshot(self):
+            return {"cooldown": True, "retry_after_seconds": 40, "consecutive_failures": 4}
+    app, _ = _app(RecoveringWorker())
+    with TestClient(app) as client:
+        response = client.post("/analyze", json={"text": "Synthetic context"})
+        assert response.status_code == 503 and response.headers["Retry-After"] == "40"
+        assert client.get("/health/ready").status_code == 503
+        assert client.get("/health").json()["worker_recovery"]["cooldown"] is True
+        assert client.get("/health/live").json() == {"ok": True}
+
+
 def test_local_routes_lazy_readiness_headers_and_shutdown():
     app, worker = _app()
     with TestClient(app) as client:

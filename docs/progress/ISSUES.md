@@ -1,5 +1,9 @@
 # Issue Ledger
 
+- [x] Maintained adapters share strict body-header validation; malformed deeply nested JSON is a client error. Worker crash events exclude exception messages.
+- [x] Historical Streamlit font imports removed and proxy-score limitations visibly identified.
+- [ ] Customer-specific release evidence checklist must be completed; static scan results do not waive deployed security, memory or accuracy validation.
+
 - [x] Regular wheel packages UI/configs/notices; live installed-runtime check now runs outside the checkout in CI.
 
 - [x] Private HTTP adapter uses Uvicorn/Starlette, bounded requests and fail-closed startup warm-up.

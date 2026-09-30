@@ -27,8 +27,13 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from src.app.security import SecuritySettings, RequestBudget
-from src.app.http_contract import SECURITY_HEADERS
+from src.app.http_contract import HTTPContractError, SECURITY_HEADERS, decode_json_body, json_request_length
 from src.core.runtime_paths import models_directory, notice_path
+from src.app.worker_protocol import (
+    PROTOCOL_VERSION, MAX_REQUEST_BYTES, MAX_RESPONSE_BYTES, ProtocolError,
+    encode_message, receive_message, validate_request, validate_response,
+)
+from src.app.worker_recovery import WorkerRecovery
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -40,10 +45,7 @@ _SERVICE = None
 logger = logging.getLogger(__name__)
 
 
-class APIError(ValueError):
-    def __init__(self, status, message):
-        super().__init__(message)
-        self.status = status
+APIError = HTTPContractError
 
 
 def get_service():
@@ -153,20 +155,29 @@ def _worker_loop(connection):
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
             resource.setrlimit(resource.RLIMIT_NOFILE, (128, 128))
         while True:
-            payload, directory = connection.recv()
+            message = receive_message(connection, MAX_REQUEST_BYTES)
+            payload, directory = validate_request(message)
+            status = 200
             try:
                 result = analyze_payload(payload, directory)
-                connection.send((200, result))
             except APIError as exc:
-                connection.send((exc.status, {"error": str(exc)}))
+                status, result = exc.status, {}
             except (ImportError, FileNotFoundError, OSError):
-                connection.send((503, {"error": "Analysis dependencies are unavailable. Run scripts/doctor.py locally."}))
+                status, result = 503, {}
             except ValueError:
-                connection.send((422, {"error": "The document could not be analyzed. Check its format and configured limits."}))
+                status, result = 422, {}
             except Exception:
                 # No resume text, local paths, exception messages or traces in responses/logs.
-                connection.send((503, {"error": "Analysis could not be completed. Check the local model setup and retry."}))
-    except (EOFError, BrokenPipeError):
+                status, result = 503, {}
+            response = {"version": PROTOCOL_VERSION, "request_id": message["request_id"],
+                        "status": status, "result": result}
+            try:
+                encoded = encode_message(response, MAX_RESPONSE_BYTES)
+            except ProtocolError:
+                response.update(status=503, result={})
+                encoded = encode_message(response, MAX_RESPONSE_BYTES)
+            connection.send_bytes(encoded)
+    except (EOFError, OSError, ProtocolError):
         pass
     finally:
         connection.close()
@@ -181,6 +192,10 @@ class ModelWorker:
         self.process = None
         self.connection = None
         self.ready = False
+        self.recovery = WorkerRecovery(lambda: monotonic())
+
+    def recovery_snapshot(self):
+        return self.recovery.snapshot()
 
     def _close_locked(self):
         """Dispose of the worker while the request lock is held."""
@@ -232,9 +247,15 @@ class ModelWorker:
             raise APIError(503, "Analysis service is stopping.")
         if not self.lock.acquire(blocking=False):
             raise APIError(429, "Another document is being analyzed. Retry shortly.")
+        attempted = False
         try:
             if self.stopping.is_set():
                 raise APIError(503, "Analysis service is stopping.")
+            retry_after = self.recovery.remaining()
+            if retry_after:
+                raise APIError(503, "Analysis is temporarily unavailable while the worker recovers. Retry shortly.",
+                               retry_after=retry_after)
+            attempted = True
             if self.process is None or not self.process.is_alive():
                 self._close_locked()
                 context = mp.get_context("spawn")
@@ -257,11 +278,15 @@ class ModelWorker:
             with tempfile.TemporaryDirectory(prefix="ats-analysis-") as directory:
                 try:
                     deadline = monotonic() + self.timeout
+                    request_id = uuid4().hex
+                    encoded = encode_message({"version": PROTOCOL_VERSION,
+                                              "request_id": request_id,
+                                              "payload": payload, "directory": directory}, MAX_REQUEST_BYTES)
                     sending_errors = []
                     connection = self.connection
                     def send_request():
                         try:
-                            connection.send((payload, directory))
+                            connection.send_bytes(encoded)
                         except (EOFError, BrokenPipeError, OSError) as exc:
                             sending_errors.append(exc)
                     sender = threading.Thread(target=send_request, daemon=True)
@@ -274,31 +299,60 @@ class ModelWorker:
                         self._close_locked()
                         sender.join(timeout=1)
                         raise APIError(503, "Analysis service is stopping.")
-                    if sender.is_alive():
+                    if sender.is_alive() or monotonic() >= deadline:
                         logger.error(json.dumps({"event": "worker_busy_timeout", "timeout": self.timeout}))
                         self._close_locked()
                         sender.join(timeout=1)
                         raise APIError(504, "Analysis worker did not accept the request within its deadline.")
                     if sending_errors:
                         raise sending_errors[0]
-                    while not self.connection.poll(min(0.2, max(0, deadline - monotonic()))):
+                    replies, receiving_errors = [], []
+                    def receive_reply():
+                        try:
+                            replies.append(validate_response(
+                                receive_message(connection, MAX_RESPONSE_BYTES), request_id))
+                        except (EOFError, OSError, ProtocolError) as exc:
+                            receiving_errors.append(exc)
+                    receiver = threading.Thread(target=receive_reply, daemon=True)
+                    receiver.start()
+                    # poll() may see only a frame header; recv() can then block
+                    # indefinitely. Bound the entire frame read and JSON parse.
+                    while receiver.is_alive():
+                        receiver.join(timeout=min(0.2, max(0, deadline - monotonic())))
                         if self.stopping.is_set():
                             self._close_locked()
+                            receiver.join(timeout=1)
                             raise APIError(503, "Analysis service is stopping.")
                         if monotonic() >= deadline:
                             logger.error(json.dumps({"event": "worker_execution_timeout", "timeout": self.timeout}))
                             self._close_locked()
-                            raise APIError(504, "Analysis exceeded its 90-second deadline. Try a shorter document.")
-                    status, result = self.connection.recv()
+                            receiver.join(timeout=1)
+                            raise APIError(504, "Analysis exceeded its configured deadline. Try a shorter document.")
+                    if monotonic() >= deadline:
+                        logger.error(json.dumps({"event": "worker_execution_timeout", "timeout": self.timeout}))
+                        self._close_locked()
+                        raise APIError(504, "Analysis exceeded its configured deadline. Try a shorter document.")
+                    if receiving_errors:
+                        raise receiving_errors[0]
+                    status, result = replies[0]
                     self.ready = status == 200
                     if status != 200:
                         raise APIError(status, result["error"])
+                    self.recovery.succeeded()
                     return result
-                except (EOFError, BrokenPipeError, OSError) as exc:
+                except (EOFError, OSError, ProtocolError) as exc:
                     exitcode = self.process.exitcode if self.process else None
-                    logger.error(json.dumps({"event": "worker_crash", "error": str(exc), "exitcode": exitcode}))
+                    logger.error(json.dumps({"event": "worker_crash", "error_type": type(exc).__name__, "exitcode": exitcode}))
                     self._close_locked()
                     raise APIError(503, "The analysis worker stopped. Please retry.") from None
+        except APIError as exc:
+            if attempted and exc.status in (503, 504) and not self.stopping.is_set():
+                delay = self.recovery.failed()
+                self._close_locked()
+                exc.retry_after = delay
+                logger.warning(json.dumps({"event": "worker_recovery_backoff", "retry_after_seconds": delay,
+                                           "consecutive_failures": self.recovery.consecutive_failures}))
+            raise
         finally:
             self.lock.release()
 
@@ -370,7 +424,7 @@ class Handler(BaseHTTPRequestHandler):
         Closing with unread incoming bytes can discard the response on Windows.
         Neither a large payload nor a slow sender may delay authorization denial.
         """
-        if self.command != "POST" or self.headers.get("Transfer-Encoding"):
+        if self.command != "POST" or self.headers.get_all("Transfer-Encoding", []):
             return
         lengths = self.headers.get_all("Content-Length", [])
         if len(lengths) != 1:
@@ -397,7 +451,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def _send(self, code, body, ctype="application/json; charset=utf-8"):
+    def _send(self, code, body, ctype="application/json; charset=utf-8", *, retry_after=None):
         if isinstance(body, dict):
             body = json.dumps(body, allow_nan=False)
         data = body.encode("utf-8") if isinstance(body, str) else body
@@ -411,8 +465,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(name, value)
         if code == 401:
             self.send_header("WWW-Authenticate", 'Bearer realm="resume-inspection"')
-        if code in (429, 503):
-            self.send_header("Retry-After", "5")
+        if retry_after is not None or code in (429, 503):
+            self.send_header("Retry-After", str(retry_after if retry_after is not None else 5))
         self.end_headers()
         route = urlsplit(getattr(self, "path", "")).path
         known_routes = {"/", "/analyze", "/health", "/health/live", "/health/ready",
@@ -444,7 +498,8 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/health/live":
             self._send(200, {"ok": True})
         elif path == "/health":
-            self._send(200, {"ok": True, "model_ready": WORKER.ready, "busy": WORKER.lock.locked()})
+            self._send(200, {"ok": True, "model_ready": WORKER.ready, "busy": WORKER.lock.locked(),
+                             "worker_recovery": WORKER.recovery_snapshot()})
         elif path == "/health/ready":
             ready = (not WORKER.stopping.is_set() and WORKER.ready and
                      WORKER.process is not None and WORKER.process.is_alive())
@@ -469,34 +524,25 @@ class Handler(BaseHTTPRequestHandler):
         if not self._guard(urlsplit(self.path).path):
             return
         if urlsplit(self.path).path != "/analyze":
+            self._discard_small_body()
             self._send(404, {"error": "Not found. Experimental lab endpoints are disabled."})
             return
         try:
-            if self.headers.get("Transfer-Encoding"):
-                raise APIError(400, "Transfer-Encoding is unsupported.")
-            lengths = self.headers.get_all("Content-Length", [])
-            if len(lengths) != 1:
-                raise APIError(411, "One Content-Length header is required.")
             try:
-                length = int(lengths[0])
-            except ValueError:
-                raise APIError(400, "Invalid Content-Length.") from None
-            if length <= 0:
-                raise APIError(400, "Request body must not be empty.")
-            if length > MAX_BODY_BYTES:
-                raise APIError(413, "Request exceeds the 7 MiB encoded-body limit.")
-            if self.headers.get_content_type() != "application/json":
-                raise APIError(415, "Use application/json.")
+                length = json_request_length(self.headers, MAX_BODY_BYTES)
+            except APIError:
+                self._discard_small_body()
+                raise
             raw = self.rfile.read(length)
             if len(raw) != length:
                 raise APIError(400, "Incomplete request body.")
             try:
-                payload = json.loads(raw)
-            except (ValueError, UnicodeDecodeError):
+                payload = decode_json_body(raw)
+            except (ValueError, UnicodeDecodeError, RecursionError):
                 raise APIError(400, "Invalid JSON payload.") from None
             self._send(200, WORKER.run(payload))
         except APIError as exc:
-            self._send(exc.status, {"error": str(exc)})
+            self._send(exc.status, {"error": str(exc)}, retry_after=exc.retry_after)
         except socket.timeout:
             self._send(408, {"error": "Request upload timed out."})
         except Exception:

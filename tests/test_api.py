@@ -114,20 +114,39 @@ def test_error_redaction(http_server, monkeypatch):
     assert b"sensitive" not in data and b"private" not in data
 
 
-def test_expensive_labs_disabled(http_server):
+def test_expensive_labs_disabled(http_server, monkeypatch):
+    def forbidden(payload):
+        pytest.fail("Disabled routes must not reach the analysis worker")
+    monkeypatch.setattr(server.WORKER, "run", forbidden)
     assert request(http_server, "POST", "/adaptive", "{}")[0] == 404
     assert request(http_server, "POST", "/red-blue", "{}")[0] == 404
+
+
+def test_worker_cooldown_header_on_local_adapter(http_server, monkeypatch):
+    def recovering(payload):
+        raise server.APIError(503, "Worker recovering.", retry_after=40)
+    monkeypatch.setattr(server.WORKER, "run", recovering)
+    connection = http.client.HTTPConnection(*http_server, timeout=5)
+    try:
+        connection.request("POST", "/analyze", json.dumps({"text": "Synthetic context"}),
+                           {"Content-Type": "application/json"})
+        response = connection.getresponse()
+        assert response.status == 503 and response.getheader("Retry-After") == "40"
+        response.read()
+    finally:
+        connection.close()
 
 
 def test_worker_deadline_terminates_and_cleans_tempfiles(monkeypatch):
     directories = []
     class Connection:
-        def send(self, value):
-            _, directory = value
+        def send_bytes(self, value):
+            directory = json.loads(value)["directory"]
             directories.append(Path(directory))
             (Path(directory) / 'resume.pdf').write_bytes(b'%PDF-1.7')
-        def poll(self, timeout):
-            return False
+        def recv_bytes(self, maxlength):
+            threading.Event().wait(0.1)
+            raise EOFError
         def close(self):
             pass
     class Process:

@@ -11,12 +11,13 @@ def test_shutdown_cancels_active_request_and_rejects_new_work(monkeypatch):
     sent = threading.Event()
 
     class Connection:
-        def send(self, value):
+        def send_bytes(self, value):
             sent.set()
 
-        def poll(self, timeout):
-            threading.Event().wait(timeout)
-            return False
+        def recv_bytes(self, maxlength):
+            while not process.terminated:
+                threading.Event().wait(0.01)
+            raise EOFError
 
         def close(self):
             pass

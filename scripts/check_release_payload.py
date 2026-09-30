@@ -26,6 +26,7 @@ TEXT_SUFFIXES = {
 }
 TEXT_NAMES = {"dockerfile", "makefile", "license", "license.md", ".gitignore", ".dockerignore", ".env.example"}
 PERSONAL_DIRS = {"projects for cv", "personal", "private", "secrets"}
+LOCAL_CONFIG_DIRS = {".agents", ".codex", ".claude", ".cursor", ".aws"}
 PROHIBITED_SUFFIXES = {".pdf", ".pkl", ".pickle", ".webm", ".pem", ".key", ".token"}
 SECRET_NAME = re.compile(r"(?:^|[._-])(secret|secrets|token|tokens|credential|credentials|private|privatekey|pem|key|id_rsa|id_ed25519)(?:$|[._-])", re.I)
 PRIVATE_KEY = re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----")
@@ -86,6 +87,10 @@ def is_prohibited_path(path: str) -> str | None:
     parts = [part.casefold() for part in normalized.split("/") if part]
     if any(part in PERSONAL_DIRS for part in parts):
         return "personal directory"
+    if any(part in LOCAL_CONFIG_DIRS for part in parts) or (parts and parts[-1] == "skills-lock.json"):
+        return "local assistant or account configuration"
+    if len(parts) >= 2 and parts[:2] == ["web", "dist"]:
+        return "unmaintained generated frontend bundle"
     if any(part == "data" for part in parts):
         return "data directory"
     if parts and parts[0] == "results" and not (len(parts) > 2 and parts[1] == "reports" and Path(parts[-1]).suffix in {".md", ".json"}):

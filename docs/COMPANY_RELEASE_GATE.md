@@ -1,0 +1,50 @@
+# Single-customer pilot release gate
+
+This checklist records evidence required before one named customer may process real resumes in the proposed private pilot. It does not establish general company readiness, production readiness, certification, legal compliance, or absence of vulnerabilities. The supported target is one organization behind that customer's TLS and SSO gateway; the product is a human-review aid and must not rank, reject, or determine candidate eligibility. A broader, multi-tenant, public SaaS, or automated hiring deployment needs a new scope and review. See [the private pilot operations guide](PRIVATE_PILOT.md) and [the security policy](../SECURITY.md).
+
+## How to record status
+
+Use only these statuses:
+
+- **BLOCKED** — a required decision, approval, control, or evidence is missing or failed. Real-resume launch is prohibited.
+- **NOT RUN** — the check has not been performed in the intended customer environment. Real-resume launch is prohibited until it passes or the accountable customer owner records a documented disposition.
+- **PASSED** — the named owner reviewed dated evidence for the exact source revision, image digest, artifact pins, gateway configuration, and customer environment in scope. A code setting or a successful synthetic smoke check alone is not a pass for operational acceptance.
+
+The current status for every gate below is **NOT RUN** unless the customer and service owner attach evidence and update the row. Do not infer deployment success from the example Compose file, gateway template, local tests, or documentation. Record a failed check as **BLOCKED** and describe the corrective action. Do not use this checklist as a claim that the product is generally ready for sale.
+
+| Gate | Current status | Required customer acceptance proof | Accountable owner / date / evidence reference |
+|---|---|---|---|
+| Purpose, scope, rights | NOT RUN | Customer-approved single-organization use, user population, data categories, permitted purpose, code/model/data rights, license terms, and named customer sponsor. Obtain rights-holder permission where required by the mixed-rights project. |  |
+| Customer gateway and network | NOT RUN | Evidence from the actual deployed gateway that TLS terminates there, its certificate and hostname are correct, SSO authenticates users and authorizes the named pilot group, and only approved gateway traffic can reach the API. Confirm the service has no public or host-published port and the gateway is attached to the intended private network. Attach sanitized network/configuration review and externally observed reachability results. The example gateway delegates SSO to a customer-provided authorizer; it does not install or prove SSO. |  |
+| Authentication, no-auth and fail-closed behavior | NOT RUN | From the customer network, demonstrate unauthenticated requests to UI/assets and `/analyze` fail, invalid/expired bearer credentials fail, the gateway overwrites caller-supplied Authorization, and approved SSO users receive the server-side token only after authorization. Verify direct backend access is denied and that only the intended liveness check is unauthenticated. Show incorrect Host/Origin and missing or malformed security configuration fail closed. Do not include token values in evidence. |  |
+| Exact release identity and build | NOT RUN | Record reviewed source revision, built image digest, Python/runtime dependency lock identity, generated SBOM and vulnerability scan, build owner, and approval of any unresolved base-image or signing limitation. Test the exact image on the supported Linux host. A tag or workstation-only build is insufficient. |  |
+| Model and embedding approval / pinning | NOT RUN | Artifact owner documents source, rights, provenance, compatibility, immutable provisioned location, approval, and independently obtained SHA-256 pins for candidate and embedding manifests. Verify exact pins and artifact contents are consumed by the deployed image, and that changed/missing/unapproved files prevent startup. Record that hashes establish correspondence to pins, not publisher identity. Keep artifacts outside the image and prevent runtime writes. |  |
+| Startup verification and readiness | NOT RUN | On the exact deployment, capture successful pinned-artifact verification, policy-code hash verification, synthetic text and PDF warm-up, and authenticated `/health/ready`. Also demonstrate bad pins, missing artifacts, failed warm-up, or failed readiness prevent traffic or leave the instance unready. Readiness is not evidence of detection accuracy. |  |
+| Worker resource containment, including native OOM | NOT RUN | Supply measured peak memory and CPU under representative synthetic load. Demonstrate containment when native inference/PDF code allocates rapidly or hangs: the whole service must not be destabilized, host memory must remain protected, and the worker can be stopped/restarted while preserving safe service behavior. The configured address-space `RLIMIT_AS` is not a physical-memory budget; parent and worker share the container cgroup. Record the separate physical-memory isolation or other tested containment design, kernel/container behavior, limits, and recovery evidence. Do not process real resumes during this test. |  |
+| Temporary files, logs, retention and deletion | NOT RUN | Customer privacy owner approves purpose, lawful basis/notice position where applicable, retention period, access roles, support handling, data residency, deletion procedure, backup/snapshot/swap expiry, and export policy. Demonstrate upload/temp cleanup for completion, parse error, timeout, termination and restart. Inspect actual gateway, API, container, APM, crash and support logs to confirm bodies, credentials and candidate content are absent; record access and retention controls for logs. Verify any gateway request-body temp location is bounded tmpfs in the actual deployment; its example config comment is not proof. |  |
+| Privacy and access acceptance | NOT RUN | Document who can submit documents and view findings, restrict result access to approved recruiters/reviewers, approve data processing terms and escalation path, and confirm no request/response body capture or browser persistence of the API token. Confirm how findings and exports may reveal document-derived details and how recipients must handle them. |  |
+| Load, availability and recovery | NOT RUN | Run a controlled synthetic-document load test against the intended image, gateway and host. Record concurrency, latency, memory/CPU/temp usage, 429/5xx behavior, timeouts, restart loops, readiness, recovery, and thresholds accepted by the customer. Include capacity headroom and gateway limits. No production resumes in an unvalidated load plan. |  |
+| Human-use, accuracy and fairness | NOT RUN | Recruiting operations approve reviewer training and workflow: findings are document signals, require human judgment, and cannot alone justify ranking, rejection, or claims about a person's honesty. Customer accepts current empirical limits: the deployed score is experimental/uncalibrated; natural attack performance, broad population fairness, and production-scale reliability are not established. Attach a customer-approved evaluation plan covering representative benign documents, attacks, source-disjoint validation, subgroup/fairness review, uncertainty and escalation. Synthetic or scripted test results do not prove field performance. |  |
+| Incident ownership and response | NOT RUN | Name service operator, security incident intake owner, customer privacy/security escalation owners, model/artifact approver, and after-hours contact. Approve a tested response covering gateway shutdown, token revocation/rotation, evidence preservation without candidate content, impact assessment/notification, artifact replacement, and controlled restoration. |  |
+| Rollback and change control | NOT RUN | Demonstrate rollback to the prior reviewed image digest and matching approved artifact pins; document maintenance window, backups/deletion behavior, compatibility checks, rollback authority, and verification after restore. Set triggers and owners for updates, vulnerability response, secrets rotation, host patching, and re-running customer acceptance checks. |  |
+
+## Launch decision
+
+**Decision: BLOCKED until every applicable gate above is PASSED or has an explicit, dated customer-approved disposition that does not waive a required legal, privacy, security, rights, or resource-containment control.** The service owner and customer security/privacy sponsor must sign the completed record for this named organization and exact deployment. A waiver cannot turn an untested control into a verified control.
+
+Record the approved scope and exact deployment identifiers here:
+
+| Item | Customer-approved value |
+|---|---|
+| Customer organization and pilot owner |  |
+| Source revision |  |
+| Container image digest |  |
+| Candidate manifest digest |  |
+| Embedding manifest digest |  |
+| Gateway hostname / HTTPS origin |  |
+| Decision and date |  |
+| Customer security approver |  |
+| Customer privacy/legal approver |  |
+| Service owner |  |
+
+Existing deployment documentation records unresolved items relevant to this gate: the exact Linux build and gateway integration have not been verified on the development workstation; the base image is not digest-pinned; signed image provenance is not provided; worker address-space limits do not provide physical-memory isolation; host-level deletion, backups, gateway temp storage, and durable audit collection are operator responsibilities; and the model's natural attack performance and broad fairness are not established. See [PRIVATE_PILOT.md](PRIVATE_PILOT.md), [SECURITY.md](../SECURITY.md), and [the current product limits](../README.md). This checklist records no test results of its own.
