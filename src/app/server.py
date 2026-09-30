@@ -18,6 +18,7 @@ Run:  python src/app/server.py     (then open http://localhost:8000)
 import base64
 import json
 import os
+import re
 import sys
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -26,18 +27,147 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 sys.path.append(os.path.abspath(ROOT))
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from src.inference import load_pipeline  # noqa: E402
 from src.evaluation.evaluate import simulate_module_b_proxy  # noqa: E402
+from src.modules.module_a import KeywordDensityDetector  # noqa: E402
+from src.modules.module_b import PDFForensicsDetector  # noqa: E402
 
 HERE = os.path.dirname(__file__)
 INDEX_PATH = os.path.join(HERE, "index.html")
 MODELS_DIR = os.path.join(ROOT, "results", "models")
 
-# Load the pipeline once at startup (expensive: sentence-transformer weights).
-print("[server] Booting neural defense core — loading models…")
-META_CLF, SCALER, MOD_A, MOD_B, MOD_C = load_pipeline(MODELS_DIR)
-print("[server] Models loaded. Shield online.")
+class _IdentityScaler:
+    def transform(self, features):
+        return features
+
+
+class _HeuristicMetaClassifier:
+    @staticmethod
+    def _as_array(features, key):
+        if isinstance(features, pd.DataFrame):
+            return features[key].astype(float).to_numpy()
+        return np.asarray(features, dtype=float)
+
+    def predict_proba(self, features):
+        a = self._as_array(features, "Module_A_Score")
+        b = self._as_array(features, "Module_B_Score")
+        c = self._as_array(features, "Module_C_Score")
+        attack = np.clip((0.30 * a) + (0.25 * b) + (0.45 * c), 0.0, 1.0)
+        return np.column_stack((1.0 - attack, attack))
+
+    def predict(self, features):
+        return (self.predict_proba(features)[:, 1] >= 0.5).astype(int)
+
+
+class _FallbackSemanticCoherenceScorer:
+    INJECTION_PATTERNS = [
+        r"ignore\s+(all\s+)?previous\s+instructions?",
+        r"disregard\s+(all\s+)?previous",
+        r"system\s+override",
+        r"\[system\]",
+        r"<!--\s*system",
+        r"you\s+must\s+(output|print|return)",
+        r"rank\s+(this\s+candidate\s+)?(as\s+)?#?1",
+        r"top\s+match",
+        r"hire\s+immediately",
+        r"match\s+score:\s*100",
+    ]
+
+    def __init__(self, variance_threshold=0.015):
+        self.variance_threshold = variance_threshold
+
+    def _sentences(self, text):
+        return [s.strip() for s in re.split(r'(?<=[.!?])\s+|\n+', text or "") if len(s.strip()) > 3]
+
+    def _injection_signal(self, text):
+        low = (text or "").lower()
+        return sum(1 for pattern in self.INJECTION_PATTERNS if re.search(pattern, low))
+
+    def predict(self, text):
+        sentences = self._sentences(text)
+        lengths = np.array([len(s.split()) for s in sentences], dtype=float)
+        variance = float(np.var(lengths / 25.0)) if len(lengths) > 2 else 0.0
+        semantic_score = min(1.0, variance / (self.variance_threshold * 2)) if self.variance_threshold > 0 else 0.0
+        n_cues = self._injection_signal(text)
+        injection_score = min(1.0, n_cues * 0.5)
+        anomaly_score = max(semantic_score, injection_score)
+        return {
+            "status": "success",
+            "variance": variance,
+            "mean_similarity": 1.0 - variance,
+            "semantic_score": semantic_score,
+            "injection_score": injection_score,
+            "anomaly_score": anomaly_score,
+            "injection_cues": n_cues,
+            "is_flagged": bool(variance > self.variance_threshold or n_cues > 0),
+        }
+
+    def explain_sentences(self, text):
+        sentences = self._sentences(text)
+        if not sentences:
+            return {"base_variance": 0.0, "sentences": []}
+
+        lengths = np.array([len(s.split()) for s in sentences], dtype=float)
+        mean_len = float(np.mean(lengths)) if len(lengths) else 0.0
+        records = []
+        for sent, sent_len in zip(sentences, lengths):
+            low = sent.lower()
+            cue_hit = next((c for c in self.INJECTION_PATTERNS if re.search(c, low)), None)
+            contribution = abs(float(sent_len - mean_len)) / max(mean_len, 1.0)
+            heat = max(min(contribution, 1.0), 0.85 if cue_hit else 0.0)
+            records.append({
+                "sentence": sent,
+                "contribution": contribution,
+                "injection_cue": cue_hit,
+                "heat": heat,
+                "suspicious": bool(heat >= 0.5),
+            })
+        records.sort(key=lambda r: r["heat"], reverse=True)
+        return {"base_variance": float(np.var(lengths)) if len(lengths) > 1 else 0.0, "sentences": records}
+
+
+def _load_configs():
+    thresholds = {"mod_a_threshold": 0.08, "mod_c_variance_threshold": 0.015}
+    model_cfg = {"embedding_model": "all-MiniLM-L6-v2"}
+    config_dir = os.path.join(ROOT, "configs")
+
+    try:
+        with open(os.path.join(config_dir, "thresholds.json"), "r", encoding="utf-8") as f:
+            thresholds.update(json.load(f))
+    except FileNotFoundError:
+        pass
+
+    try:
+        with open(os.path.join(config_dir, "model_config.json"), "r", encoding="utf-8") as f:
+            model_cfg.update(json.load(f))
+    except FileNotFoundError:
+        pass
+
+    return thresholds, model_cfg
+
+
+def _bootstrap_pipeline():
+    # Load the pipeline once at startup (expensive: sentence-transformer weights).
+    print("[server] Booting neural defense core — loading models…")
+    try:
+        pipeline = load_pipeline(MODELS_DIR)
+    except (SystemExit, FileNotFoundError):
+        thresholds, _ = _load_configs()
+        mod_a = KeywordDensityDetector()
+        mod_a.threshold = thresholds.get("mod_a_threshold", 0.08)
+        mod_c = _FallbackSemanticCoherenceScorer(
+            variance_threshold=thresholds.get("mod_c_variance_threshold", 0.015),
+        )
+        mod_b = PDFForensicsDetector()
+        pipeline = (_HeuristicMetaClassifier(), _IdentityScaler(), mod_a, mod_b, mod_c)
+        print("[server] Trained meta-model files not found. Using heuristic fallback.")
+    print("[server] Models loaded. Shield online.")
+    return pipeline
+
+
+META_CLF, SCALER, MOD_A, MOD_B, MOD_C = _bootstrap_pipeline()
 
 MODULE_META = {
     "a": ("Module A", "Keyword Density", "Statistical spam-filter analysis of skill-keyword frequency."),

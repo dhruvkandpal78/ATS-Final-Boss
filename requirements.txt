@@ -10,6 +10,7 @@ torch>=2.0.0  # Required backend for sentence-transformers
 # PDF Forensics
 PyMuPDF>=1.23.0  # Note: import fitz
 pdfplumber>=0.10.0
+reportlab>=4.0.0
 
 # Visualization (ROC-AUC, PR Curves, Degradation plots)
 matplotlib>=3.7.0
@@ -18,6 +19,7 @@ seaborn>=0.12.0
 # General Utilities
 tqdm>=4.65.0
 requests>=2.31.0
+beautifulsoup4>=4.12.0
 
 # Red vs Blue LLM ATS Proof (Feature 2)
 transformers>=4.38.0   # Local HuggingFace "HR Bot" (gpt2) — no API key required
