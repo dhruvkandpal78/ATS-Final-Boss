@@ -125,7 +125,11 @@ def prepare_documents(output):
 
 
 class Screener:
-    def __init__(self, key, output):
+    def __init__(self, key, output, *, max_calls=48, interval_seconds=15):
+        if type(max_calls) is not int or not 1 <= max_calls <= 96:
+            raise ValueError("Invalid bounded call budget")
+        if type(interval_seconds) not in (int, float) or not 6 <= interval_seconds <= 60:
+            raise ValueError("Invalid bounded pacing interval")
         import requests
         self.session = requests.Session()
         self.session.headers.update({"Authorization": "Bearer " + key,
@@ -135,14 +139,18 @@ class Screener:
         self.last_call = 0
         self.output = output
         self.stop_reason = None
+        self.max_calls = max_calls
+        self.interval_seconds = interval_seconds
         self.fingerprint = None
         self.fingerprint_seen = False
         self.fingerprints = set()
 
     def run(self, text):
-        if self.stop_reason or self.calls >= 48 or self.tokens + 10000 > 80000:
+        if self.stop_reason or self.calls >= self.max_calls or self.tokens + 10000 > 80000:
             return None, None, "budget_or_provider_stop"
-        time.sleep(max(0, 15 - (time.monotonic() - self.last_call)))
+        if not isinstance(text, str) or not 1 <= len(text) <= 5000:
+            return None, None, "invalid_bounded_study_input"
+        time.sleep(max(0, self.interval_seconds - (time.monotonic() - self.last_call)))
         self.last_call = time.monotonic()
         self.calls += 1
         started = time.perf_counter()

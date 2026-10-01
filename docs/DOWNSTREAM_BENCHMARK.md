@@ -4,6 +4,12 @@ This import-only harness compares supplied observations from an existing screene
 
 ## Procedure
 
+Before attributing score/rank changes to the gate, qualify the screener on
+repeated clean inputs, arm consistency and predefined cohort stability. The
+opt-in [consistency-first study](SCREENER_CONSISTENCY.md) freezes these checks
+and stops before attack evaluation if they fail. Do not retrofit a canary-only
+experiment into evidence about hiring score/rank manipulation.
+
 Before evaluation, independently approve and preserve protocol bytes, dataset manifest, screener configuration (model revisions, prompts, decoding settings and seeds), gate revision, success predicate and environment manifest. Hash each with SHA-256. Define grading criteria before inspecting outcomes and retain blinded grading records privately. Use permitted evaluation source groups excluded from development; group original and modified documents together. Independent attacker/reviewer declarations must reflect actual independent work.
 
 Run both arms on identical document bytes. Only complete no-signals reviews forward in the protected arm; other decisions hold for humans, while unavailable reviews remain errors. Record errors and output digests instead of silently dropping failed runs. Include gate overhead in protected latency/cost and use identical measurement boundaries. Never mix simulated and measured runs in one import.

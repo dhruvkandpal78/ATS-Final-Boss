@@ -1,5 +1,11 @@
 # Issue Ledger
 
+- [x] Fixed-loopback local reference client verifies independently pinned manifest/blob hashes and checks model/version identity per call without cloud credentials.
+- [ ] Local reference qualification still blocked: six clean model review requests per arm in 24 repeat calls. No score/rank efficacy result; see [local record](PINNED_LOCAL_REFERENCE_2026-10-01.md).
+
+- [x] Repeated clean score/ranking qualification and separate score-lift, eligibility and actual four-candidate top-two endpoints implemented with no rank for held targets.
+- [ ] Actual score/rank protection study blocked by hosted backend identity: 19 fingerprints in 24 clean calls. Independent/customer commercial lift remains unproved; see [record](CONSISTENCY_AND_RANKING_2026-10-01.md).
+
 - [x] Opt-in real hosted reference-screener execution added using 24 fictional PDFs, fixed same-team interventions and private paired observations; see [study record](REFERENCE_STUDY_2026-10-01.md).
 - [ ] Independent customer-screener benefit, natural ground truth, immutable end-to-end model identity, fairness and representative load remain unestablished. Small synthetic reference outcomes do not close these gates.
 

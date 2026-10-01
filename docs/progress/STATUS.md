@@ -1,5 +1,9 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 1 local-reference continuation: manifest/blob-verified local evaluation added. Actual 24-call controls had stable scores and checked local identity, but six clean reference-model review requests per arm failed qualification. Final Boss held none; attacks NOT RUN. See [record](PINNED_LOCAL_REFERENCE_2026-10-01.md).
+
+October 1 mentor continuation: score/rank objectives and clean-repeat qualification added. Actual 24-call clean study had zero score variation on four fictional profiles, but 19 backend fingerprints failed the predeclared identity condition. Attack phase NOT RUN; no efficacy claim. See [record](CONSISTENCY_AND_RANKING_2026-10-01.md).
+
 October 1 measured-study continuation: 24 fictional PDFs yielded 0/16 baseline canary successes and 0/8 forwarded protected canary successes, with eight attack holds and 0/8 control holds. No incremental canary benefit was shown; identical-input score instability was observed. This is a same-team exploratory study with varying provider fingerprints; production artifact approval, independent/customer outcomes and release gates remain open. See [study record](REFERENCE_STUDY_2026-10-01.md).
 
 October 1 operations continuation: bounded process-local metrics and protected exports added to both servers. HTTP200 is not evidence of complete analysis, and actual collector/alert/load acceptance remains open. See [metrics record](RUNTIME_METRICS_2026-10-01.md).
