@@ -1,6 +1,6 @@
 # Current system architecture
 
-Updated September 30, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
+Updated October 1, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
 
 ## Runtime and trust boundaries
 
@@ -36,7 +36,7 @@ The CLI and HTTP worker use `src/core/analysis_service.py`; adapters do not inve
 
 Uploaded documents are untrusted data. Candidate weights are trusted local artifacts, never uploaded documents. Candidate bundles are hash-checked before pickle deserialization; hashes detect accidental changes, not replacement of both artifacts and manifests by an attacker.
 
-Private mode additionally requires an independently pinned manifest digest, verifies policy hashes, and deserializes the exact verified bytes. It requires Linux resource limits and an authenticated customer gateway. Host/Origin guards, bearer authentication, connection limits and a global request budget apply before analysis. Local mode refuses network-wide binding. The proposed container is non-root, read-only and resource-limited; Docker execution and customer SSO/TLS integration remain unverified. See [private pilot guide](PRIVATE_PILOT.md).
+Private mode additionally requires an independently pinned manifest digest, verifies policy hashes, and deserializes the exact verified bytes. It requires Linux resource limits and an authenticated customer gateway. Host/Origin guards, bearer authentication, connection limits and a global request budget apply before analysis. Local mode refuses network-wide binding. The proposed container is non-root, read-only and resource-limited; hosted synthetic container smoke passes, while real pinned-model deployment and customer SSO/TLS acceptance remain unverified. See [private pilot guide](PRIVATE_PILOT.md).
 
 `src/app/asgi.py` is the maintained private HTTP adapter. Uvicorn runs one server process with a concurrency cap; the application limits body size and total upload time before passing validated payloads to the shared isolated worker. Private startup validates pinned artifacts and performs a synthetic warm-up before accepting traffic, eliminating the earlier readiness/warm-up routing cycle. Static UI and API requests require gateway-injected authentication. Lifespan shutdown stops worker admission and coordinates cleanup; model work stays outside the HTTP process.
 
@@ -45,6 +45,10 @@ The worker owns its process and pipe under a request lock. A stop event cancels 
 Private embedding exports have their own independently pinned integrity contract and are loaded from a reviewed local safetensors directory. Startup exercises multi-sentence semantic encoding and a synthetic PDF, then checks detector statuses and classifier coverage before serving. Readiness respects stop admission, and private child diagnostics cannot bypass redacted parent response logs. Shared container memory remains a containment limitation; the worker virtual-address limit must not be interpreted as a physical-RAM bound.
 
 ## Worker message contract
+
+The HTTP parent maintains a fixed-cardinality, thread-safe registry of analysis POST status counters and HTTP200/non200 response-preparation histograms. Authenticated `/metrics` and `/api/v1/metrics` exports contain no candidate content or request identifiers. Metrics reset with the process; ASGI pre-dispatch rejections remain unobserved. The browser gateway denies telemetry routes by default; separately approved internal collection and alerts remain customer responsibilities. See [runtime metrics](OPERATIONS_METRICS.md).
+
+The versioned `/api/v1/review` projection carries only closed-vocabulary decisions, observation counts and coverage, through the same worker and admission controls. The server-side SDK rejects unknown/ambiguous responses, redirects and unavailable work. This projection does not sanitize documents, verify employment facts or confer downstream model immunity. The [paired observation harness](DOWNSTREAM_BENCHMARK.md) compares supplied frozen-protocol results without running models or opening resumes; imported observations do not independently establish accuracy or business impact. See [integration boundaries](INTEGRATION.md).
 
 Both HTTP adapters share the persistent worker. Versioned JSON bytes replace executable pickle IPC, with 7 MiB plus 8 KiB request envelopes and 8 MiB replies. A per-request identifier prevents stale responses; invalid framing, nesting, non-finite values and response envelopes dispose of the worker. Send and entire reply parsing are covered by the configured inference deadline, followed by bounded termination/cleanup waits. Error messages are parent-owned constants. This is not separate physical-memory containment. See [the boundary change record](progress/WORKER_BOUNDARY_2026-09-30.md).
 

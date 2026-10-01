@@ -1,0 +1,9 @@
+# Bounded runtime metrics — October 1, 2026
+
+Added shared, thread-safe process-local telemetry to both maintained adapters: fixed analysis-route/status counters, HTTP200/non200 response-preparation histograms, uptime, missing timings and visible counter saturation. Pre-handler standard-library slot rejection is separately counted; ASGI pre-dispatch rejection remains explicitly unobserved. Metrics reads do not affect analysis samples.
+
+Added authenticated private JSON and Prometheus exports without per-request history or candidate/request labels. Example browser gateway denies these routes by default; collectors need customer-approved internal access. Existing worker/admission behavior, detector policy, thresholds and artifacts are unchanged. Counters describe HTTP response preparation, not successful detection, full visibility, downstream protection or SLA achievement.
+
+The initial full suite exposed a Windows reset when malformed Transfer-Encoding was rejected with unread incoming bytes. Rejected framing now discards at most one 8 KiB raw fragment under a 50 ms socket timeout without interpreting chunks/conflicting lengths. Small rejected bodies likewise use a single read rather than repeated reads that a trickle sender could prolong. This does not accept invalid framing or guarantee error delivery to a client continuing to send beyond the discard bound.
+
+Verification: final offline suite passed 457 tests, with two platform skips and three provisioned-model integration tests deselected. The focused request-parity/runtime/API suite passed 45 tests; final metrics suite passed 13. Scoped high-severity Bandit, private-deployment shape check and diff whitespace check passed. Read-only review checked label privacy, fixed cardinality, auth and measurement semantics. Hosted CI remains required for the committed revision. Actual customer monitoring, alert delivery, load/memory containment and independent accuracy remain open.

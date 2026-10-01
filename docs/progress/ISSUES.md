@@ -1,5 +1,8 @@
 # Issue Ledger
 
+- [x] Fixed-cardinality, content-free analysis HTTP counters/histograms and authenticated JSON/Prometheus metrics implemented in both maintained adapters; counters reset on restart.
+- [ ] Customer collector, alert delivery/thresholds, gateway/pre-dispatch telemetry and representative load/resource acceptance remain unverified; see [runtime metrics](../OPERATIONS_METRICS.md).
+
 - [x] Maintained adapters share strict body-header validation; malformed deeply nested JSON is a client error. Worker crash events exclude exception messages.
 - [x] Historical Streamlit font imports removed and proxy-score limitations visibly identified.
 - [ ] Customer-specific release evidence checklist must be completed; static scan results do not waive deployed security, memory or accuracy validation.

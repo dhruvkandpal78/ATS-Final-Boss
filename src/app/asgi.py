@@ -26,6 +26,7 @@ from starlette.concurrency import run_in_threadpool
 from src.app.security import RequestBudget, SecuritySettings
 from src.app.http_contract import SECURITY_HEADERS, decode_json_body, json_request_length
 from src.app.integration_contract import REVIEW_ROUTE, REVIEW_CAPABILITIES, project_review, validate_review_request
+from src.app.metrics import RuntimeMetrics, METRICS_JSON_ROUTE, METRICS_TEXT_ROUTE
 from src.core.runtime_paths import models_directory, notice_path
 from src.app.startup import WARMUP_TEXT, require_warmup_result, warmup_pdf_payload
 from src.app.server import (
@@ -39,7 +40,7 @@ ASSET_SUFFIXES = {".css", ".js", ".svg", ".woff2", ".png", ".webp"}
 KNOWN_ROUTES = {
     "/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership",
     "/license", "/license-legacy", "/health", "/health/live", "/health/ready",
-    "/api/capabilities", REVIEW_ROUTE,
+    "/api/capabilities", REVIEW_ROUTE, METRICS_JSON_ROUTE, METRICS_TEXT_ROUTE,
 }
 
 
@@ -91,6 +92,7 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
     settings = settings or SecuritySettings.from_env(os.environ.get("HOST", "127.0.0.1"))
     worker = worker or ModelWorker()
     budget = RequestBudget(settings.requests_per_minute)
+    metrics = RuntimeMetrics()
 
     @asynccontextmanager
     async def lifespan(app: Starlette):
@@ -146,7 +148,11 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                     result = await run_in_threadpool(worker.run, payload)
                     response = _response(200, project_review(result) if path == REVIEW_ROUTE else result)
             elif method == "GET":
-                if path in {"/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership"}:
+                if path == METRICS_JSON_ROUTE:
+                    response = _response(200, metrics.snapshot())
+                elif path == METRICS_TEXT_ROUTE:
+                    response = _response(200, metrics.prometheus(), "text/plain; version=0.0.4; charset=utf-8")
+                elif path in {"/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership"}:
                     try:
                         html = await run_in_threadpool(INDEX_PATH.read_text, encoding="utf-8")
                         response = _response(200, html, "text/html; charset=utf-8")
@@ -204,11 +210,13 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
             response.headers["WWW-Authenticate"] = 'Bearer realm="resume-inspection"'
         if response.status_code in (429, 503) and "Retry-After" not in response.headers:
             response.headers["Retry-After"] = "5"
+        duration = monotonic() - started
+        metrics.record(path, method, response.status_code, duration)
         logger.info(json.dumps({
             "event": "http_response", "request_id": request_id,
             "method": method if method in {"GET", "POST"} else "other",
             "route": route, "status": response.status_code,
-            "duration_ms": round((monotonic() - started) * 1000, 2),
+            "duration_ms": round(duration * 1000, 2),
         }))
         return response
 
