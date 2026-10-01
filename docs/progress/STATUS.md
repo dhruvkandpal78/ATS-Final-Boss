@@ -1,5 +1,11 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 1 routing continuation: fresh local development protocol completed 80
+calls with stable controls, but six of eight authored attack conditions crossed
+the score threshold unreviewed in both arms. No added protection. A subsequent
+narrow explicit self-score-command regression fix does not rewrite that result
+or establish downstream efficacy. See [record](REVIEW_ROUTING_STUDY_2026-10-01.md).
+
 October 1 local-reference continuation: manifest/blob-verified local evaluation added. Actual 24-call controls had stable scores and checked local identity, but six clean reference-model review requests per arm failed qualification. Final Boss held none; attacks NOT RUN. See [record](PINNED_LOCAL_REFERENCE_2026-10-01.md).
 
 October 1 mentor continuation: score/rank objectives and clean-repeat qualification added. Actual 24-call clean study had zero score variation on four fictional profiles, but 19 backend fingerprints failed the predeclared identity condition. Attack phase NOT RUN; no efficacy claim. See [record](CONSISTENCY_AND_RANKING_2026-10-01.md).

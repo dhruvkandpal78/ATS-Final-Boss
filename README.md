@@ -17,7 +17,9 @@ Copyright © 2026 Dhruv Kandpal. New original enhancements have reserved-rights 
 
 Operators can inspect bounded, content-free runtime counters and latency histograms through the [metrics endpoints](docs/OPERATIONS_METRICS.md). Customer monitoring and load acceptance remain separate.
 
-For a buyer or integration review, start with the [review API and SDK](docs/INTEGRATION.md), [paired downstream evaluation procedure](docs/DOWNSTREAM_BENCHMARK.md), and [customer release gates](docs/COMPANY_RELEASE_GATE.md). The comparison harness imports supplied observations; the separate opt-in reference runner contacts a real hosted model using fictional PDFs. Neither establishes real-world downstream improvement.
+The subsequent [local score/rank development study](docs/progress/REVIEW_ROUTING_STUDY_2026-10-01.md) qualified stable reference routing but found **no added protection**: six of eight authored attack conditions crossed the numeric score threshold without review in both arms. A narrow explicit self-score-command regression fix followed; its downstream benefit and population false-positive rate have not been measured. The original failed protocols and unfavorable results remain preserved.
+
+For a buyer or integration review, start with the [review API and SDK](docs/INTEGRATION.md), [paired downstream evaluation procedure](docs/DOWNSTREAM_BENCHMARK.md), and [customer release gates](docs/COMPANY_RELEASE_GATE.md). The comparison harness imports supplied observations; the separate opt-in reference runners use actual hosted or pinned local models with fictional PDFs. Neither establishes real-world downstream improvement.
 
 Before processing real customer resumes, complete [the single-customer release evidence checklist](docs/COMPANY_RELEASE_GATE.md). It records currently untested operational gates and the supported pilot scope; this repository is not certified company-ready.
 

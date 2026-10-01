@@ -135,6 +135,7 @@ class SemanticCoherenceScorer:
         r"rank\s+(this\s+candidate\s+)?(as\s+)?#?1",
         r"hire\s+immediately",
         r"match\s+score:\s*100",
+        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
         r"do\s+not\s+reject",
         r"administrator\s+instructions?",
         r"override\s+the\s+screening"
