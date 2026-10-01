@@ -32,6 +32,19 @@ The projection excludes source text, names, extracted excerpts, findings explana
 
 ## Error and compatibility handling
 
+Server-side clients can use `ReviewClient` from `src.integrations.review_client`:
+
+```python
+from src.integrations.review_client import ReviewClient, ReviewClientError
+
+client = ReviewClient("http://127.0.0.1:8000", timeout=110)
+result = client.review_pdf(pdf_bytes)  # permitted bytes supplied by the caller
+```
+
+Catch `ReviewClientError` and retain the case for human handling; never mark an unavailable response clean. Successful results contain `request_id` and the validated `review`. Remote origins require verified HTTPS and an explicit server-side `bearer_token`. The browser SSO gateway example does not implement machine authentication: configure and test the customer's machine identity path separately. Never expose tokens in browser code. The SDK refuses redirects, oversized/ambiguous responses and unsupported schemas; it performs no retries or storage and never echoes server error bodies. Timeout bounds individual socket operations, not total wall-clock duration.
+
+Humans should inspect instruction/repetition evidence in the restricted evidence UI; density/coherence remain advisory. PDF observations need visual/source clarification because full OCR/render visibility is incomplete. Insufficient evidence and errors retain cases for review/retry, never applicant rejection. Customer-owned audit, resolution and appeal storage remain required.
+
 - 400/408: malformed or incomplete/timed-out upload; correct the request.
 - 401/403: authentication/host/origin denial; do not bypass the gateway.
 - 413/415/422: limits, unsupported type or invalid shape; inspect the source/request.

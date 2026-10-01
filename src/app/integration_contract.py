@@ -14,6 +14,55 @@ CATEGORIES = ("direct_instruction", "keyword_repetition", "keyword_density",
 MAX_FINDINGS = 4096
 
 
+def validate_review_response(value):
+    """Strict consumer contract; never trust arbitrary JSON from an endpoint."""
+    expected = {"schema_version", "analysis_schema_version", "policy_version", "purpose", "input_mode",
+                "analysis_status", "decision", "observations", "coverage",
+                "automatic_rejection_allowed", "authenticity_verified"}
+    if not isinstance(value, dict) or set(value) != expected:
+        raise ValueError("Invalid review response fields.")
+    if (value["schema_version"] != "1.0" or value["analysis_schema_version"] != "2.0" or
+            value["policy_version"] != "2.0" or value["purpose"] != "human_review_assistance" or
+            value["input_mode"] not in ("text", "pdf") or
+            value["analysis_status"] not in ("complete", "partial", "unscorable") or
+            value["decision"] not in ("no_signals_detected", "review_recommended", "insufficient_evidence") or
+            value["automatic_rejection_allowed"] is not False or value["authenticity_verified"] is not False):
+        raise ValueError("Unsupported review response.")
+    observations = value["observations"]
+    if not isinstance(observations, dict) or set(observations) != set(CATEGORIES):
+        raise ValueError("Invalid review categories.")
+    total = triggers = 0
+    for category, counts in observations.items():
+        if not isinstance(counts, dict) or set(counts) != {"count", "review_trigger_count"}:
+            raise ValueError("Invalid observation fields.")
+        count, trigger = counts["count"], counts["review_trigger_count"]
+        if type(count) is not int or type(trigger) is not int or not 0 <= trigger <= count <= MAX_FINDINGS:
+            raise ValueError("Invalid bounded observation counts.")
+        if trigger != (count if category in ("direct_instruction", "keyword_repetition") else 0):
+            raise ValueError("Inconsistent observation policy.")
+        total += count
+        triggers += trigger
+    coverage = value["coverage"]
+    if total > MAX_FINDINGS or bool(triggers) != (value["decision"] == "review_recommended"):
+        raise ValueError("Inconsistent review decision.")
+    if not isinstance(coverage, dict) or set(coverage) != {"modules", "has_limitations", "pdf_visibility"}:
+        raise ValueError("Invalid review coverage.")
+    if (not isinstance(coverage["modules"], dict) or set(coverage["modules"]) != {"a", "b", "c"} or
+            any(status not in ("ok", "not_applicable", "unsupported", "error") for status in coverage["modules"].values()) or
+            type(coverage["has_limitations"]) is not bool or
+            coverage["pdf_visibility"] != ("incomplete" if value["input_mode"] == "pdf" else "not_applicable")):
+        raise ValueError("Unsupported review coverage.")
+    modules = coverage["modules"]
+    if (value["analysis_status"] == "complete" and (value["input_mode"] != "pdf" or any(s != "ok" for s in modules.values())) or
+            value["input_mode"] == "text" and (value["analysis_status"] != "partial" or modules["b"] != "not_applicable") or
+            value["input_mode"] == "pdf" and modules["b"] == "not_applicable" or
+            value["analysis_status"] == "unscorable" and (triggers or value["decision"] != "insufficient_evidence")):
+        raise ValueError("Inconsistent analysis coverage.")
+    if value["decision"] == "no_signals_detected" and (value["analysis_status"] != "complete" or
+            value["input_mode"] != "pdf" or any(status != "ok" for status in coverage["modules"].values())):
+        raise ValueError("Incomplete evidence cannot produce no signals.")
+
+
 def validate_review_request(payload):
     """Disallow extra directives/URLs/options on this constrained endpoint."""
     if not isinstance(payload, dict) or set(payload) not in ({"text"}, {"filename", "b64"}):

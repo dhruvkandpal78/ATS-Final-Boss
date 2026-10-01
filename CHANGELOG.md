@@ -4,6 +4,8 @@ Entries below record work at their dated revisions. Old script names, running-st
 
 ## 2026-10-01: constrained review integration and prevalence reporting
 
+Mentor-review continuation adds pinned paired-observation comparison, explicit abstention/error and hold denominators, server-side review SDK and strict review JSON/response validation. No new measured accuracy or business-impact claim. See [implementation record](docs/progress/MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md).
+
 Added a versioned, closed-vocabulary review projection through both bounded HTTP adapters, shared gateway analysis limits and explicit integration/privilege boundaries. Added base-rate scenario reporting from supplied confusion counts with visible assumptions and stress scenarios. Detector policy, thresholds, candidate artifacts and held-out results are unchanged. See [product-gap implementation and verification](docs/progress/PRODUCT_GAP_REVIEW_2026-10-01.md).
 
 ## 2026-09-30: remove redundant publication files and align research guidance

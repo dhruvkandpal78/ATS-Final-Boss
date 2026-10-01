@@ -13,7 +13,20 @@ class HTTPContractError(ValueError):
         self.retry_after = retry_after
 
 
-def decode_json_body(raw):
+def _strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("Duplicate JSON fields.")
+        value[key] = item
+    return value
+
+
+def _reject_constant(_):
+    raise ValueError("Nonfinite JSON constant.")
+
+
+def decode_json_body(raw, *, strict=False):
     """Bound nesting independently of Python's parser/recursion implementation."""
     try:
         text = raw.decode("utf-8-sig")
@@ -35,7 +48,7 @@ def decode_json_body(raw):
                     raise HTTPContractError(400, "Invalid JSON payload.")
             elif char in "]}":
                 depth -= 1
-        return json.loads(text)
+        return json.loads(text, **({"object_pairs_hook": _strict_object, "parse_constant": _reject_constant} if strict else {}))
     except (ValueError, UnicodeDecodeError, RecursionError):
         raise HTTPContractError(400, "Invalid JSON payload.") from None
 

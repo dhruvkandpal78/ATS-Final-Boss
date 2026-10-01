@@ -80,7 +80,7 @@ async def _read_payload(request: Request, headers: Message) -> object:
     if len(body) != length:
         raise APIError(400, "Incomplete request body.")
     try:
-        return await run_in_threadpool(decode_json_body, body)
+        return await run_in_threadpool(decode_json_body, body, strict=request.scope["path"] == REVIEW_ROUTE)
     except (ValueError, UnicodeDecodeError, RecursionError):
         raise APIError(400, "Invalid JSON payload.") from None
 

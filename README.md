@@ -8,6 +8,8 @@ Copyright © 2026 Dhruv Kandpal. New original enhancements have reserved-rights 
 
 ## Run locally
 
+For a buyer or integration review, start with the [review API and SDK](docs/INTEGRATION.md), [paired downstream evaluation procedure](docs/DOWNSTREAM_BENCHMARK.md), and [customer release gates](docs/COMPANY_RELEASE_GATE.md). The harness imports supplied observations; no new real-world downstream improvement has been measured.
+
 Before processing real customer resumes, complete [the single-customer release evidence checklist](docs/COMPANY_RELEASE_GATE.md). It records currently untested operational gates and the supported pilot scope; this repository is not certified company-ready.
 
 Python 3.11 or newer is required. For the proposed single-company customer pilot, see [private deployment](docs/PRIVATE_PILOT.md), [security policy](SECURITY.md), and [customer strategy](docs/CUSTOMER_PILOT_STRATEGY.md). This deployment foundation still requires a verified Linux build and customer gateway integration before real resume processing.
