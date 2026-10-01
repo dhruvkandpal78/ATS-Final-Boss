@@ -35,6 +35,7 @@ from src.app.worker_protocol import (
 )
 from src.app.worker_recovery import WorkerRecovery
 from src.app.integration_contract import REVIEW_ROUTE, REVIEW_CAPABILITIES, project_review, validate_review_request
+from src.app.metrics import RuntimeMetrics, METRICS_JSON_ROUTE, METRICS_TEXT_ROUTE
 INDEX_PATH = ROOT / "src" / "app" / "index.html"
 MODELS_DIR = ROOT / "results" / "models"
 MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -369,11 +370,13 @@ class BoundedHTTPServer(ThreadingHTTPServer):
     def __init__(self, address, handler, security=None, max_connections=8):
         self.security = security or SecuritySettings()
         self.request_budget = RequestBudget(self.security.requests_per_minute)
+        self.metrics = RuntimeMetrics(connection_rejections_observable=True)
         self.slots = threading.BoundedSemaphore(max_connections)
         super().__init__(address, handler)
 
     def process_request(self, request, client_address):
         if not self.slots.acquire(blocking=False):
+            self.metrics.reject_connection()
             try:
                 # Consume at most one small already-arriving header fragment.
                 # Closing with unread TCP data can discard the 503 on Windows.
@@ -425,7 +428,18 @@ class Handler(BaseHTTPRequestHandler):
         Closing with unread incoming bytes can discard the response on Windows.
         Neither a large payload nor a slow sender may delay authorization denial.
         """
-        if self.command != "POST" or self.headers.get_all("Transfer-Encoding", []):
+        if self.command != "POST":
+            return
+        if self.headers.get_all("Transfer-Encoding", []):
+            # Framing is untrusted: discard at most one already-arriving raw
+            # fragment, never parse chunks or interpret a conflicting length.
+            try:
+                self.connection.settimeout(0.05)
+                self.rfile.read1(8192)
+            except OSError:
+                pass
+            finally:
+                self.connection.settimeout(15)
             return
         lengths = self.headers.get_all("Content-Length", [])
         if len(lengths) != 1:
@@ -434,7 +448,9 @@ class Handler(BaseHTTPRequestHandler):
             length = int(lengths[0])
             if 0 < length <= 8192:
                 self.connection.settimeout(0.05)
-                self.rfile.read(length)
+                # One buffered/kernel read; a slow sender cannot renew a
+                # timeout through repeated reads while we reject the request.
+                self.rfile.read1(length)
         except (ValueError, OSError):
             pass
         finally:
@@ -456,6 +472,10 @@ class Handler(BaseHTTPRequestHandler):
         if isinstance(body, dict):
             body = json.dumps(body, allow_nan=False)
         data = body.encode("utf-8") if isinstance(body, str) else body
+        try:
+            route = urlsplit(getattr(self, "path", "")).path
+        except ValueError:
+            route = "other"
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
@@ -468,14 +488,19 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("WWW-Authenticate", 'Bearer realm="resume-inspection"')
         if retry_after is not None or code in (429, 503):
             self.send_header("Retry-After", str(retry_after if retry_after is not None else 5))
+        if hasattr(self.server, "metrics"):
+            metrics_started = getattr(self, "metrics_started_at", None)
+            self.server.metrics.record(route, getattr(self, "command", None), code,
+                monotonic() - metrics_started if metrics_started is not None else None)
         self.end_headers()
-        route = urlsplit(getattr(self, "path", "")).path
         known_routes = {"/", "/analyze", "/health", "/health/live", "/health/ready",
-                        "/api/capabilities", "/methodology", "/lab", "/ownership", REVIEW_ROUTE}
+                        "/api/capabilities", "/methodology", "/lab", "/ownership", REVIEW_ROUTE,
+                        METRICS_JSON_ROUTE, METRICS_TEXT_ROUTE}
+        duration = monotonic() - self.started_at
         logger.info(json.dumps({"event": "http_response", "request_id": self.request_id,
             "method": getattr(self, "command", None) if getattr(self, "command", None) in ("GET", "POST") else "other",
             "route": route if route in known_routes else "other", "status": code,
-            "duration_ms": round((monotonic() - self.started_at) * 1000, 2)}))
+            "duration_ms": round(duration * 1000, 2)}))
         try:
             self.wfile.write(data)
         except (BrokenPipeError, ConnectionResetError, socket.timeout):
@@ -485,7 +510,11 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if not self._guard(path):
             return
-        if path in ("/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership"):
+        if path == METRICS_JSON_ROUTE:
+            self._send(200, self.server.metrics.snapshot())
+        elif path == METRICS_TEXT_ROUTE:
+            self._send(200, self.server.metrics.prometheus(), "text/plain; version=0.0.4; charset=utf-8")
+        elif path in ("/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership"):
             try:
                 self._send(200, INDEX_PATH.read_text(encoding="utf-8"), "text/html; charset=utf-8")
             except FileNotFoundError:
@@ -522,6 +551,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "Not found."})
 
     def do_POST(self):
+        # Begin after headers are parsed, matching the ASGI dispatch boundary.
+        self.metrics_started_at = monotonic()
         if not self._guard(urlsplit(self.path).path):
             return
         path = urlsplit(self.path).path

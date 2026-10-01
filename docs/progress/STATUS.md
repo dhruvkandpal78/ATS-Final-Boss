@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 1 operations continuation: bounded process-local metrics and protected exports added to both servers. HTTP200 is not evidence of complete analysis, and actual collector/alert/load acceptance remains open. See [metrics record](RUNTIME_METRICS_2026-10-01.md).
+
 October 1 mentor continuation: paired downstream observation importer and fail-closed server SDK implemented; actual downstream executions, independent grading and customer gateway acceptance remain open. See [record](MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md).
 
 October 1 product-gap continuation: versioned fixed-vocabulary review projection, shared admission/gateway policy and explicit prevalence scenarios implemented. These are integration/reporting controls, not calibrated candidate probabilities, a sanitizer, independent accuracy/fairness proof or company readiness. See [product-gap record](PRODUCT_GAP_REVIEW_2026-10-01.md).

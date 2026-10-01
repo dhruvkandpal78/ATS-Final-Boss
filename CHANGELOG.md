@@ -2,6 +2,10 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-01: bounded operations metrics and rejected-body handling
+
+Added fixed-cardinality HTTP response counters and latency histograms, authenticated JSON/Prometheus exports and private collector guidance. The browser gateway denies telemetry paths by default. Fixed bounded rejected-body drainage after a Windows response-reset regression surfaced. No SLA or detection-accuracy claim. See [runtime metrics record](docs/progress/RUNTIME_METRICS_2026-10-01.md).
+
 ## 2026-10-01: constrained review integration and prevalence reporting
 
 Mentor-review continuation adds pinned paired-observation comparison, explicit abstention/error and hold denominators, server-side review SDK and strict review JSON/response validation. No new measured accuracy or business-impact claim. See [implementation record](docs/progress/MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md).
