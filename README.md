@@ -1,6 +1,13 @@
 # ATS Final Boss
 
-A local research tool for inspecting resume-manipulation signals. It combines keyword analysis, PDF text-trace heuristics, and MiniLM semantic analysis, and presents evidence for human review. It does **not** determine honesty or suitability for employment.
+A research security layer for AI hiring pipelines: document-level forensic inspection and conservative human-review gating before an existing screener. It combines keyword analysis, PDF text-trace heuristics and MiniLM coherence evidence. It does **not** determine honesty or suitability for employment, sanitize a resume, or guarantee that a downstream AI system is protected.
+
+```text
+Resume → ATS Final Boss review gate → existing screener (complete no-signals only)
+                                  ↘ human review / unavailable-analysis error
+```
+
+**Current evidence:** controlled detection demonstrated; incremental downstream protection has **not** been established. The [real hosted feasibility study](docs/progress/REFERENCE_STUDY_2026-10-01.md) observed 0/16 baseline canary successes, 0/8 forwarded protected successes and eight attack holds, with 0/8 control holds. It also exposed identical-input score instability. These are small same-team synthetic observations, not natural-world accuracy or company readiness.
 
 MiniLM measures sentence-window coherence; instruction detection is a separate conservative lexical cue check, not a general semantic prompt-injection classifier. Paraphrased, encoded, multilingual and mixed-script instructions can evade it. The [documentation map](docs/README.md) identifies current specifications and historical planning records.
 
@@ -10,7 +17,7 @@ Copyright © 2026 Dhruv Kandpal. New original enhancements have reserved-rights 
 
 Operators can inspect bounded, content-free runtime counters and latency histograms through the [metrics endpoints](docs/OPERATIONS_METRICS.md). Customer monitoring and load acceptance remain separate.
 
-For a buyer or integration review, start with the [review API and SDK](docs/INTEGRATION.md), [paired downstream evaluation procedure](docs/DOWNSTREAM_BENCHMARK.md), and [customer release gates](docs/COMPANY_RELEASE_GATE.md). The harness imports supplied observations; no new real-world downstream improvement has been measured.
+For a buyer or integration review, start with the [review API and SDK](docs/INTEGRATION.md), [paired downstream evaluation procedure](docs/DOWNSTREAM_BENCHMARK.md), and [customer release gates](docs/COMPANY_RELEASE_GATE.md). The comparison harness imports supplied observations; the separate opt-in reference runner contacts a real hosted model using fictional PDFs. Neither establishes real-world downstream improvement.
 
 Before processing real customer resumes, complete [the single-customer release evidence checklist](docs/COMPANY_RELEASE_GATE.md). It records currently untested operational gates and the supported pilot scope; this repository is not certified company-ready.
 

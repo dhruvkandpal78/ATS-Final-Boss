@@ -2,6 +2,14 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-01: consistency-first score and ranking protocol
+
+Clarified research-security positioning and added repeated clean-screener
+qualification plus separate score, eligibility and four-candidate ranking
+objectives. Actual 24-call clean study returned consistent scores but 19 backend
+fingerprints; its predeclared identity condition failed, so attack efficacy was
+not run. See [change and execution record](docs/progress/CONSISTENCY_AND_RANKING_2026-10-01.md).
+
 ## 2026-10-01: hosted synthetic reference study
 
 Added an opt-in Groq reference-screener runner with fictional-only PDF inputs,
