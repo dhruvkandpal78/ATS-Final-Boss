@@ -13,6 +13,27 @@ MiniLM measures sentence-window coherence; instruction detection is a separate c
 
 Copyright © 2026 Dhruv Kandpal. New original enhancements have reserved-rights terms; previously MIT-licensed material and third-party rights are preserved. See [LICENSE](LICENSE), [legacy MIT notice](LICENSE-MIT-LEGACY.txt), and [ownership policy](docs/OWNERSHIP.md). This is a mixed-rights research project, not an unrestricted open-source release of the new additions.
 
+## For an evaluation partner
+
+The proposed first partner is a recruiting or hiring-software team with an IT
+owner and control of its downstream screener integration. This is a demand
+hypothesis, not a named customer or validated market. A recruiter who cannot
+change their ATS pipeline is not assumed to have an integration path.
+
+| Buyer requirement | Current evidence |
+|---|---|
+| Recall above 90% and false-positive rate below 2% on representative real resumes | **Unverified.** Historical F1/recall/FPR and controlled-edit results are not current field-performance claims. |
+| Human review rather than automatic rejection | Implemented review/error routing; findings do not authorize hiring decisions. Customer workflow acceptance is still required. |
+| Deployable review API and integration | Versioned REST endpoint, strict server-side SDK and private deployment templates exist. No installed ATS connector or accepted customer gateway is claimed. |
+| Named pilot and buyer value | No named pilot evidence is established. The measured local development study showed no incremental score-attack protection before its regression fix. |
+| General injection resistance | Lexical checks have known evasions. MiniLM coherence and the experimental meta-classifier are not a validated learned injection defense. |
+
+The next proof is a frozen comparison against a partner's actual screener with
+independently reviewed, permitted documents, realistic base-rate reporting and
+added review burden. See [the proposed pilot](docs/CUSTOMER_PILOT_STRATEGY.md).
+No named customers, traction, pricing validation or production guarantees are
+implied by the demo or test count.
+
 ## Run locally
 
 Operators can inspect bounded, content-free runtime counters and latency histograms through the [metrics endpoints](docs/OPERATIONS_METRICS.md). Customer monitoring and load acceptance remain separate.
@@ -50,7 +71,7 @@ Integrations can use `POST /api/v1/review` for a fixed-vocabulary, data-minimize
 
 The checked-in keyword threshold is currently zero. This invalid calibration is now reported by `scripts/doctor.py`; keyword and combined scores are withheld until a positive threshold is established using source-disjoint validation data. Available semantic and PDF evidence still runs. Do not substitute an arbitrary threshold to enable a percentage display.
 
-- **Review recommended:** one or more configured rules or model signals need human inspection.
+- **Review recommended:** an instruction cue or sustained skill-repetition rule requires human inspection. Density, structural anomalies and experimental model scores remain advisory.
 - **Insufficient evidence:** the available input or coverage cannot support a complete analysis.
 - **No signals detected:** no configured signal triggered in the completed analysis; this is not a guarantee.
 - Model scores and review policy are separate. Rule triggers never increase the displayed numeric score.

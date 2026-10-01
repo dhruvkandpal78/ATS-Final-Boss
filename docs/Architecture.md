@@ -6,6 +6,13 @@ Updated October 1, 2026. This describes the maintained implementation; older pla
 
 ATS Final Boss is an input-level resume inspection tool. It reports evidence and coverage before a downstream screening decision. It does not verify claims, determine hiring suitability or establish a probability of dishonesty.
 
+Instruction detection, sentence cue explanations and source-span evidence share
+normalized-text clause boundaries indexed once per invocation. Local quoted
+examples remain excluded and later actionable matches remain eligible. Source
+anchors retain original offsets and abstain on unmappable Unicode composition.
+This improves consistency and avoids repeated sentence-prefix scans; it does
+not make lexical instruction detection comprehensive.
+
 ```mermaid
 flowchart TD
     UI[Maintained browser UI: src/app] --> Gateway[Customer TLS and SSO gateway: private deployment]

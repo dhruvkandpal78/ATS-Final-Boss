@@ -1,5 +1,11 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 1 cue-context continuation: sentence explanations now check later
+actionable matches after quoted examples. Detection/explanation/source evidence
+index clause boundaries once per invocation; review rules and exclusions stay
+unchanged. Local synthetic scan timings are not deployed capacity evidence.
+See [record](CUE_CONTEXT_2026-10-01.md).
+
 October 1 routing continuation: fresh local development protocol completed 80
 calls with stable controls, but six of eight authored attack conditions crossed
 the score threshold unreviewed in both arms. No added protection. A subsequent

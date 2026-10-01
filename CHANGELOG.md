@@ -2,6 +2,17 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-01: shared cue context and consistent explanations
+
+Fixed the sentence explanation helper skipping an actionable command after a
+quoted first match. Indexed sentence boundaries once per detection/evidence
+invocation to avoid repeated document-prefix scans on dense examples. Existing
+patterns, quote exclusions and review thresholds remain unchanged. See
+[verification and timing scope](docs/progress/CUE_CONTEXT_2026-10-01.md).
+Buyer-review alignment clarifies implemented API/review capabilities and unmet
+real-resume accuracy, pilot, pricing and learned-defense evidence in the README
+and existing pilot strategy. No customer or performance claim was invented.
+
 ## 2026-10-01: explicit baseline review-routing qualification
 
 Added a separately selected development protocol that measures baseline model

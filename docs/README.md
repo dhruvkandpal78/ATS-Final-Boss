@@ -1,5 +1,9 @@
 # Documentation map
 
+The [cue-context record](progress/CUE_CONTEXT_2026-10-01.md) documents consistent
+instruction explanations and shared sentence indexing with limited local timing
+evidence; it adds no downstream efficacy claim.
+
 The [review-routing study](progress/REVIEW_ROUTING_STUDY_2026-10-01.md) separates
 the reference screener's baseline review requests from detector-added holds,
 preserving the original failed protocol and conditional efficacy limits.
