@@ -1,5 +1,7 @@
 # Documentation map
 
+The [paired downstream harness](DOWNSTREAM_BENCHMARK.md) defines comparison inputs and denominators; [mentor implementation record](progress/MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md) lists what is implemented and what still requires real evidence.
+
 Start with the root [README](../README.md). The current maintained system is documented in [Architecture](Architecture.md), [Security](../SECURITY.md), and [Ethics](ethics.md). Deployment instructions are in [Private pilot](PRIVATE_PILOT.md), and customer acceptance evidence belongs in [Company release gate](COMPANY_RELEASE_GATE.md).
 
 The versioned review API and downstream privilege boundaries are documented in [Integration](INTEGRATION.md). The [product-gap response](progress/PRODUCT_GAP_REVIEW_2026-10-01.md) distinguishes current implementation from stale review claims and still-open commercial/scientific requirements.

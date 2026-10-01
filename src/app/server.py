@@ -539,7 +539,7 @@ class Handler(BaseHTTPRequestHandler):
             if len(raw) != length:
                 raise APIError(400, "Incomplete request body.")
             try:
-                payload = decode_json_body(raw)
+                payload = decode_json_body(raw, strict=path == REVIEW_ROUTE)
             except (ValueError, UnicodeDecodeError, RecursionError):
                 raise APIError(400, "Invalid JSON payload.") from None
             if path == REVIEW_ROUTE:

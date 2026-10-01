@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 1 mentor continuation: paired downstream observation importer and fail-closed server SDK implemented; actual downstream executions, independent grading and customer gateway acceptance remain open. See [record](MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md).
+
 October 1 product-gap continuation: versioned fixed-vocabulary review projection, shared admission/gateway policy and explicit prevalence scenarios implemented. These are integration/reporting controls, not calibrated candidate probabilities, a sanitizer, independent accuracy/fairness proof or company readiness. See [product-gap record](PRODUCT_GAP_REVIEW_2026-10-01.md).
 
 September 30 publication cleanup: removed redundant/unused files, archived the single rebuild specification and aligned the maintained research guide with actual detector/evaluation limitations. No policy, thresholds or artifacts changed. Verification: [public-tree cleanup record](PUBLIC_TREE_CLEANUP_2026-09-30.md).
