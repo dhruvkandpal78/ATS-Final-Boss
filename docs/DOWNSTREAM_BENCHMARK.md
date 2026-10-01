@@ -1,6 +1,6 @@
 # Paired downstream evaluation
 
-This import-only harness compares supplied observations from an existing screener against the same screener behind a frozen review gate. It does not run models, open resumes, contact APIs or certify submitted measurements. No new measured performance result is claimed.
+This import-only harness compares supplied observations from an existing screener against the same screener behind a frozen review gate. It does not run models, open resumes, contact APIs or certify submitted measurements. A separate opt-in [reference study runner](REFERENCE_STUDY.md) executes a small hosted screener experiment using fictional PDFs; that is distinct from independent customer evidence.
 
 ## Procedure
 

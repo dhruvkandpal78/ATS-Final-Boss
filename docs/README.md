@@ -1,5 +1,7 @@
 # Documentation map
 
+The opt-in [reference screener study](REFERENCE_STUDY.md) runs fictional PDFs through an actual hosted model. Its [dated execution record](progress/REFERENCE_STUDY_2026-10-01.md) distinguishes descriptive findings from independent customer evidence.
+
 [Runtime metrics](OPERATIONS_METRICS.md) describes authenticated telemetry, collection limits and customer monitoring responsibilities.
 
 The [paired downstream harness](DOWNSTREAM_BENCHMARK.md) defines comparison inputs and denominators; [mentor implementation record](progress/MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md) lists what is implemented and what still requires real evidence.
