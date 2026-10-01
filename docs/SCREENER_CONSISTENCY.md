@@ -1,5 +1,39 @@
 # Consistency before downstream efficacy
 
+## Pinned local reference option
+
+The same fictional-only study also supports an independently pinned local
+Ollama model, using the approved `qwen3:4b-instruct-2507-q4_K_M` tag. The local
+client verifies the full manifest digest and every referenced model/config/
+template/license blob before the study and at the end. Runtime version and
+model tag digest are checked before and after each inference. Changed identity,
+incomplete JSON, duplicate fields, unexpected tools or invalid usage stop calls.
+
+Traffic is restricted to literal `127.0.0.1:11434`, with system proxies and
+redirects disabled. No API key is read, no model is downloaded by the runner,
+and no candidate content leaves the machine through this client. The approved
+operator store is read-only to the tool; weights stay outside Git. Do not use
+uploaded or unknown model stores.
+
+After independently approving the official manifest pin and creating a **new**
+study freeze, run:
+
+```powershell
+python scripts/run_score_rank_study.py --provider ollama --ollama-store OPERATOR_OLLAMA_MODEL_STORE --ollama-model-sha256 APPROVED_FULL_SHA256 --output .test-tmp/FRESH_LOCAL_STUDY
+```
+
+Local options are fixed at temperature0, seed7391, context4096, prediction
+limit128 and four threads. The output limit differs from Groq's; the study
+records the local settings and must not be pooled with the hosted experiment.
+This is a quantized 4B reference model, not the hosted 120B model or a customer
+screener. Its performance cannot prove defenses against larger/customer models.
+The local identity replaces opaque hosted fingerprints for qualification;
+hash-verified weights and reported runtime version do not certify OS/process
+isolation, immutable server binaries or general determinism. Three-repeat
+controls still have to qualify. Local compute, energy and human effort remain
+unmeasured costs. See [Ollama model metadata](https://docs.ollama.com/api/tags)
+and the [approved model catalog](https://ollama.com/library/qwen3:4b-instruct-2507-q4_K_M).
+
 The first hosted reference study exposed identical-input score differences and
 changing provider fingerprints. Canary resistance did not establish reliable
 scores, factual extraction or protection against ranking manipulation.

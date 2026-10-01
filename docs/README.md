@@ -1,5 +1,7 @@
 # Documentation map
 
+The [pinned local reference record](progress/PINNED_LOCAL_REFERENCE_2026-10-01.md) documents model-file integrity, actual local controls and the model-review qualification failure separately from hosted fingerprints and detector decisions.
+
 [Screener consistency](SCREENER_CONSISTENCY.md) defines the clean-repeat stop rules and separate score, eligibility and four-candidate ranking endpoints required before an interpretable reference efficacy experiment.
 
 The [consistency execution record](progress/CONSISTENCY_AND_RANKING_2026-10-01.md) reports actual clean repeat results and the failed backend-identity condition; its attack phase was not run.

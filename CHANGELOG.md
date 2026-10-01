@@ -2,6 +2,14 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-01: hash-pinned local reference provider
+
+Added loopback-only evaluation with independently pinned manifest/blob hashes,
+per-call model/version checks, strict tool-free outputs and no cloud key use.
+Actual 24-call local controls had stable scores but six model review requests
+per arm, failing the frozen qualification rule; attack phase NOT RUN. See
+[local change and execution record](docs/progress/PINNED_LOCAL_REFERENCE_2026-10-01.md).
+
 ## 2026-10-01: consistency-first score and ranking protocol
 
 Clarified research-security positioning and added repeated clean-screener

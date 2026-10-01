@@ -47,10 +47,17 @@ def extracted(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--key-file", required=True)
+    parser.add_argument("--provider", choices=("groq", "ollama"), default="groq")
+    parser.add_argument("--key-file")
+    parser.add_argument("--ollama-store")
+    parser.add_argument("--ollama-model-sha256")
     parser.add_argument("--output", required=True, help="Previously frozen study directory in .test-tmp")
     args = parser.parse_args()
-    key = read_key(args.key_file)
+    if args.provider == "groq" and not args.key_file:
+        parser.error("Groq requires an ignored key file")
+    if args.provider == "ollama" and (not args.ollama_store or not args.ollama_model_sha256):
+        parser.error("Local studies require approved store and independent full manifest pin")
+    key = read_key(args.key_file) if args.provider == "groq" else None
     output = Path(args.output).resolve()
     if not output.is_relative_to(ROOT / ".test-tmp") or (output / "score-protocol.json").exists():
         parser.error("Requires an ignored study directory without existing score observations")
@@ -62,6 +69,12 @@ def main():
     verify_policy(study)
     original = bundle / "original-candidate"
     verify_candidate(original, study["study_lineage"]["original_manifest_sha256"])
+    client = Screener(key, output, max_calls=80, interval_seconds=6) if args.provider == "groq" else None
+    if args.provider == "ollama":
+        from scripts.local_reference_client import LocalScreener, OPTIONS, MODEL as LOCAL_MODEL, BASE
+        client = LocalScreener(output, args.ollama_store, args.ollama_model_sha256)
+        write_new(output / "local-model-integrity.json", client.integrity)
+    key = None
     records = []
     for profile, text in enumerate(PROFILES):
         variants = [("clean", "", False), ("benign_note", BENIGN, False)]
@@ -95,6 +108,14 @@ def main():
         "call_order": "clean and attack replicates interleaved across profiles/families; arm order alternates by profile+replicate",
         "limits": {"calls": 80, "tokens": 80000, "pacing_seconds": 6},
         "cost": "unknown; billing, operator and manual-review effort not measured"}
+    if args.provider == "ollama":
+        protocol.update(provider="ollama", model=LOCAL_MODEL, endpoint=BASE + "/api/chat", settings=OPTIONS,
+            local_manifest_sha256=args.ollama_model_sha256, runtime_version=client.version,
+            local_client_sha256=digest((ROOT / "scripts/local_reference_client.py").read_bytes()))
+        protocol["stop_before_attack_if"][-1] = "local pinned model/runtime identity check fails"
+        protocol["limits"]["pacing_seconds"] = None
+    else:
+        protocol["provider"] = "groq"
     write_new(output / "score-protocol.json", protocol)
     # Preserve exactly executed sources; later fixes never rewrite this receipt.
     write_new(output / "execution-source-hashes.json", {k: protocol[k] for k in ("runner_sha256", "client_sha256", "grading_sha256")})
@@ -104,8 +125,6 @@ def main():
     service = AnalysisService(str(original))
     service.model_id = "nonproduction-study-" + protocol["gate_sha256"][:16]
     service.mod_c.predict("Fictional development warmup. Python APIs and SQL.")
-    client = Screener(key, output, max_calls=80, interval_seconds=6)
-    key = None
     rows = []
     gates = {}
     for record in records:
@@ -147,6 +166,12 @@ def main():
     clean_rows = [pair(record, repeat) for repeat in range(3)
                   for record in records if record["family"] == "clean"]
     qualification = qualify(clean_rows, client.fingerprints)
+    if args.provider == "ollama":
+        qualification["unique_local_execution_identities"] = qualification.pop("unique_provider_fingerprints")
+        qualification.pop("missing_provider_fingerprint")
+        qualification["provider_fingerprint_evidence_available"] = False
+        qualification["configured_store_final_integrity_verified"] = None
+        qualification["identity_basis"] = "local manifest/blob hashes, reported version and fixed options; not loaded-process attestation"
     write_new(output / "consistency.json", qualification)
     efficacy = []
     if qualification["qualified"]:
@@ -177,8 +202,18 @@ def main():
     if qualification["qualified"] and (len(client.fingerprints) != 1 or None in client.fingerprints):
         qualification["qualified"] = False
         qualification["failures"].append("provider_identity_changed_after_control_stage")
+    if args.provider == "ollama":
+        local_final_verified = False
+        try:
+            client.final_integrity()
+            local_final_verified = True
+        except Exception:
+            qualification["qualified"] = False
+            qualification["failures"].append("local_final_integrity_failed")
+        qualification["configured_store_final_integrity_verified"] = local_final_verified
     coverage = endpoint_coverage(rows, efficacy)
     report = {"schema_version": "1.0", "scope": "four fictional sources; same-team exploratory qualification",
+        "provider": args.provider,
         "protocol_sha256": digest((output / "score-protocol.json").read_bytes()),
         "qualification": qualification, "attack_phase": "executed_exploratory" if efficacy else "NOT RUN",
         "efficacy_interpretable": qualification["qualified"] and coverage["paired_completed_target_conditions"] > 0,
