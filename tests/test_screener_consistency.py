@@ -18,6 +18,64 @@ def test_stable_clean_controls_qualify_without_certification():
     assert result["immutable_weights_certified"] is False
 
 
+def reviewed_controls():
+    rows = controls()
+    for row in rows:
+        for arm in ("baseline", "protected"):
+            row[arm]["needs_review"] = row["profile"] in (1, 3)
+    return rows
+
+
+def test_stable_review_protocol_counts_workload_without_changing_strict_default():
+    rows = reviewed_controls()
+    assert not qualify(rows, {"fp"})["qualified"]
+    result = qualify(rows, {"fp"}, review_policy="stable_review_routing")
+    assert result["qualified"]
+    for arm in ("baseline", "protected"):
+        workload = result["clean_review_workload"][arm]
+        assert workload["model_review_requested_replicates"] == 6
+        assert workload["attempted_replicates"] == 12
+        assert workload["distinct_fictional_profile_count"] == 4
+        assert not workload["population_rate_established"]
+
+
+@pytest.mark.parametrize("flag", [False, None, 1, "true"])
+def test_review_routing_disagreement_or_invalid_flag_blocks(flag):
+    rows = reviewed_controls()
+    rows[1]["protected"]["needs_review"] = flag
+    result = qualify(rows, {"fp"}, review_policy="stable_review_routing")
+    assert not result["qualified"]
+    assert "clean_review_routing_unstable_or_unavailable" in result["failures"]
+
+
+def test_stable_but_different_arm_routing_blocks():
+    rows = reviewed_controls()
+    for row in rows:
+        if row["profile"] == 1:
+            row["protected"]["needs_review"] = False
+    result = qualify(rows, {"fp"}, review_policy="stable_review_routing")
+    assert "clean_review_routing_differs_between_arms" in result["failures"]
+
+
+def test_review_policy_cannot_bypass_completion_identity_or_scores():
+    rows = reviewed_controls()
+    rows[0]["protected"]["state"] = "held"
+    result = qualify(rows, {"fp", None}, review_policy="stable_review_routing")
+    assert "clean_completion_or_gate_failure" in result["failures"]
+    assert "provider_backend_identity_not_stable" in result["failures"]
+    with pytest.raises(ValueError):
+        qualify(rows, {"fp"}, review_policy="ignore_reviews")
+
+
+def test_completed_control_without_score_is_unqualified_not_imputed():
+    rows = reviewed_controls()
+    rows[0]["protected"]["score"] = None
+    result = qualify(rows, {"fp"}, review_policy="stable_review_routing")
+    assert not result["qualified"]
+    assert result["profiles"][0]["protected"] is None
+    assert len(result["clean_pools"]) == 5
+
+
 def test_missing_or_duplicate_control_pairs_fail():
     rows = controls()
     with pytest.raises(ValueError):

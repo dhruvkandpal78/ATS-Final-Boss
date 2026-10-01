@@ -2,6 +2,18 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-01: explicit baseline review-routing qualification
+
+Added a separately selected development protocol that measures baseline model
+review requests and requires stable routing across repetitions and arms. The
+original strict protocol and failed receipts remain intact; score/identity and
+fail-closed detector requirements stay in force. See the
+[change and execution record](docs/progress/REVIEW_ROUTING_STUDY_2026-10-01.md).
+The actual 80-call run found no added protection (6/8 unreviewed numeric
+crossings in both arms). Added a subsequent narrow explicit self-score-command
+review cue with benign/quoted controls; this known-specimen fix is not new
+downstream-benefit evidence.
+
 ## 2026-10-01: hash-pinned local reference provider
 
 Added loopback-only evaluation with independently pinned manifest/blob hashes,
