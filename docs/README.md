@@ -1,5 +1,13 @@
 # Documentation map
 
+The [cue-context record](progress/CUE_CONTEXT_2026-10-01.md) documents consistent
+instruction explanations and shared sentence indexing with limited local timing
+evidence; it adds no downstream efficacy claim.
+
+The [review-routing study](progress/REVIEW_ROUTING_STUDY_2026-10-01.md) separates
+the reference screener's baseline review requests from detector-added holds,
+preserving the original failed protocol and conditional efficacy limits.
+
 The [pinned local reference record](progress/PINNED_LOCAL_REFERENCE_2026-10-01.md) documents model-file integrity, actual local controls and the model-review qualification failure separately from hosted fingerprints and detector decisions.
 
 [Screener consistency](SCREENER_CONSISTENCY.md) defines the clean-repeat stop rules and separate score, eligibility and four-candidate ranking endpoints required before an interpretable reference efficacy experiment.

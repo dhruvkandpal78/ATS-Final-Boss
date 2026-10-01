@@ -1,5 +1,12 @@
 # Issue Ledger
 
+- [x] Instruction explanation helper now finds actionable later matches after a benign quoted first match.
+- [x] Detection/explanation/source evidence share per-invocation sentence indexing, avoiding repeated document-prefix scans for dense example cues; see [record](CUE_CONTEXT_2026-10-01.md).
+
+- [x] Separate baseline model-review workload from gate-added holds using an explicitly selected stable-routing development protocol; strict default/old failures preserved.
+- [x] Explicit first-person fit/match/screening score100 commands now trigger lexical review, with quoted/descriptive negative regression cases.
+- [ ] Local score-targeting study showed no incremental protection (6/8 unreviewed crossings in both arms). Post-fix downstream benefit, paraphrased/encoded coverage and representative false-positive evidence remain open; see [record](REVIEW_ROUTING_STUDY_2026-10-01.md).
+
 - [x] Fixed-loopback local reference client verifies independently pinned manifest/blob hashes and checks model/version identity per call without cloud credentials.
 - [ ] Local reference qualification still blocked: six clean model review requests per arm in 24 repeat calls. No score/rank efficacy result; see [local record](PINNED_LOCAL_REFERENCE_2026-10-01.md).
 

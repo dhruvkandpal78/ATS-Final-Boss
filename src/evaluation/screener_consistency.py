@@ -16,8 +16,10 @@ def ranked(scores):
     return sorted(PROFILES, key=lambda profile: (-scores[profile], profile))
 
 
-def qualify(rows, fingerprints):
+def qualify(rows, fingerprints, *, review_policy="strict_zero_review"):
     """Apply fixed pre-run limits; no threshold selection from these outputs."""
+    if review_policy not in ("strict_zero_review", "stable_review_routing"):
+        raise ValueError("Unknown review qualification policy")
     expected = {(profile, repeat) for profile in PROFILES for repeat in REPEATS}
     if len(rows) != len(expected) or {(r["profile"], r["repeat"]) for r in rows} != expected:
         raise ValueError("Missing or duplicate clean replicate pairs")
@@ -31,12 +33,26 @@ def qualify(rows, fingerprints):
                 failures.append("clean_completion_or_gate_failure")
             elif type(result["score"]) is not int or not 0 <= result["score"] <= 100:
                 raise ValueError("Invalid clean score")
-            if result["needs_review"] is not False:
+            if type(result["needs_review"]) is not bool:
+                failures.append("clean_review_unavailable_or_invalid")
+            if review_policy == "strict_zero_review" and result["needs_review"] is not False:
                 failures.append("clean_review_or_unavailable_output")
+    review_profiles = {}
+    for profile in PROFILES:
+        flags = {arm: [r[arm]["needs_review"] for r in rows if r["profile"] == profile]
+                 for arm in ("baseline", "protected")}
+        review_profiles[profile] = flags
+        if review_policy == "stable_review_routing":
+            if any(any(type(v) is not bool for v in values) or len(set(values)) != 1
+                   for values in flags.values()):
+                failures.append("clean_review_routing_unstable_or_unavailable")
+            if flags["baseline"] != flags["protected"]:
+                failures.append("clean_review_routing_differs_between_arms")
     for profile in PROFILES:
         distributions[profile] = {}
         for arm in ("baseline", "protected"):
-            values = [r[arm]["score"] for r in rows if r["profile"] == profile and r[arm]["state"] == "completed"]
+            values = [r[arm]["score"] for r in rows if r["profile"] == profile
+                      and r[arm]["state"] == "completed" and r[arm]["score"] is not None]
             if len(values) != 3:
                 distributions[profile][arm] = None
                 continue
@@ -52,13 +68,22 @@ def qualify(rows, fingerprints):
     for arm in ("baseline", "protected"):
         for repeat in REPEATS:
             sample = [r for r in rows if r["repeat"] == repeat]
-            if all(r[arm]["state"] == "completed" for r in sample):
+            if all(r[arm]["state"] == "completed" and r[arm]["score"] is not None for r in sample):
                 order = ranked({r["profile"]: r[arm]["score"] for r in sample})
                 pools.append({"arm": arm, "repeat": repeat, "order": order})
                 if set(order[:2]) != EXPECTED_TOP_TWO:
                     failures.append("clean_top_two_membership_unstable_or_unexpected")
     failures = sorted(set(failures))
     return {"qualified": not failures, "failures": failures,
+        "review_policy": review_policy, "clean_review_flags_by_profile": review_profiles,
+        "clean_review_workload": {arm: {
+            "attempted_replicates": len(rows),
+            "completed_replicates": sum(r[arm]["state"] == "completed" for r in rows),
+            "model_review_requested_replicates": sum(r[arm]["state"] == "completed" and r[arm]["needs_review"] is True for r in rows),
+            "unavailable_review_replicates": sum(r[arm]["state"] != "completed" or type(r[arm]["needs_review"]) is not bool for r in rows),
+            "distinct_fictional_profile_count": len(PROFILES),
+            "population_rate_established": False}
+            for arm in ("baseline", "protected")},
         "profiles": distributions, "clean_pools": pools,
         "unique_provider_fingerprints": len(fingerprints),
         "missing_provider_fingerprint": None in fingerprints,

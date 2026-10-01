@@ -2,6 +2,7 @@ import numpy as np
 import logging
 import re
 import unicodedata
+from bisect import bisect_left, bisect_right
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from src.modules.calibration import clean_validation_threshold
@@ -135,6 +136,7 @@ class SemanticCoherenceScorer:
         r"rank\s+(this\s+candidate\s+)?(as\s+)?#?1",
         r"hire\s+immediately",
         r"match\s+score:\s*100",
+        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
         r"do\s+not\s+reject",
         r"administrator\s+instructions?",
         r"override\s+the\s+screening"
@@ -152,10 +154,12 @@ class SemanticCoherenceScorer:
             return 0
 
         normalized = self._normalize_cue_text(text)
+        boundaries = self._cue_context_boundaries(normalized)
         count = 0
         for pattern in self.INJECTION_PATTERNS:
             matches = re.finditer(pattern, normalized)
-            if any(not self._is_benign_cue_context(normalized, match.start(), match.end()) for match in matches):
+            if any(not self._is_benign_cue_context(normalized, match.start(), match.end(),
+                                                 boundaries=boundaries) for match in matches):
                 count += 1
         return count
 
@@ -165,15 +169,20 @@ class SemanticCoherenceScorer:
         normalized = unicodedata.normalize("NFKC", text).casefold()
         return "".join(char for char in normalized if unicodedata.category(char) != "Cf")
 
+    @staticmethod
+    def _cue_context_boundaries(text: str):
+        """Index sentence boundaries once per normalized document, not per cue."""
+        return ([match.end() for match in re.finditer(r"[.!?;\n]+\s*", text)],
+                [match.start() for match in re.finditer(r"[.!?;\n]+", text)])
+
     @classmethod
-    def _is_benign_cue_context(cls, text: str, start: int, end: int) -> bool:
+    def _is_benign_cue_context(cls, text: str, start: int, end: int, *, boundaries=None) -> bool:
         """Ignore a cue only when its own nearby sentence presents it as an example."""
-        left_boundary = max(
-            (match.end() for match in re.finditer(r"[.!?;\n]+\s*", text[:start])),
-            default=0,
-        )
-        right_boundary_match = re.search(r"[.!?;\n]+", text[end:])
-        right_boundary = end + right_boundary_match.start() if right_boundary_match else len(text)
+        ends, starts = boundaries if boundaries is not None else cls._cue_context_boundaries(text)
+        left_index = bisect_right(ends, start) - 1
+        right_index = bisect_left(starts, end)
+        left_boundary = ends[left_index] if left_index >= 0 else 0
+        right_boundary = starts[right_index] if right_index < len(starts) else len(text)
         clause = text[left_boundary:right_boundary]
         local_start = start - left_boundary
         local_end = end - left_boundary
@@ -202,10 +211,12 @@ class SemanticCoherenceScorer:
     def _injection_cue_for_sentence(cls, text: str):
         """Return the first actionable cue for explanation, with the same scope as scoring."""
         normalized = cls._normalize_cue_text(text)
+        boundaries = cls._cue_context_boundaries(normalized)
         for pattern in cls.INJECTION_PATTERNS:
-            match = re.search(pattern, normalized)
-            if match and not cls._is_benign_cue_context(normalized, match.start(), match.end()):
-                return pattern
+            for match in re.finditer(pattern, normalized):
+                if not cls._is_benign_cue_context(normalized, match.start(), match.end(),
+                                                boundaries=boundaries):
+                    return pattern
         return None
 
     def _variance_from_unit_emb(self, unit_emb) -> float:

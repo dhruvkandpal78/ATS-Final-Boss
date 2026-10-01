@@ -19,9 +19,11 @@ def instruction_spans(text, detector, limit=20):
     # Cross-character Unicode compositions can change positions; abstain.
     if normalized != normalize(text):
         return []
+    boundary_builder = getattr(detector, "_cue_context_boundaries", None)
+    context = {"boundaries": boundary_builder(normalized)} if callable(boundary_builder) else {}
     spans = set()
     for pattern in patterns:
         for match in re.finditer(pattern, normalized):
-            if match.end() > match.start() and not benign(normalized, match.start(), match.end()):
+            if match.end() > match.start() and not benign(normalized, match.start(), match.end(), **context):
                 spans.add((offsets[match.start()], offsets[match.end() - 1] + 1))
     return [{"char_start": start, "char_end": end} for start, end in sorted(spans)[:limit]]
