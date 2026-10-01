@@ -2,6 +2,14 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-01: hosted synthetic reference study
+
+Added an opt-in Groq reference-screener runner with fictional-only PDF inputs,
+bounded calls, strict output validation, explicit research artifact lineage,
+paired fail-closed dispositions and private local execution records. This is a
+small same-team feasibility study, not independent downstream/customer proof.
+See [study change record](docs/progress/REFERENCE_STUDY_2026-10-01.md).
+
 ## 2026-10-01: bounded operations metrics and rejected-body handling
 
 Added fixed-cardinality HTTP response counters and latency histograms, authenticated JSON/Prometheus exports and private collector guidance. The browser gateway denies telemetry paths by default. Fixed bounded rejected-body drainage after a Windows response-reset regression surfaced. No SLA or detection-accuracy claim. See [runtime metrics record](docs/progress/RUNTIME_METRICS_2026-10-01.md).

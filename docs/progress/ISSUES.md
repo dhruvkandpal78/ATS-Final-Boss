@@ -1,5 +1,8 @@
 # Issue Ledger
 
+- [x] Opt-in real hosted reference-screener execution added using 24 fictional PDFs, fixed same-team interventions and private paired observations; see [study record](REFERENCE_STUDY_2026-10-01.md).
+- [ ] Independent customer-screener benefit, natural ground truth, immutable end-to-end model identity, fairness and representative load remain unestablished. Small synthetic reference outcomes do not close these gates.
+
 - [x] Fixed-cardinality, content-free analysis HTTP counters/histograms and authenticated JSON/Prometheus metrics implemented in both maintained adapters; counters reset on restart.
 - [ ] Customer collector, alert delivery/thresholds, gateway/pre-dispatch telemetry and representative load/resource acceptance remain unverified; see [runtime metrics](../OPERATIONS_METRICS.md).
 

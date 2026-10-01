@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 1 measured-study continuation: 24 fictional PDFs yielded 0/16 baseline canary successes and 0/8 forwarded protected canary successes, with eight attack holds and 0/8 control holds. No incremental canary benefit was shown; identical-input score instability was observed. This is a same-team exploratory study with varying provider fingerprints; production artifact approval, independent/customer outcomes and release gates remain open. See [study record](REFERENCE_STUDY_2026-10-01.md).
+
 October 1 operations continuation: bounded process-local metrics and protected exports added to both servers. HTTP200 is not evidence of complete analysis, and actual collector/alert/load acceptance remains open. See [metrics record](RUNTIME_METRICS_2026-10-01.md).
 
 October 1 mentor continuation: paired downstream observation importer and fail-closed server SDK implemented; actual downstream executions, independent grading and customer gateway acceptance remain open. See [record](MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md).
