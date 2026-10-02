@@ -1,6 +1,6 @@
 # Current system architecture
 
-Updated October 1, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
+Updated October 2, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
 
 ## Runtime and trust boundaries
 
@@ -42,6 +42,15 @@ flowchart TD
 The CLI and HTTP worker use `src/core/analysis_service.py`; adapters do not invent PDF structural scores for plain text. The API bounds uploads, rejects concurrent analysis, uses an isolated worker with a deadline and cleans temporary files. PDF parsing is limited to 20 pages and 100,000 extracted characters. Unsupported, encrypted, scanned-only, incomplete and failed analyses expose coverage limitations. OCR is not implemented.
 
 Uploaded documents are untrusted data. Candidate weights are trusted local artifacts, never uploaded documents. Candidate bundles are hash-checked before pickle deserialization; hashes detect accidental changes, not replacement of both artifacts and manifests by an attacker.
+
+Candidate manifests are bounded to 256 KiB, reject ambiguous JSON and require
+exactly four named hashes. Pickle files are capped at 64 MiB each and candidate
+JSON artifacts at 1 MiB each. Initial hashes stream in bounded chunks; loaders
+recheck bounded exact bytes before deserialization. Named linked/special entries
+are rejected, including supported Windows reparse checks. Local legacy pickle
+reads share the bounds but have no candidate trust-pin guarantee. Policy freezes
+now include source evidence code; older freezes require explicit review.
+These controls do not sandbox pickle or establish native-memory containment.
 
 Private mode additionally requires an independently pinned manifest digest, verifies policy hashes, and deserializes the exact verified bytes. It requires Linux resource limits and an authenticated customer gateway. Host/Origin guards, bearer authentication, connection limits and a global request budget apply before analysis. Local mode refuses network-wide binding. The proposed container is non-root, read-only and resource-limited; hosted synthetic container smoke passes, while real pinned-model deployment and customer SSO/TLS acceptance remain unverified. See [private pilot guide](PRIVATE_PILOT.md).
 

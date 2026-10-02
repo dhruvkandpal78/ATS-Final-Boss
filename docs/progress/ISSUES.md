@@ -1,5 +1,9 @@
 # Issue Ledger
 
+- [x] Candidate manifest/hash and exact-byte model reads have size/path bounds and reject ambiguous JSON or linked/special entries.
+- [x] Evidence source code is required in policy freezes; old pin sets fail closed rather than being silently upgraded.
+- [ ] Trusted pickle, immutable mounts, independent provenance, native-memory containment and real pinned-model customer deployment remain required/unverified; see [artifact record](CANDIDATE_BOUNDS_2026-10-02.md).
+
 - [x] Instruction explanation helper now finds actionable later matches after a benign quoted first match.
 - [x] Detection/explanation/source evidence share per-invocation sentence indexing, avoiding repeated document-prefix scans for dense example cues; see [record](CUE_CONTEXT_2026-10-01.md).
 

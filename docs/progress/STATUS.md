@@ -1,5 +1,10 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 2 artifact continuation: bounded manifests/named model reads, streamed
+hash verification and evidence-source policy pins added. Existing candidate byte
+integrity passes unchanged, while its stale policy freeze remains rejected.
+No pin rewriting or deployment/accuracy approval. See [record](CANDIDATE_BOUNDS_2026-10-02.md).
+
 October 1 cue-context continuation: sentence explanations now check later
 actionable matches after quoted examples. Detection/explanation/source evidence
 index clause boundaries once per invocation; review rules and exclusions stay

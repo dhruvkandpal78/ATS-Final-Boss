@@ -2,6 +2,14 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-02: bounded candidate artifact verification and loading
+
+Bounded manifests and named model reads, streamed initial hashes, rejected
+ambiguous JSON and linked/special entries, and added evidence code to required
+policy hashes. Exact candidate bytes are still rechecked before trusted pickle
+deserialization; legacy local reads are bounded too. Old freezes require explicit
+review, not automatic pin rewriting. See [change and limits](docs/progress/CANDIDATE_BOUNDS_2026-10-02.md).
+
 ## 2026-10-01: shared cue context and consistent explanations
 
 Fixed the sentence explanation helper skipping an actionable command after a

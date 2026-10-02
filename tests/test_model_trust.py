@@ -34,15 +34,65 @@ def test_pinned_deployment_refuses_legacy_model_directory(tmp_path):
 
 def test_changed_model_bytes_after_initial_verification_never_deserialized(tmp_path, monkeypatch):
     pin = bundle(tmp_path)
-    original = Path.read_bytes
-    reads = [0]
-    def race(path):
-        if path.name == "meta_classifier.pkl":
-            reads[0] += 1
-            if reads[0] > 1:
-                return b"substituted bytes"
-        return original(path)
-    monkeypatch.setattr(Path, "read_bytes", race)
+    from src.core.artifacts import read_candidate_artifact
+    def race(directory, name):
+        if name == "meta_classifier.pkl":
+            return b"substituted bytes"
+        return read_candidate_artifact(directory, name)
+    monkeypatch.setattr("src.core.artifacts.read_candidate_artifact", race)
     monkeypatch.setattr("src.inference.pickle.loads", lambda data: pytest.fail("Must not deserialize"))
     with pytest.raises(ValueError, match="changed before use"):
         load_pipeline(tmp_path, pin)
+
+
+@pytest.mark.parametrize("candidate", [True, False])
+def test_oversized_weights_never_reach_pickle_in_candidate_or_legacy_mode(tmp_path, monkeypatch, candidate):
+    from src.core.artifacts import ARTIFACT_LIMITS
+    if candidate:
+        bundle(tmp_path)
+    else:
+        (tmp_path / "meta_classifier.pkl").write_bytes(b"synthetic legacy bytes")
+    monkeypatch.setitem(ARTIFACT_LIMITS, "meta_classifier.pkl", 8)
+    monkeypatch.setattr("src.inference.pickle.loads", lambda value: pytest.fail("Must not deserialize"))
+    with pytest.raises(ValueError, match="size bound"):
+        load_pipeline(tmp_path)
+
+
+@pytest.mark.parametrize("phase", ["verification", "loading"])
+def test_growth_after_descriptor_check_fails_before_deserialization(tmp_path, monkeypatch, phase):
+    from contextlib import contextmanager
+    from io import BytesIO
+    import src.core.artifacts as artifacts
+    pin = bundle(tmp_path)
+    original = artifacts._open_regular
+    opens = []
+    @contextmanager
+    def changed(root, name, limit):
+        if name == "meta_classifier.pkl":
+            opens.append(name)
+            if phase == "verification" or len(opens) == 2:
+                content = (root / name).read_bytes()
+                yield BytesIO(content + b"growth"), len(content)
+                return
+        with original(root, name, limit) as value:
+            yield value
+    monkeypatch.setattr(artifacts, "_open_regular", changed)
+    monkeypatch.setattr("src.inference.pickle.loads", lambda value: pytest.fail("Must not deserialize"))
+    with pytest.raises(ValueError, match="changed"):
+        load_pipeline(tmp_path, pin)
+
+
+def test_uppercase_artifact_digest_is_consistent_at_verification_and_use(tmp_path, monkeypatch):
+    bundle(tmp_path)
+    path = tmp_path / "candidate_manifest.json"
+    manifest = json.loads(path.read_bytes())
+    manifest["artifacts"] = {name:value.upper() for name,value in manifest["artifacts"].items()}
+    path.write_text(json.dumps(manifest))
+    class ReachedTrustedDeserialization(Exception):
+        pass
+    def reached(value):
+        assert value == b"trusted synthetic bytes"
+        raise ReachedTrustedDeserialization()
+    monkeypatch.setattr("src.inference.pickle.loads", reached)
+    with pytest.raises(ReachedTrustedDeserialization):
+        load_pipeline(tmp_path)

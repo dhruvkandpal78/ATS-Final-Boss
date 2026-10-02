@@ -44,8 +44,9 @@ def load_pipeline(models_dir, expected_manifest_sha256=None, *, embedding_dir=No
         from src.core.embedding_artifacts import verify_embedding
         embedding_manifest = verify_embedding(embedding_dir, expected_embedding_manifest_sha256)
     def artifact(name):
-        value = (model_dir / name).read_bytes()
-        if manifest and hashlib.sha256(value).hexdigest() != manifest["artifacts"][name]:
+        from src.core.artifacts import read_candidate_artifact
+        value = read_candidate_artifact(model_dir, name)
+        if manifest and hashlib.sha256(value).hexdigest() != manifest["artifacts"][name].lower():
             raise ValueError("Candidate artifact changed before use: " + name)
         return value
     # Deserialize the exact verified bytes, avoiding a reopen race after hashing.

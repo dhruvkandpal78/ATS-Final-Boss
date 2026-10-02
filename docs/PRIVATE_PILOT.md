@@ -14,6 +14,12 @@ The gateway must inject the backend token for every authenticated UI, asset and 
 
 ## Provisioning
 
+Candidate bundle limits: manifest 256 KiB; each named pickle 64 MiB; threshold
+and model JSON 1 MiB each. Named roots/files must not be links, reparse entries
+or special files. Evidence code is part of the required policy hash set.
+Earlier policy freezes must be reviewed for the new contract; do not silently
+update pins or inherit earlier evaluation claims. See [artifact boundary record](progress/CANDIDATE_BOUNDS_2026-10-02.md).
+
 1. Review the source revision, license/ownership terms, third-party notices, dependency audit, and customer-approved purpose before building. Commercial or internal reuse rights must be confirmed with the rights holder; the repository's current mixed rights notice may require written permission for new additions.
 2. Run `python scripts/check_private_deployment.py`, then build the image from a reviewed source checkout. `.dockerignore` excludes datasets, results, model pickles, PDFs, local environment files and personal project files from the build context. Do not add customer data or model artifacts to the image. The image runs the single-process ASGI adapter; the standard-library adapter is for local demos.
 3. Provision a validated candidate bundle and a minimal exported embedding tree in an access-controlled directory outside this checkout. Place the approved safetensors embedding export at `/models/embedding` within the model mount; do not use a mutable cache alias. Run `python scripts/freeze_embedding.py <export-directory> --model-id <candidate-config-model-id> --upstream-revision <approved-40-character-upstream-commit>` on that reviewed export. Record the SHA-256 of both `candidate_manifest.json` and `embedding/embedding_manifest.json` through independent trusted channels. Set `ATS_CANDIDATE_MANIFEST_SHA256` and `ATS_EMBEDDING_MANIFEST_SHA256`. The export verifier rejects code, pickle weights, symlinks and changed/extra files; the mount must stay immutable during service lifetime. Digests and the declared revision do not prove publisher identity; approval/provenance and real export compatibility still require verification.
