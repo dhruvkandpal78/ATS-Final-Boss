@@ -1,5 +1,10 @@
 # Documentation map
 
+The [candidate artifact record](progress/CANDIDATE_BOUNDS_2026-10-02.md) documents
+bounded integrity/loading, strict manifest parsing, link rejection and the
+evidence-source policy-pin migration without implying safe pickle or deployment
+approval.
+
 The [cue-context record](progress/CUE_CONTEXT_2026-10-01.md) documents consistent
 instruction explanations and shared sentence indexing with limited local timing
 evidence; it adds no downstream efficacy claim.
