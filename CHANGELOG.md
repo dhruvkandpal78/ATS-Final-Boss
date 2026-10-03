@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: remove empty Lab page
+
+Removed the unpublished-experiments placeholder and its navigation item. Existing `/lab` links open Methodology in the live app, and static-preview `#/lab` links resolve to Methodology. Research reports and evaluation tooling remain available in the repository. JavaScript syntax, four preview export tests and live legacy-route navigation passed.
+
 ## 2026-10-03: reusable connected-timeline guidance
 
 Recorded the final agreed interaction in [the animation contract](docs/CONNECTED_PIPELINE_ANIMATION.md): always-visible steps and guide paths, with connected horizontal fill and vertical branch growth. Saved a separate local Codex skill with a reference implementation for future reuse. The skill is not a runtime dependency or published personal configuration.

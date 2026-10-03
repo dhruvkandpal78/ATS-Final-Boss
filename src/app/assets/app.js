@@ -35,8 +35,12 @@
   });
 
   function route(path, anchor) {
-    const normalized = ['/', '/analyze', '/methodology', '/lab', '/ownership'].includes(path) ? path : '/';
-    const viewId = { '/': 'home-view', '/analyze': 'analyze-view', '/methodology': 'methodology-view', '/lab': 'lab-view', '/ownership': 'ownership-view' }[normalized];
+    if (path === '/lab') {
+      path = '/methodology';
+      history.replaceState({}, '', path);
+    }
+    const normalized = ['/', '/analyze', '/methodology', '/ownership'].includes(path) ? path : '/';
+    const viewId = { '/': 'home-view', '/analyze': 'analyze-view', '/methodology': 'methodology-view', '/ownership': 'ownership-view' }[normalized];
     document.querySelectorAll('.view').forEach(view => { view.hidden = view.id !== viewId; });
     document.querySelectorAll('.site-nav [data-route]').forEach(link => {
       if (link.dataset.route === normalized) link.setAttribute('aria-current', 'page');
@@ -45,7 +49,7 @@
     $('menu-toggle').setAttribute('aria-expanded', 'false');
     $('site-nav').classList.remove('open');
     document.title = normalized === '/' ? 'ATS Final Boss — Resume integrity analysis' :
-      ({ '/analyze': 'Analyze a resume', '/methodology': 'Methodology', '/lab': 'Lab', '/ownership': 'Ownership and reuse' }[normalized] + ' — ATS Final Boss');
+      ({ '/analyze': 'Analyze a resume', '/methodology': 'Methodology', '/ownership': 'Ownership and reuse' }[normalized] + ' — ATS Final Boss');
     document.dispatchEvent(new CustomEvent('ats:routechange'));
     if (anchor) requestAnimationFrame(() => $(anchor)?.scrollIntoView({ behavior: motion() }));
     else window.scrollTo({ top: 0, behavior: 'instant' });

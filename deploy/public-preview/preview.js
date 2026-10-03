@@ -11,7 +11,6 @@
     '/': 'home-view',
     '/analyze': 'analyze-view',
     '/methodology': 'methodology-view',
-    '/lab': 'lab-view',
     '/ownership': 'ownership-view'
   };
 
@@ -19,6 +18,7 @@
     const value = window.location.hash.slice(1);
     if (!value || value === '/') return { path: '/', anchor: '' };
     if (value.startsWith('/home/')) return { path: '/', anchor: value.slice(6) };
+    if (value === '/lab') return { path: '/methodology', anchor: '' };
     return { path: views[value] ? value : '/', anchor: '' };
   }
 
