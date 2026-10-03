@@ -1,5 +1,17 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+**External generalization failed:** the frozen HiringAudit challenge flagged
+100/1,000 publisher-assigned attack PDFs and left 900 unflagged after complete
+analysis. Original flags: 0/100; that sample cannot establish below-2% control
+burden (zero-event independent-group upper bound 2.95%). All cases completed.
+This external synthetic cohort is now consumed; future recovery is development
+replay. See [adverse result](../../results/reports/external-hiringaudit-20261003.md).
+
+The UI redesign preserves the existing animation and improves the home/workspace
+composition, responsive controls and theme contrast. Visual checks cover desktop
+light/dark and mobile; this changes no accuracy evidence. See
+[record](UI_REDESIGN_2026-10-03.md).
+
 Publication cleanup removes 14 unused/obsolete files while retaining runtime, tests and dated measured research evidence. Documentation/results indexes separate current guidance from historical metrics; generated local outputs remain excluded. See [inventory](REPO_CLEANUP_2026-10-03.md).
 
 New targeted paraphrase controls: 11/11 authored directed commands recovered versus 0/11 previously, with 0/14 benign flags and paired PDF checks. Independent accuracy remains unverified; JSON references, URL encoding, spaced letters, Hindi and split-sentence examples remain uncovered. See [record](PARAPHRASE_REDTEAM_2026-10-03.md).

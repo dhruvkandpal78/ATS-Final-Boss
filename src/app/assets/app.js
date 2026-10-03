@@ -46,6 +46,7 @@
     $('site-nav').classList.remove('open');
     document.title = normalized === '/' ? 'ATS Final Boss — Resume integrity analysis' :
       ({ '/analyze': 'Analyze a resume', '/methodology': 'Methodology', '/lab': 'Lab', '/ownership': 'Ownership and reuse' }[normalized] + ' — ATS Final Boss');
+    document.dispatchEvent(new CustomEvent('ats:routechange'));
     if (anchor) requestAnimationFrame(() => $(anchor)?.scrollIntoView({ behavior: motion() }));
     else window.scrollTo({ top: 0, behavior: 'instant' });
     if (normalized === '/analyze') checkHealth();

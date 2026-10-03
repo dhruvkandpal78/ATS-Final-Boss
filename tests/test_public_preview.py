@@ -96,17 +96,20 @@ class PublicPreviewTests(unittest.TestCase):
         finally:
             cleanup_output(output)
 
-    def test_flat_export_places_seven_files_at_root_with_relative_assets(self):
+    def test_flat_export_places_allowlisted_files_at_root_with_relative_assets(self):
         output = export_preview(ROOT / ".test-tmp" / "preview-test-flat", flat=True)
         try:
             expected = {"README.md", *(Path(name).name for name in COPY_MAP.values())}
             actual = {path.name for path in output.iterdir() if path.is_file()}
             self.assertEqual(actual, expected)
-            self.assertEqual(len(actual), 7)
+            self.assertEqual(len(actual), len(COPY_MAP) + 1)
             html = (output / "index.html").read_text(encoding="utf-8")
             self.assertIn('href="style.css"', html)
             self.assertIn('src="theme.js"', html)
             self.assertIn('src="preview.js"', html)
+            for name in ("gsap.min.js", "ScrollTrigger.min.js", "SplitText.min.js", "pipeline-timeline.js"):
+                self.assertIn(f'src="{name}"', html)
+                self.assertTrue((output / name).is_file())
             self.assertFalse((output / "assets").exists())
         finally:
             cleanup_output(output, flat=True)

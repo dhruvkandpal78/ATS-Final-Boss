@@ -25,6 +25,7 @@ accuracy certification.
 | [Downstream benchmark](DOWNSTREAM_BENCHMARK.md) | Paired comparison and outcome denominators |
 | [Reference study](REFERENCE_STUDY.md) and [consistency](SCREENER_CONSISTENCY.md) | Reference screener identity and repeatability |
 | [Kaggle protocol](research/KAGGLE_STRESS_PROTOCOL.md) | Frozen 20% intervention experiment |
+| [External challenge](research/EXTERNAL_CHALLENGE_PROTOCOL.md) | Pre-outcome protocol, paired comparators and grouped uncertainty |
 
 ## Evidence and history
 

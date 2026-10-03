@@ -148,7 +148,8 @@ def freeze(corpus, output, models, embedding, consumed_corpus, max_groups=300):
                           "added_attack": attack, "pdf_path": str(path), "pdf_sha256": row["sha256"],
                           "channel": row.get("channel"), "attack_family": row.get("attack_family")})
     (output / "cases.json").write_text(json.dumps(cases, indent=2), encoding="utf-8")
-    source_files = [*ROOT.glob("src/**/*.py"), ROOT / "scripts/run_external_challenge.py", ROOT / PROTOCOL]
+    source_files = [*ROOT.glob("src/**/*.py"), ROOT / "scripts/run_external_challenge.py",
+                    ROOT / "scripts/acquire_hiringaudit.py", ROOT / PROTOCOL]
     # Keyword/config resources influence outcomes just as Python files do.
     source_files += [p for p in (ROOT / "src").rglob("*") if p.is_file() and p.suffix in (".json", ".txt", ".csv")]
     environment = {"python": platform.python_version(), "platform": platform.platform(),
@@ -196,7 +197,10 @@ def analyze(row):
         result = _SERVICE.analyze_pdf(row["pdf_path"])
         reasons = set(result["reason_codes"])
         text = pdf_text(row["pdf_path"])
-        flags = {"full_policy": result["decision"] == "review_recommended",
+        decision = result["decision"]
+        if decision not in ("review_recommended", "no_signals_detected", "insufficient_evidence"):
+            raise ValueError("Unknown service decision")
+        flags = {"full_policy": None if decision == "insufficient_evidence" else decision == "review_recommended",
                  "direct_cue_only": "direct_instruction_cue" in reasons,
                  "repetition_only": "keyword_repetition_signal" in reasons,
                  "structure_advisory_only": "pdf_structure_advisory" in reasons,
@@ -207,7 +211,7 @@ def analyze(row):
         for entry in arms.values():
             if status == "unscorable" or (status != "complete" and entry["flagged"] is False):
                 entry["flagged"] = None
-        return {**base, "status": status, "arms": arms,
+        return {**base, "status": status, "decision": decision, "arms": arms,
                 "reason_codes": sorted(reasons), "elapsed_ms": round((time.perf_counter() - started) * 1000, 3)}
     except Exception:
         return {**base, "status": "runtime_error", "arms": {name: {"flagged": None} for name in ARMS},
