@@ -1,5 +1,7 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+Publication cleanup removes 14 unused/obsolete files while retaining runtime, tests and dated measured research evidence. Documentation/results indexes separate current guidance from historical metrics; generated local outputs remain excluded. See [inventory](REPO_CLEANUP_2026-10-03.md).
+
 New targeted paraphrase controls: 11/11 authored directed commands recovered versus 0/11 previously, with 0/14 benign flags and paired PDF checks. Independent accuracy remains unverified; JSON references, URL encoding, spaced letters, Hindi and split-sentence examples remain uncovered. See [record](PARAPHRASE_REDTEAM_2026-10-03.md).
 
 The [completed development replay](../../results/reports/kaggle-recovery-development-20261003.md) recovered 182/182 previous completed misses. Attack dispositions: 454 complete review, five partial review, zero complete misses; originals: zero review flags, 23 insufficient. These are known-case results, not independent accuracy.

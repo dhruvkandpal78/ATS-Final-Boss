@@ -1,5 +1,8 @@
 # Issue Ledger
 
+- [x] Removed unsupported/dead UI utility code and obsolete duplicate plans, generated proxy outputs and inaccurate architecture diagram; preserved aggregate evidence and all required license/runtime/test assets.
+- [x] Current docs/results indexes and publication ignore rules refreshed; cleanup does not purge prior published history. See [record](REPO_CLEANUP_2026-10-03.md).
+
 - [x] Added targeted rank/rating/outcome paraphrases and review-discovered qualification gates with explicit bypass/fabrication controls; 11 authored commands and14 benign strings have consistent source/PDF behavior.
 - [ ] JSON outcome references, URL encoding, letter-spaced instructions, Hindi and split-sentence authored examples still evade the cue layer. This remains a bounded lexical defense, not comprehensive security. See [record](PARAPHRASE_REDTEAM_2026-10-03.md).
 

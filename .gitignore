@@ -68,3 +68,18 @@ dist/
 .aws/
 skills-lock.json
 web/dist/
+
+# Generated research outputs: publish reviewed aggregate reports only.
+results/*
+!results/reports/
+!results/reports/**
+
+# Local recordings and separate UI prototypes are not product sources.
+*.webm
+brag-output-*/
+/timeline-studio/
+/convert_brag.py
+/filter.py
+/make_brag.py
+/make_epic_brag.py
+/record_playwright.py

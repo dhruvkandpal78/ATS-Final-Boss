@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: publication tree cleanup
+
+Removed 14 unused or obsolete files: unsupported Streamlit dashboard/encoder, duplicate UI proposals and assistant plans, presentation script, stale plots/per-row output, misleading architecture diagram and empty report placeholder. Retained measured reports, original adverse counts, tests, license notices and dated research records. Replaced the docs preamble with a current index, added a results index, removed resume excerpts/sample IDs from legacy error analysis and strengthened generated/scratch ignore rules. No history rewrite or detector changes. See [inventory and verification](docs/progress/REPO_CLEANUP_2026-10-03.md).
+
 ## 2026-10-03: targeted paraphrase red-team continuation
 
 Exercised new fictional applicant-directed commands and legitimate workflows against frozen preceding cues. Added first-rank/shortlist, own-rating100 and explicit hiring/fabrication/outcome-reuse coverage; preserved review-discovered verification/completion conditions with bypass precedence. On 11 attack/14 benign development strings: prior0/11 detected and0/14 flags, revised11/11 and0/14; 50 visible/hidden PDF routes verify consistent policy. Three further probe families still evade detection. No classifier thresholds or parameters changed and prior Kaggle results were not rewritten. See [scope, gaps and verification](docs/progress/PARAPHRASE_REDTEAM_2026-10-03.md).
