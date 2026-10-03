@@ -1,5 +1,12 @@
 # Documentation map
 
+The [large controlled Kaggle result](../results/reports/kaggle-stress-20pct-20261003.md)
+records all 2,295 outcomes, including zero unmodified flags and 182 injected documents
+with complete no-signals. [Protocol](research/KAGGLE_STRESS_PROTOCOL.md) explains exact
+20% intervention assignment, source exclusions, real offline inference and abstention
+accounting. The [implementation record](progress/KAGGLE_STRESS_2026-10-03.md) preserves
+verification and limits. Natural labels and downstream protection remain unverified.
+
 Pre-commit quality review: qualification-dependent workflow controls are scoped
 locally, with explicit bypass taking precedence; source/explanation/PDF controls
 and named pattern groups verify the change. Independent accuracy remains open.

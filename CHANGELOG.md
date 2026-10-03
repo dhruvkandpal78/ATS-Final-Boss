@@ -2,6 +2,19 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-03: large frozen Kaggle PDF stress test
+
+Added a source-excluded, byte/text-deduplicated offline benchmark with exactly 20%
+verified authored PDF interventions and explicit incomplete/error accounting.
+Downloaded 2,484 PDFs; used 2,295 previously unused unique sources (1,836 unmodified,
+459 injected). Actual results: zero original flags, 23 insufficient originals;
+272 complete and three partial attack reviews, 182 complete no-signals and two
+insufficient attacks. Oblique authored families received no review. These are
+controlled labels, not true natural manipulation labels or downstream outcomes.
+No detector rules, thresholds or parameters were tuned after measurement. Raw data,
+model weights and receipts stay local. See [result](results/reports/kaggle-stress-20pct-20261003.md)
+and [verification/change record](docs/progress/KAGGLE_STRESS_2026-10-03.md).
+
 ## 2026-10-03: pre-commit qualification and bypass review
 
 Reviewed before committing: added local positive-qualification conditions for outcome

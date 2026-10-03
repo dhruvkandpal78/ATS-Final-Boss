@@ -1,7 +1,11 @@
 # Issue Ledger
 
+- [x] Ran a frozen source-excluded 2,295-PDF Kaggle stress test with exactly 20% verified authored interventions, real offline models and explicit abstention accounting; receipts and family totals reconciled.
+- [ ] Encoded, Spanish, homoglyph and conditional-mimicry interventions received no review: 182 complete no-signals and two insufficient cases. Fixes must not rewrite this known-set evidence; downstream effects remain unmeasured. See [result](../../results/reports/kaggle-stress-20pct-20261003.md).
+- [ ] Zero flags on 1,836 unmodified originals does not establish a zero population false-positive rate; 23 original analyses were insufficient and natural labels remain unreviewed.
+
 - [x] Pre-commit review found and fixed qualification-dependent procedural false flags; explicit bypass wins over conditions, with shared source/PDF checks and explicit pattern groups.
-- [ ] Conditional mimicry and unseen attacks remain unverified; authored zero flags are not population accuracy. See [quality review](QUALITY_REVIEW_2026-10-03.md).
+- [ ] Conditional mimicry failed in the subsequent controlled stress run; unseen attacks remain unverified and authored zero flags are not population accuracy. See [quality review](QUALITY_REVIEW_2026-10-03.md).
 
 - [x] Applicant-targeted instruction precision and paired ATS engineering/PDF controls implemented.
 - [ ] Independent population false-positive, unseen recall and downstream benefit evidence remain open. See [record](APPLICANT_INTENT_PRECISION_2026-10-03.md).

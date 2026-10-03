@@ -1,5 +1,14 @@
 # ATS Final Boss
 
+The [frozen 2,295-PDF Kaggle stress test](results/reports/kaggle-stress-20pct-20261003.md)
+used 1,836 unmodified resumes and 459 injected attempts (20%). It recorded zero
+unmodified flags, 23 incomplete originals, 272 complete attack reviews, three partial
+attack reviews, **182 complete no-signal outcomes on injected documents** and two
+insufficient attack analyses. Encoded, Spanish, homoglyph and conditional-mimicry
+interventions received no review. Original manipulation labels are unreviewed: zero
+flags is a control-burden result, not a proven zero population false-positive rate
+or comprehensive injection protection. These edits were not tested for downstream success.
+
 The [latest pre-commit precision review](docs/progress/QUALITY_REVIEW_2026-10-03.md)
 reduces known false flags on ATS engineering descriptions and qualification-dependent
 workflow instructions, with paired bypass and PDF controls. Results are authored regressions; representative

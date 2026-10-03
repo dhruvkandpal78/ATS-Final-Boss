@@ -1,5 +1,13 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 3 large Kaggle stress run completed: 2,295 PDFs with exactly 459 (20%)
+injected attempts. Unmodified originals: zero review flags, 23 insufficient analyses.
+Added edits: 272 complete reviews, three partial reviews, 182 complete no-signals and
+two insufficient analyses. No runtime errors. Four authored oblique families received
+no review. This is controlled edit evidence, not independent ground truth or customer
+protection. See [measured result](../../results/reports/kaggle-stress-20pct-20261003.md)
+and [change record](KAGGLE_STRESS_2026-10-03.md).
+
 Pre-commit quality review: qualification-dependent workflow controls are scoped
 locally, with explicit bypass taking precedence; source/explanation/PDF controls
 and named pattern groups verify the change. Independent accuracy remains open.

@@ -2,6 +2,14 @@
 
 Updated October 3, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
 
+The [large controlled stress runner](research/KAGGLE_STRESS_PROTOCOL.md) freezes
+source selection, exact 20% authored intervention assignment, policy/model bytes and
+offline CPU embedding identity before invoking this same PDF service. It partitions
+complete review, partial review, complete no-signals and insufficient/error outcomes.
+Its [measured result](../results/reports/kaggle-stress-20pct-20261003.md) includes 182
+injected documents with complete no-signals; it establishes neither natural-world
+accuracy nor downstream protection. The research candidate remains unapproved.
+
 ## Runtime and trust boundaries
 
 ATS Final Boss is an input-level resume inspection tool. It reports evidence and coverage before a downstream screening decision. It does not verify claims, determine hiring suitability or establish a probability of dishonesty.
