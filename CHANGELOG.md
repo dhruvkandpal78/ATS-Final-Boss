@@ -2,6 +2,8 @@
 
 ## 2026-10-03: readable milestones with connected line animation
 
+Added a permanent faint vertical track behind each animated orange branch, matching the horizontal base track. Unreached steps retain their text, dot and visible branch path. The static/mobile layout omits these decorative tracks.
+
 Corrected the interpretation of the requested animation: all step titles and descriptions remain visible throughout horizontal scrolling. Only the horizontal fill and vertical branches animate. Each vertical branch grows from its dot when the horizontal line arrives, and retracts on backward navigation. Removed copy/dot hiding from the preceding follow-up. Branch tweens are cancelled on route teardown. Checked against the brief supplied in “Assess Claude skill compatibility”; syntax and four preview tests passed.
 
 ## 2026-10-03: milestone reveal waits for line arrival

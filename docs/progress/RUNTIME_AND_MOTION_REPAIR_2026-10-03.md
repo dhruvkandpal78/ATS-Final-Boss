@@ -26,6 +26,8 @@ Four copy regressions verify that a maximum numeric signal cannot promote insuff
 
 ### Follow-up: premature milestone reveal
 
+The final clarification adds permanent faint vertical branch paths behind the growing orange strokes. These paths use the same theme-aware line color as the horizontal track, stay visible before arrival, and are omitted in the static layout. Text and dots remain visible throughout.
+
 **Superseded presentation behavior:** the user clarified that milestone content must never disappear; only connecting lines should animate. The preceding reveal gate incorrectly hid entire steps. The final implementation leaves text and dots visible, moves the horizontal fill with the rendered pan, and grows each vertical branch over 350 ms when the fill reaches its dot. Backward navigation retracts branches; route teardown cancels their tweens. The original pasted animation brief in “Assess Claude skill compatibility” was retrieved and checked. Live desktop checks confirmed all seven copy opacities remained 1 with step 1 active, and branch states changed at line arrival. JavaScript syntax and four preview export tests passed. Earlier opacity observations below describe the superseded version, not the final design.
 
 Further user review identified that steps 2 and 3 were visible before the line reached them. Although all states shared the rendered pan, the copy reveal still used viewport-entry geometry, and selection used the nearest dot. The earlier button checks verified legibility, not this ordering requirement. Replaced both with line-arrival gating: a milestone's text, dot and stem remain hidden until the rendered fill reaches its dot; selection follows the last reached dot. A 0.5 px tolerance handles rounding at exact button targets.
