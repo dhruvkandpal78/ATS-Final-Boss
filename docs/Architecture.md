@@ -41,18 +41,23 @@ flowchart TD
 
 The CLI and HTTP worker use `src/core/analysis_service.py`; adapters do not invent PDF structural scores for plain text. The API bounds uploads, rejects concurrent analysis, uses an isolated worker with a deadline and cleans temporary files. PDF parsing is limited to 20 pages and 100,000 extracted characters. Unsupported, encrypted, scanned-only, incomplete and failed analyses expose coverage limitations. OCR is not implemented.
 
-Uploaded documents are untrusted data. Candidate weights are trusted local artifacts, never uploaded documents. Candidate bundles are hash-checked before pickle deserialization; hashes detect accidental changes, not replacement of both artifacts and manifests by an attacker.
+Uploaded documents are untrusted data. Normal inference requires a data-only V2
+candidate, never uploaded weights or serialized Python objects. Manifests are capped
+at 256 KiB and require exactly three hashes: linear_model.json (16 KiB), thresholds.json
+and model_config.json (1 MiB each). Hashes stream in bounded chunks; exact bounded
+bytes are rechecked and strictly parsed. Feature/class order, finite parameters and
+inputs, positive scaler scales and sklearn prediction parity are checked. Linked/special
+files and ambiguous JSON are refused. Independent pins and immutable approved mounts
+remain necessary: integrity is not provenance.
 
-Candidate manifests are bounded to 256 KiB, reject ambiguous JSON and require
-exactly four named hashes. Pickle files are capped at 64 MiB each and candidate
-JSON artifacts at 1 MiB each. Initial hashes stream in bounded chunks; loaders
-recheck bounded exact bytes before deserialization. Named linked/special entries
-are rejected, including supported Windows reparse checks. Local legacy pickle
-reads share the bounds but have no candidate trust-pin guarantee. Policy freezes
-now include source evidence code; older freezes require explicit review.
-These controls do not sandbox pickle or establish native-memory containment.
+V1 supports integrity inspection and explicit operator-trusted offline migration only.
+CLI/HTTP serving refuses V1 and unmanifested pickle files. Migration retains source
+provenance but drops validation/approval claims and marks output unapproved. Training
+writes V2 with the canonical policy hashes, including evidence and linear inference.
+Old studies are not rewritten. Native memory containment and customer deployment are
+separate open gates. See [change record](progress/PRECISION_AND_DATA_ONLY_2026-10-02.md).
 
-Private mode additionally requires an independently pinned manifest digest, verifies policy hashes, and deserializes the exact verified bytes. It requires Linux resource limits and an authenticated customer gateway. Host/Origin guards, bearer authentication, connection limits and a global request budget apply before analysis. Local mode refuses network-wide binding. The proposed container is non-root, read-only and resource-limited; hosted synthetic container smoke passes, while real pinned-model deployment and customer SSO/TLS acceptance remain unverified. See [private pilot guide](PRIVATE_PILOT.md).
+Private mode additionally requires an independently pinned manifest digest, verifies policy hashes, and parses the exact verified data-only bytes. It requires Linux resource limits and an authenticated customer gateway. Host/Origin guards, bearer authentication, connection limits and a global request budget apply before analysis. Local mode refuses network-wide binding. The proposed container is non-root, read-only and resource-limited; hosted synthetic container smoke passes, while real pinned-model deployment and customer SSO/TLS acceptance remain unverified. See [private pilot guide](PRIVATE_PILOT.md).
 
 `src/app/asgi.py` is the maintained private HTTP adapter. Uvicorn runs one server process with a concurrency cap; the application limits body size and total upload time before passing validated payloads to the shared isolated worker. Private startup validates pinned artifacts and performs a synthetic warm-up before accepting traffic, eliminating the earlier readiness/warm-up routing cycle. Static UI and API requests require gateway-injected authentication. Lifespan shutdown stops worker admission and coordinates cleanup; model work stays outside the HTTP process.
 

@@ -76,14 +76,14 @@ def freeze_study_bundle(source, output):
     Original policy receipts remain untouched. Inherited validation performance
     is deliberately removed: this new combination has not been validated.
     """
-    from src.core.artifacts import FILES, POLICY_FILES, verify_candidate, verify_policy
+    from src.core.artifacts import candidate_files, POLICY_FILES, verify_candidate, verify_policy
     from src.core.review_policy import POLICY_VERSION
     source_manifest = verify_candidate(source)
     original = digest((source / "candidate_manifest.json").read_bytes())
     output.mkdir()
     original_bundle = output / "original-candidate"
     original_bundle.mkdir()
-    for name in FILES:
+    for name in candidate_files(source_manifest):
         shutil.copyfile(source / name, original_bundle / name)
     shutil.copyfile(source / "candidate_manifest.json", original_bundle / "candidate_manifest.json")
     verify_candidate(original_bundle, original)

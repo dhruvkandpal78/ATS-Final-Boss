@@ -1,5 +1,7 @@
 # Documentation map
 
+The [precision and data-only record](progress/PRECISION_AND_DATA_ONLY_2026-10-02.md) documents authored cue improvements and the breaking V2 provisioning change. Runtime never loads pickle; explicit offline migration does not establish accuracy or deployment approval.
+
 The [candidate artifact record](progress/CANDIDATE_BOUNDS_2026-10-02.md) documents
 bounded integrity/loading, strict manifest parsing, link rejection and the
 evidence-source policy-pin migration without implying safe pickle or deployment

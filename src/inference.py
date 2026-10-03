@@ -9,8 +9,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 from pathlib import Path
-import pickle
 import hashlib
 import sys
 
@@ -23,20 +23,16 @@ if __package__ in (None, ""):
 
 def load_pipeline(models_dir, expected_manifest_sha256=None, *, embedding_dir=None,
                   expected_embedding_manifest_sha256=None):
-    """Load trusted local legacy artifacts and configured detectors.
-
-    The caller chooses the artifact directory. Uploaded pickle files must never
-    be passed here. Missing artifacts raise a normal exception for adapters to
-    report without terminating a process during import or a request.
-    """
+    """Load a verified data-only V2 candidate; never deserialize Python objects."""
     model_dir = Path(models_dir)
-    candidate = (model_dir / "candidate_manifest.json").is_file()
-    if expected_manifest_sha256 is not None and not candidate:
-        raise ValueError("Pinned deployment requires a candidate bundle; legacy pickle artifacts are unsupported")
-    manifest = None
-    if candidate:
-        from src.core.artifacts import verify_candidate
-        manifest = verify_candidate(model_dir, expected_manifest_sha256)
+    if not (model_dir / "candidate_manifest.json").is_file():
+        if expected_manifest_sha256 is None and not any((model_dir / name).exists() for name in ("meta_classifier.pkl", "scaler.pkl")):
+            raise FileNotFoundError("Data-only candidate manifest is missing")
+        raise ValueError("A V2 candidate bundle is required; legacy pickle artifacts are unsupported")
+    from src.core.artifacts import verify_candidate
+    manifest = verify_candidate(model_dir, expected_manifest_sha256)
+    if manifest["schema_version"] != "2.0":
+        raise ValueError("Runtime requires data-only V2; legacy pickle candidates require offline migration")
     embedding_manifest = None
     if embedding_dir is not None or expected_embedding_manifest_sha256 is not None:
         if embedding_dir is None or expected_embedding_manifest_sha256 is None:
@@ -49,17 +45,27 @@ def load_pipeline(models_dir, expected_manifest_sha256=None, *, embedding_dir=No
         if manifest and hashlib.sha256(value).hexdigest() != manifest["artifacts"][name].lower():
             raise ValueError("Candidate artifact changed before use: " + name)
         return value
-    # Deserialize the exact verified bytes, avoiding a reopen race after hashing.
-    # Pickle remains code execution: only operator-approved immutable bundles.
-    meta_clf = pickle.loads(artifact("meta_classifier.pkl"))
-    scaler = pickle.loads(artifact("scaler.pkl"))
-
-    config_dir = model_dir if candidate else Path(__file__).resolve().parents[1] / "configs"
-    thresholds = json.loads(artifact("thresholds.json") if candidate else
-                            (config_dir / "thresholds.json").read_bytes())
-    model_cfg = json.loads(artifact("model_config.json") if candidate else
-                           (config_dir / "model_config.json").read_bytes())
-    embedding_name = model_cfg.get("embedding_model", "all-MiniLM-L6-v2")
+    from src.core.linear_artifacts import load_linear_artifacts
+    meta_clf, scaler = load_linear_artifacts(artifact("linear_model.json"))
+    from src.core.artifacts import _unique_object, _invalid_constant
+    thresholds = json.loads(artifact("thresholds.json"), object_pairs_hook=_unique_object,
+                            parse_constant=_invalid_constant)
+    model_cfg = json.loads(artifact("model_config.json"), object_pairs_hook=_unique_object,
+                           parse_constant=_invalid_constant)
+    from src.core.artifacts import FEATURE_ORDER
+    if (not isinstance(model_cfg, dict) or model_cfg.get("input_mode") != "pdf"
+            or model_cfg.get("feature_order") != FEATURE_ORDER
+            or model_cfg.get("model_type") != "LogisticRegression"):
+        raise ValueError("Incompatible candidate model configuration")
+    if not isinstance(thresholds, dict):
+        raise ValueError("Candidate thresholds must be an object")
+    for key in ("mod_a_threshold", "mod_c_variance_threshold"):
+        value = thresholds.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= 1:
+            raise ValueError("Candidate threshold must be finite and in (0, 1]")
+    embedding_name = model_cfg.get("embedding_model")
+    if not isinstance(embedding_name, str) or not embedding_name.strip():
+        raise ValueError("Candidate embedding model identity is required")
     if embedding_manifest and embedding_manifest["model_id"] != embedding_name:
         raise ValueError("Embedding export does not match the candidate model identity")
 

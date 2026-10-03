@@ -14,11 +14,12 @@ The gateway must inject the backend token for every authenticated UI, asset and 
 
 ## Provisioning
 
-Candidate bundle limits: manifest 256 KiB; each named pickle 64 MiB; threshold
-and model JSON 1 MiB each. Named roots/files must not be links, reparse entries
-or special files. Evidence code is part of the required policy hash set.
-Earlier policy freezes must be reviewed for the new contract; do not silently
-update pins or inherit earlier evaluation claims. See [artifact boundary record](progress/CANDIDATE_BOUNDS_2026-10-02.md).
+Serving requires a data-only V2 candidate: manifest 256 KiB, linear_model.json
+16 KiB and threshold/config JSON 1 MiB each. Named roots/files must not be links,
+reparse entries or special files. Policy hashes include evidence and linear inference.
+V1 pickle serving fails closed. Train a new V2 or explicitly migrate independently
+trusted V1 artifacts offline into a new nonapproved directory; never rewrite old pins
+or inherit old validation. See [migration and limits](progress/PRECISION_AND_DATA_ONLY_2026-10-02.md).
 
 1. Review the source revision, license/ownership terms, third-party notices, dependency audit, and customer-approved purpose before building. Commercial or internal reuse rights must be confirmed with the rights holder; the repository's current mixed rights notice may require written permission for new additions.
 2. Run `python scripts/check_private_deployment.py`, then build the image from a reviewed source checkout. `.dockerignore` excludes datasets, results, model pickles, PDFs, local environment files and personal project files from the build context. Do not add customer data or model artifacts to the image. The image runs the single-process ASGI adapter; the standard-library adapter is for local demos.
@@ -49,6 +50,6 @@ The pilot remains blocked until all of the following have named owners and recor
 - Customer privacy/legal teams approve the intended use, candidate notice/consent position where required, retention, deletion, data residency, processor terms, and impact assessment obligations.
 - Artifact owner validates the model bundle, embedding weights, provenance, pinned digest and compatibility; service owner tests the exact image on the supported host.
 - Recruiting operations train reviewers to treat each result as a document signal requiring human judgment. No automated rejection, ranking penalty, or statement about a person's honesty may be based on the score or signal alone.
-- Customer accepts current empirical limits: the deployed legacy PDF model is experimental and uncalibrated; natural manipulation performance, broad population fairness and production-scale reliability have not been established. Controlled synthetic/edited-document results do not establish field performance.
+- Customer accepts current empirical limits: the deployed PDF candidate model is experimental and uncalibrated; natural manipulation performance, broad population fairness and production-scale reliability have not been established. Controlled synthetic/edited-document results do not establish field performance.
 
 Do not describe the product as certified, fully secure, free of vulnerabilities, or validated for automated employment decisions. Reassess scope and controls before adding organizations, public SaaS access, third-party model calls, or automated downstream hiring actions.

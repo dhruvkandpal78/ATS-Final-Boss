@@ -2,6 +2,15 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-02: narrower cues and data-only model runtime
+
+October 2 precision continuation: narrowed ambiguous technical cue context and
+covered known candidate-directed score/eligibility overrides. Thirteen authored
+lexical regressions changed from three missed attacks/four benign flags to zero/zero;
+this is not independent accuracy or downstream benefit. Normal inference now requires
+data-only V2 JSON. V1 migration is explicit offline and drops validation/approval claims.
+See [changes and compatibility](docs/progress/PRECISION_AND_DATA_ONLY_2026-10-02.md).
+
 ## 2026-10-02: bounded candidate artifact verification and loading
 
 Bounded manifests and named model reads, streamed initial hashes, rejected
