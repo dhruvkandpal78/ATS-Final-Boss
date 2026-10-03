@@ -188,6 +188,8 @@
       elapsedTimer = null;
       return;
     }
+    $('readiness').dataset.state = 'checking';
+    $('readiness').textContent = 'Starting analysis…';
     const start = Date.now();
     $('elapsed').textContent = 'Waiting for the analysis server…';
     elapsedTimer = setInterval(() => {
@@ -273,6 +275,7 @@
       if (localId === requestId) {
         controller = null;
         setBusy(false);
+        void checkHealth();
       }
     }
   });
@@ -438,24 +441,15 @@
     const pdfCapabilities = data.modules?.b?.capabilities || {};
     const visibilityUnverified = (data.input_mode || snapshot.mode) === 'pdf' &&
       (pdfCapabilities.pixel_visibility !== true || pdfCapabilities.optional_content_complete !== true);
-    const decision = data.decision ||
-      ({ attack: 'review_recommended', clean: 'no_signals_detected' }[data.verdict]) ||
-      'insufficient_evidence';
-    const titles = {
-      review_recommended: 'Review recommended',
-      no_signals_detected: 'No actionable manipulation evidence detected',
-      insufficient_evidence: 'Insufficient evidence to assess'
-    };
-    const descriptions = {
-      review_recommended: 'Inspect the findings and coverage before deciding what action to take.',
-      no_signals_detected: 'No review-triggering evidence was found. Advisory anomalies may still be listed below. This does not establish authenticity.',
-      insufficient_evidence: 'The available analysis is not enough to make a supported assessment. Review the limitations below.'
-    };
+    const summary = window.ATSResultSummary(data, snapshot.mode);
+    const decision = summary.decision;
     $('decision-banner').className = 'decision ' +
       (decision === 'review_recommended' ? 'review' : decision === 'insufficient_evidence' ? 'insufficient' : '');
-    $('decision-label').textContent = readable(decision);
-    $('decision-title').textContent = titles[decision] || 'Analysis returned';
-    $('decision-description').textContent = descriptions[decision] || 'Review the reported evidence and limitations.';
+    $('decision-label').textContent = summary.label;
+    $('decision-title').textContent = summary.title;
+    $('decision-description').textContent = summary.reason;
+    $('decision-action').textContent = summary.action;
+    document.querySelector('.analysis-details').open = false;
     const created = data.created_at && !Number.isNaN(Date.parse(data.created_at)) ?
       ' · ' + new Date(data.created_at).toLocaleString() : '';
     $('result-meta').textContent = snapshot.name + ' · ' + (data.input_mode || snapshot.mode).toUpperCase() + created;
@@ -465,18 +459,18 @@
     const score = scoreOf(rawScore);
     const kind = data.score_kind || 'model_score';
     const calibrated = kind === 'calibrated_probability' && data.model?.calibrated === true;
-    $('model-label').textContent = calibrated ? 'Estimated manipulation probability' : 'Manipulation signal score';
-    $('model-value').textContent = score === null ? 'Unavailable' : (score * 100).toFixed(1) + '%';
-    $('model-meter').hidden = score === null;
-    $('model-scale').hidden = score === null;
+    $('model-label').textContent = calibrated ? 'Estimated manipulation probability' : 'Experimental model score';
+    $('model-value').textContent = score === null ? 'Not provided' : calibrated ? (score * 100).toFixed(1) + '%' : score.toFixed(3) + ' / 1';
+    $('model-meter').hidden = score === null || !calibrated;
+    $('model-scale').hidden = score === null || !calibrated;
     $('model-meter').value = score === null ? 0 : score * 100;
     $('model-meter').setAttribute('aria-valuetext', score === null ? 'Unavailable' :
       (score * 100).toFixed(1) + ' percent; ' + (calibrated ? 'estimated manipulation probability' : 'uncalibrated signal score, not a probability'));
     $('model-note').textContent = score === null ?
-      'A combined percentage is unavailable for this input. Individual signal bars below show what the detectors found; missing evidence is not 0% risk.' :
+      'A combined model score was not returned. The result above follows review policy and available findings.' :
       calibrated ?
         'Estimated probability of document manipulation under the model’s validation conditions, not a judgment of personal intent.' :
-        'Experimental model output shown on a 0–100% scale. It is not the probability that someone is cheating. Review the findings and coverage alongside it.';
+        'Uncalibrated model output on a 0–1 scale. It does not measure the probability of fraud and does not determine the review result.';
     $('model-guidance').textContent = score === null ?
       snapshot.mode === 'text' ?
         'For pasted text, inspect the keyword and instruction-like findings. A validated combined text score was not returned.' :
@@ -485,7 +479,7 @@
           'A compatible combined score was not returned. Review the module statuses and coverage limits.' :
       calibrated ?
         'Use this estimate only for the document pattern being analyzed, alongside its findings and coverage.' :
-        'Independent calibration is needed before this percentage can be interpreted as a real-world probability.';
+        'Independent calibration is required before this score can be interpreted as a probability.';
     if (visibilityUnverified) {
       $('model-guidance').textContent += ' PDF pixel visibility and complex layers are not fully verified; this score covers the existing supported features only.';
     }
@@ -523,19 +517,11 @@
       append(label, 'strong', '', title);
       append(label, 'small', '', module.reason || module.sub || 'No explanation returned.');
       const status = module.status || (snapshot.mode === 'text' && key === 'b' ? 'not_applicable' : 'unavailable');
-      const value = scoreOf(module.score);
       const indicator = append(row, 'div', 'module-indicator');
-      append(indicator, 'span', 'module-status', readable(status) + (value === null ? '' : ' · ' + (value * 100).toFixed(1) + '%'));
-      if (value !== null) {
-        const meter = append(indicator, 'meter', 'score-meter module-meter');
-        meter.min = 0;
-        meter.max = 100;
-        meter.value = value * 100;
-        meter.setAttribute('aria-label', title + ' signal strength');
-        meter.setAttribute('aria-valuetext', (value * 100).toFixed(1) + ' percent signal strength, not a probability');
-      }
+      const labels = { ok: 'Completed', not_applicable: 'Not applicable', unsupported: 'Unsupported', error: 'Failed' };
+      append(indicator, 'span', 'module-status', labels[status] || 'Unavailable');
     }
-    append($('module-list'), 'p', 'signal-note', 'These percentages are detector signal strengths, not odds of cheating. They are not averaged into a probability.');
+    append($('module-list'), 'p', 'signal-note', 'A completed check can still have coverage limitations. Detector scores do not establish intent.');
     const reasons = Array.isArray(data.reason_codes) ? data.reason_codes : [];
     $('policy-reasons').textContent = reasons.length ? reasons.map(readable).join(' · ') : 'No policy reason code was returned.';
 
@@ -624,12 +610,14 @@
       if (!response.ok) throw new Error('Unavailable');
       const data = await response.json();
       if (current !== healthId) return;
-      const serviceReady = data.ok !== false;
-      const modelReady = data.model_ready !== false && data.ready !== false;
-      status.dataset.state = serviceReady ? 'ready' : 'unavailable';
+      const serviceReady = data.ok === true;
+      const modelReady = data.model_ready === true;
+      const recovering = Number(data.worker_recovery?.retry_after_seconds) > 0;
+      status.dataset.state = serviceReady && modelReady && !recovering ? 'ready' : 'unavailable';
       status.textContent = !serviceReady ? 'Service unavailable' :
-        data.busy ? 'Service busy' :
-        modelReady ? 'Service available' : 'Ready · model loads on first analysis';
+        recovering ? 'Analysis unavailable · worker recovering' :
+        data.busy ? (modelReady ? 'Analysis in progress' : 'Loading analysis model…') :
+        modelReady ? 'Analysis available' : 'Model not loaded · starts on analysis';
     } catch {
       if (current !== healthId) return;
       status.dataset.state = 'unavailable';

@@ -14,6 +14,7 @@ COPY_MAP = {
     "src/app/index.html": "index.html",
     "src/app/assets/style.css": "assets/style.css",
     "src/app/assets/theme.js": "assets/theme.js",
+    "src/app/assets/result-summary.js": "assets/result-summary.js",
     "src/app/assets/gsap.min.js": "assets/gsap.min.js",
     "src/app/assets/ScrollTrigger.min.js": "assets/ScrollTrigger.min.js",
     "src/app/assets/SplitText.min.js": "assets/SplitText.min.js",

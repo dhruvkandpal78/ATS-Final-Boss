@@ -293,8 +293,8 @@ html[data-theme=dark] .finding-empty{border-color:#555158}
 .pipeline-document>span{color:var(--accent);text-transform:uppercase;font-size:10px;letter-spacing:.16em;display:block}
 .pipeline-document strong{display:block;font-size:26px;font-weight:500;margin-block:8px}
 .pipeline-document p{color:var(--muted);font-size:13px;line-height:1.5;margin:0}
-.pipeline-milestones{display:flex;position:relative;padding:0 150px 0 0;margin:0;list-style:none}
-.pipeline-milestones:before,.pipeline-milestones:after{content:"";position:absolute;top:50%;left:0;right:0;height:2px;background:var(--line)}
+.pipeline-milestones{display:flex;position:relative;padding:0 var(--pipeline-tail,150px) 0 0;margin:0;list-style:none}
+.pipeline-milestones:before,.pipeline-milestones:after{content:"";position:absolute;top:50%;left:0;right:var(--pipeline-line-end,360px);height:2px;background:var(--line)}
 .pipeline-milestones:after{background:var(--accent);transform:scaleX(var(--pipeline-progress,1));transform-origin:left}
 .pipeline-step{position:relative;width:360px;flex-shrink:0}
 .pipeline-stem{position:absolute;left:0;width:2px;height:calc(50% - 12px);background:var(--accent)}
@@ -450,6 +450,13 @@ textarea:focus,select:focus{border-color:var(--accent)}
 .results{margin-top:72px}
 .results-heading h2{font-size:clamp(2.3rem,4vw,4rem)}
 .decision{border-radius:3px;border-left-width:4px}
+.decision h3{font-size:clamp(1.85rem,4vw,2.75rem);line-height:1.12;letter-spacing:-.035em;margin:16px 0 12px}
+.decision p{max-width:75ch;line-height:1.6}
+.decision .decision-action{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink);font-weight:650}
+.analysis-details{margin-top:24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0}
+.analysis-details>summary{cursor:pointer;font-weight:650;padding:5px 0}
+.analysis-details>summary:focus-visible{outline:2px solid var(--accent);outline-offset:5px}
+.analysis-details[open]>.result-grid{margin-top:20px}
 .result-grid{gap:12px;margin-bottom:12px}
 .result-grid .panel{min-height:200px}
 .result-grid h3{font-size:1.45rem}

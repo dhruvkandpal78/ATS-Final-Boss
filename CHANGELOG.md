@@ -1,5 +1,11 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: clear review results, synchronized pipeline and working local analysis
+
+Put the policy result first: Needs review, No review triggers found, or Inconclusive, with one reason and a next action. Removed module percentage bars that could be mistaken for fraud probability; moved model output, coverage and module status into collapsed details below findings. Experimental model output uses its raw 0–1 scale. Added decision-copy regression tests so numeric signals cannot override the policy result. No detector accuracy or binary authenticity claim is introduced.
+
+Fixed the animation's separate timing calculations: text, stems, progress and selected step now follow the rendered horizontal position. Step buttons use measured geometry, the final step can fully enter the reading area, and short/mobile viewports retain a readable static sequence. Removed line masks that could hide the last paragraph. Fixed local analysis startup by verifying an offline data-only candidate and embedding and preflighting writable temporary storage. Cold status no longer claims readiness; status refreshes after analysis. Private startup rejects unapproved research candidates. Fictional text and PDF requests completed through the actual localhost service. See [change and validation record](docs/progress/RUNTIME_AND_MOTION_REPAIR_2026-10-03.md).
+
 ## 2026-10-03: concise product copy and removal of redundant demo
 
 Replaced filler landing copy and implementation-focused animation text with the customer workflow and the purpose of each review step. Removed the three-button phrase-switching demo and its obsolete JavaScript/CSS; retained real workspace samples. Added a concise API/SDK section linked to the supported contract. Preserved animation behavior and honest evaluation limits. Updated static-preview handling and regression checks; four preview tests and JavaScript syntax checks passed. See [UI change record](docs/progress/UI_REDESIGN_2026-10-03.md).

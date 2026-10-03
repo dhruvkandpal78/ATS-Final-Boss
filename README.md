@@ -30,6 +30,9 @@ real-world false-positive rates remain unverified.
 
 Normal inference requires a verified **data-only V2 candidate**. V1 pickle bundles fail closed and need explicit offline migration or new training. See [provisioning changes and regression scope](docs/progress/PRECISION_AND_DATA_ONLY_2026-10-02.md). Real-world false-positive and recall targets remain unverified.
 
+For a local demo using a pinned candidate and offline embedding export, see the
+[local analysis setup](docs/LOCAL_DEMO.md).
+
 A research security layer for AI hiring pipelines: document-level forensic inspection and conservative human-review gating before an existing screener. It combines keyword analysis, PDF text-trace heuristics and MiniLM coherence evidence. It does **not** determine honesty or suitability for employment, sanitize a resume, or guarantee that a downstream AI system is protected.
 
 ```text

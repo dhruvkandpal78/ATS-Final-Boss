@@ -45,3 +45,41 @@ def test_operator_model_directory_is_shared_with_cli(tmp_path, monkeypatch):
     monkeypatch.setenv("ATS_MODELS_DIR", " ")
     with pytest.raises(ValueError, match="ATS_MODELS_DIR"):
         runtime_paths.models_directory()
+
+
+def test_local_pinned_bundle_requires_both_pins_and_current_policy(tmp_path, monkeypatch):
+    from src.app import server
+    from src.core import artifacts, analysis_service
+    from src import inference
+
+    monkeypatch.setattr(server, "_SERVICE", None)
+    monkeypatch.setenv("ATS_DEPLOYMENT_MODE", "local")
+    monkeypatch.setenv("ATS_MODELS_DIR", str(tmp_path))
+    monkeypatch.setenv("ATS_CANDIDATE_MANIFEST_SHA256", "a" * 64)
+    monkeypatch.delenv("ATS_EMBEDDING_MANIFEST_SHA256", raising=False)
+    with pytest.raises(ValueError, match="both candidate and embedding"):
+        server.get_service()
+
+    monkeypatch.setenv("ATS_EMBEDDING_MANIFEST_SHA256", "b" * 64)
+    monkeypatch.setenv("ATS_EMBEDDING_DIR", str(tmp_path / "embedding"))
+    calls = []
+    monkeypatch.setattr(artifacts, "verify_candidate", lambda directory, pin: calls.append((directory, pin)) or {})
+    monkeypatch.setattr(artifacts, "verify_policy", lambda manifest: calls.append("policy"))
+    monkeypatch.setattr(inference, "load_pipeline", lambda *args, **kwargs: calls.append(kwargs) or (1, 2, 3, 4, 5))
+    monkeypatch.setattr(analysis_service, "AnalysisService", lambda **kwargs: SimpleNamespace(**kwargs))
+    service = server.get_service()
+    assert service.candidate_model is True
+    assert service.model_id == "candidate-" + "a" * 16
+    assert calls[1] == "policy"
+    assert calls[2]["expected_manifest_sha256"] == "a" * 64
+    assert calls[2]["expected_embedding_manifest_sha256"] == "b" * 64
+    monkeypatch.setattr(server, "_SERVICE", None)
+
+
+def test_private_candidate_rejects_unapproved_research_freeze():
+    from src.core.artifacts import require_deployment_approval
+    with pytest.raises(ValueError, match="explicitly approved"):
+        require_deployment_approval({"deployment_approved": False})
+    with pytest.raises(ValueError, match="explicitly approved"):
+        require_deployment_approval({})
+    require_deployment_approval({"deployment_approved": True})

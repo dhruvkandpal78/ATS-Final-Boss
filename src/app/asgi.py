@@ -102,10 +102,14 @@ def create_app(*, settings: SecuritySettings | None = None, worker: ModelWorker 
                     if sys.platform != "linux":
                         raise RuntimeError("Private mode requires a resource-limited Linux container")
                     if private_startup_check is None:
-                        from src.core.artifacts import verify_candidate, verify_policy
+                        from src.core.artifacts import verify_candidate, verify_policy, require_deployment_approval
                         models = models_directory()
                         pin = os.environ["ATS_CANDIDATE_MANIFEST_SHA256"]
-                        await run_in_threadpool(lambda: verify_policy(verify_candidate(models, pin)))
+                        def verify_private_candidate():
+                            manifest = verify_candidate(models, pin)
+                            verify_policy(manifest)
+                            require_deployment_approval(manifest)
+                        await run_in_threadpool(verify_private_candidate)
                     else:
                         await run_in_threadpool(private_startup_check)
                     text_result = await run_in_threadpool(worker.run, {"text": WARMUP_TEXT})

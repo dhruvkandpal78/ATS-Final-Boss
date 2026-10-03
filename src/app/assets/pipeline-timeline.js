@@ -2,8 +2,8 @@
   'use strict';
   const section = document.getElementById('how');
   const home = document.getElementById('home-view');
-  if (!section || !home || !window.gsap || !window.ScrollTrigger || !window.SplitText) return;
-  gsap.registerPlugin(ScrollTrigger, SplitText);
+  if (!section || !home || !window.gsap || !window.ScrollTrigger) return;
+  gsap.registerPlugin(ScrollTrigger);
   const viewport = section.querySelector('.pipeline-viewport');
   const track = section.querySelector('.pipeline-track');
   const milestones = section.querySelector('.pipeline-milestones');
@@ -11,12 +11,54 @@
   const buttons = [...section.querySelectorAll('[data-pipeline-step]')];
   const previous = document.getElementById('pipeline-prev');
   const next = document.getElementById('pipeline-next');
-  const compact = matchMedia('(max-width: 479px), (max-height: 439px), (prefers-reduced-motion: reduce)');
+  const compact = matchMedia('(max-width: 479px), (max-height: 599px), (prefers-reduced-motion: reduce)');
   let context = null;
   let panTrigger = null;
-  let splits = [];
+  let pan = null;
+  let targets = [];
   let active = -1;
   let running = false;
+
+  function readingPoint() {
+    // The first step must be reachable even when a wide viewport shows the cover.
+    return Math.min(viewport.clientWidth * 0.35,
+      milestones.offsetLeft + steps[0].offsetLeft);
+  }
+
+  // All visual states follow the rendered pan, including its scrub easing.
+  function measure() {
+    const inset = parseFloat(getComputedStyle(track).paddingRight) || 0;
+    const focus = readingPoint();
+    const last = steps[steps.length - 1];
+    const tail = Math.max(0, viewport.clientWidth - focus - last.offsetWidth - inset);
+    milestones.style.setProperty('--pipeline-tail', `${tail}px`);
+    milestones.style.setProperty('--pipeline-line-end', `${last.offsetWidth + tail}px`);
+    const distance = Math.max(0, track.scrollWidth - viewport.clientWidth);
+    targets = steps.map(step => Math.max(0, Math.min(distance,
+      milestones.offsetLeft + step.offsetLeft - focus)));
+    return distance;
+  }
+  function render() {
+    const x = Number(gsap.getProperty(track, 'x')) || 0;
+    const focus = readingPoint();
+    const first = milestones.offsetLeft + steps[0].offsetLeft;
+    const last = milestones.offsetLeft + steps[steps.length - 1].offsetLeft;
+    const position = focus - x;
+    const fill = Math.max(0, Math.min(1, (position - first) / Math.max(1, last - first)));
+    milestones.style.setProperty('--pipeline-progress', fill);
+    let nearest = 0;
+    steps.forEach((step, index) => {
+      const left = milestones.offsetLeft + step.offsetLeft + x;
+      if (Math.abs(position - (milestones.offsetLeft + step.offsetLeft)) <
+          Math.abs(position - (milestones.offsetLeft + steps[nearest].offsetLeft))) nearest = index;
+      const reveal = Math.max(0, Math.min(1,
+        (viewport.clientWidth * 0.94 - left) / (viewport.clientWidth * 0.24)));
+      gsap.set(step.querySelector('.pipeline-stem'), { scaleY: reveal });
+      gsap.set(step.querySelector('.pipeline-dot'), { scale: reveal });
+      gsap.set(step.querySelector('.pipeline-copy'), { opacity: reveal, y: (1 - reveal) * 16 });
+    });
+    activate(nearest);
+  }
 
   function activate(index) {
     if (index === active) return;
@@ -31,9 +73,16 @@
   }
   function teardown() {
     context?.revert();
-    splits.forEach(split => split.revert());
+    steps.forEach(step => {
+      gsap.set(step.querySelector('.pipeline-copy'), { clearProps: 'opacity,transform' });
+      gsap.set([step.querySelector('.pipeline-stem'), step.querySelector('.pipeline-dot')], { clearProps: 'transform' });
+    });
     context = null;
-    splits = [];
+    pan = null;
+    targets = [];
+    milestones.style.removeProperty('--pipeline-tail');
+    milestones.style.removeProperty('--pipeline-line-end');
+    milestones.style.removeProperty('--pipeline-progress');
     panTrigger = null;
     running = false;
     section.classList.add('pipeline-static');
@@ -46,36 +95,32 @@
     section.classList.remove('pipeline-static');
     activate(0);
     context = gsap.context(() => {
-      const distance = () => Math.max(0, track.scrollWidth - viewport.clientWidth);
-      const pan = gsap.to(track, {
-        x: () => -distance(), ease: 'none',
+      measure();
+      pan = gsap.to(track, {
+        x: () => -measure(), ease: 'none', onUpdate: render,
         scrollTrigger: {
-          trigger: viewport, start: 'top top', end: () => `+=${distance()}`,
+          trigger: viewport, start: 'top top', end: () => `+=${measure()}`,
           pin: true, scrub: 0.7, anticipatePin: 1, invalidateOnRefresh: true,
-          onUpdate: self => activate(Math.min(steps.length - 1, Math.round(self.progress * (steps.length - 1))))
+          onRefresh: render
         }
       });
       panTrigger = pan.scrollTrigger;
-      gsap.fromTo(milestones, { '--pipeline-progress': 0.05 }, {
-        '--pipeline-progress': 1, ease: 'none',
-        scrollTrigger: { trigger: viewport, start: 'top top', end: () => `+=${distance()}`, scrub: 0.7 }
-      });
-      steps.forEach(step => {
-        const split = new SplitText(step.querySelector('p'), { type: 'lines', mask: 'lines' });
-        splits.push(split);
-        gsap.timeline({ scrollTrigger: { trigger: step, containerAnimation: pan, start: 'left 95%', end: 'left 60%', scrub: true } })
-          .from(step.querySelector('.pipeline-stem'), { scaleY: 0, duration: 0.42 })
-          .from(step.querySelector('.pipeline-dot'), { scale: 0, duration: 0.42 }, '<')
-          .from(step.querySelector('h3'), { y: 20, opacity: 0, duration: 1.4 }, '<')
-          .from(split.lines, { yPercent: 100, duration: 1.4, stagger: 0.07 }, '<');
-      });
+      render();
     }, section);
     ScrollTrigger.refresh();
   }
   function goTo(index) {
     if (!panTrigger) return;
+    ScrollTrigger.refresh();
     const bounded = Math.max(0, Math.min(steps.length - 1, index));
-    window.scrollTo({ top: panTrigger.start + bounded / (steps.length - 1) * (panTrigger.end - panTrigger.start), behavior: 'instant' });
+    const distance = measure();
+    const progress = targets[bounded] / Math.max(1, distance);
+    window.scrollTo({ top: panTrigger.start + progress * (panTrigger.end - panTrigger.start), behavior: 'instant' });
+    ScrollTrigger.update();
+    // Button navigation settles immediately; free scrolling keeps the scrub.
+    panTrigger.getTween()?.progress(1);
+    pan.progress(progress);
+    render();
   }
   buttons.forEach(button => button.addEventListener('click', () => goTo(Number(button.dataset.pipelineStep))));
   previous.addEventListener('click', () => goTo(active - 1));

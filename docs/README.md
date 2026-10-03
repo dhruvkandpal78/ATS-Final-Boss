@@ -19,6 +19,7 @@ accuracy certification.
 | Document | Purpose |
 | --- | --- |
 | [Private pilot](PRIVATE_PILOT.md) and [release gate](COMPANY_RELEASE_GATE.md) | Provisioning and acceptance evidence |
+| [Local demo](LOCAL_DEMO.md) | Pinned offline startup, temporary storage and cold-model status |
 | [Operations metrics](OPERATIONS_METRICS.md) | Authenticated telemetry and its limits |
 | [Customer strategy](CUSTOMER_PILOT_STRATEGY.md) | Proposed customer and pilot scope |
 | [Public preview](PUBLIC_PREVIEW.md) | Preview behavior and deployment constraints |

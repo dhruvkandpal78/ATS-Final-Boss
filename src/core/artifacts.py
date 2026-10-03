@@ -107,6 +107,12 @@ def verify_policy(manifest, root=None):
             raise ValueError("Policy code changed after candidate freeze: " + name)
 
 
+def require_deployment_approval(manifest):
+    """Research freezes may be inspected locally but cannot serve in private mode."""
+    if manifest.get("deployment_approved") is not True:
+        raise ValueError("Private deployment requires an explicitly approved candidate")
+
+
 def verify_candidate(directory, expected_manifest_sha256=None):
     if expected_manifest_sha256 is not None and (
             not isinstance(expected_manifest_sha256, str) or not SHA256_RE.fullmatch(expected_manifest_sha256)):

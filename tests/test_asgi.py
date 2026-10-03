@@ -168,6 +168,23 @@ def test_private_startup_fails_closed_when_worker_does_not_warm(monkeypatch):
     assert worker.closed
 
 
+def test_private_startup_rejects_unapproved_candidate_before_warmup(monkeypatch, tmp_path):
+    from src.core import artifacts
+    monkeypatch.setattr(asgi.sys, "platform", "linux")
+    monkeypatch.setattr(asgi, "models_directory", lambda: tmp_path)
+    monkeypatch.setenv("ATS_CANDIDATE_MANIFEST_SHA256", "a" * 64)
+    monkeypatch.setattr(artifacts, "verify_candidate", lambda directory, pin: {"deployment_approved": False})
+    monkeypatch.setattr(artifacts, "verify_policy", lambda manifest: None)
+    settings = SecuritySettings("private", ("testserver",), ("https://hr.example.test",), "token")
+    worker = FakeWorker()
+    app = asgi.create_app(settings=settings, worker=worker)
+    with pytest.raises(RuntimeError, match="Private startup verification failed"):
+        with TestClient(app):
+            pass
+    assert worker.calls == []
+    assert worker.closed
+
+
 def test_private_startup_rejects_success_response_with_broken_detector(monkeypatch):
     monkeypatch.setattr(asgi.sys, "platform", "linux")
     settings = SecuritySettings("private", ("testserver",), ("https://hr.example.test",), "token")
