@@ -21,3 +21,13 @@ The locally vendored `gsap.min.js`, `ScrollTrigger.min.js`, and `SplitText.min.j
 - Final combined offline suite: 830 passed, five skipped, three integration tests deselected. Desktop pipeline step controls and route reload were checked; browser console showed no errors at the check.
 
 The working baseline already contained uncommitted pipeline and preview-export changes before this redesign. This note documents the UI pass and does not present that earlier work as newly created here.
+
+## MagicPath workspace refinement
+
+Used the installed MagicPath integration to build and render an interactive, private design prototype for the analysis workspace (component `sharp-moon-8103`). The prototype uses fictional content, labels its findings as illustrative, and makes no live analysis requests. Its React files remain local design scratch; the application retains its existing HTML/CSS/JavaScript stack and has no new runtime dependency on MagicPath or React.
+
+Applied the useful layout and content changes to the working analysis page: a semantic three-stage document-review guide, a more compact inspection-panel heading, and an explicit explanation of score limits beside the module descriptions. The guide stacks vertically on small screens and is omitted from print output. Existing input, result, readiness, loading and animation hooks are retained. No detector, threshold, model or experiment result changed.
+
+Browser verification covered desktop dark/light and 390 px mobile layouts with no horizontal overflow, text/PDF missing-input feedback, synthetic-sample selection and reset, and theme switching. The readiness label has distinct foreground/background colors in both themes. No browser console errors were observed. This check did not submit a document or revalidate live model execution; the prior backend test record remains separate.
+
+The four public-preview export tests passed after this refinement; JavaScript syntax checks and the four-file whitespace check also passed. The earlier full-suite count above belongs to the preceding combined change, not a new full run for this CSS/HTML pass.
