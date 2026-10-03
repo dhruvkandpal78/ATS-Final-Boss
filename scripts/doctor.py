@@ -1,5 +1,4 @@
 """Read-only environment diagnostics; never downloads models or evaluates data."""
-import hashlib
 import importlib.util
 from importlib.metadata import version, PackageNotFoundError
 import json
@@ -24,7 +23,7 @@ def check_thresholds(path):
     checks = []
     for key in ("mod_a_threshold", "mod_c_variance_threshold"):
         value = values.get(key)
-        valid = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
+        valid = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and 0 < value <= 1
         checks.append({"name": key, "ok": valid, "detail":
                        "Positive finite threshold; validation provenance still required." if valid else
                        "Invalid threshold; recalibrate on source-disjoint validation data before scoring."})
@@ -41,16 +40,23 @@ def diagnose():
         except PackageNotFoundError:
             installed = "missing"
         checks.append({"name": distribution, "ok": available, "detail": installed})
-    for relative in ("results/models/meta_classifier.pkl", "results/models/scaler.pkl",
-                     "configs/thresholds.json", "configs/model_config.json"):
-        path = ROOT / relative
-        checks.append({"name": relative, "ok": path.is_file(),
-                       "detail": hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else "missing"})
-    checks.extend(check_thresholds(ROOT / "configs/thresholds.json"))
+    from src.core.runtime_paths import models_directory
+    from src.core.artifacts import verify_candidate
+    model_dir = models_directory()
+    try:
+        manifest = verify_candidate(model_dir)
+        is_v2 = manifest["schema_version"] == "2.0"
+        checks.append({"name":"candidate_format", "ok":is_v2,
+                       "detail":"Data-only V2; independent approval and runtime compatibility still required." if is_v2 else
+                       "V1 pickle is unsupported at runtime; explicitly migrate approved artifacts offline."})
+        checks.extend(check_thresholds(model_dir / "thresholds.json"))
+    except (OSError, ValueError):
+        checks.append({"name":"candidate_format", "ok":False,
+                       "detail":"Missing or invalid data-only V2 candidate; no fallback is available."})
     # Cache inspection only: a directory alone does not prove model compatibility.
     try:
         from huggingface_hub import try_to_load_from_cache
-        configured = json.loads((ROOT / "configs/model_config.json").read_text())
+        configured = json.loads((model_dir / "model_config.json").read_text())
         model = configured.get("embedding_model", "all-MiniLM-L6-v2")
         if "/" not in model:
             model = "sentence-transformers/" + model

@@ -15,7 +15,6 @@ from importlib.metadata import PackageNotFoundError, version
 import json
 import math
 from pathlib import Path
-import pickle
 from typing import Union
 from uuid import uuid4
 
@@ -173,8 +172,8 @@ def train_candidate(train_csv: Union[str, Path], validation_csv: Union[str, Path
     # Modules enforce clean-validation P95 and reject non-positive thresholds.
     a_threshold = float(mod_a.calibrate(calibration))
     c_threshold = float(mod_c.calibrate(calibration))
-    if not all(math.isfinite(value) and value > 0 for value in (a_threshold, c_threshold)):
-        raise ValueError("Validation calibration did not produce positive finite thresholds")
+    if not all(math.isfinite(value) and 0 < value <= 1 for value in (a_threshold, c_threshold)):
+        raise ValueError("Validation calibration did not produce finite thresholds in (0, 1]")
 
     feature_service = AnalysisService(mod_a=mod_a, mod_b=mod_b, mod_c=mod_c)
     train_x = _features_for_frame(train, feature_service)
@@ -209,10 +208,9 @@ def train_candidate(train_csv: Union[str, Path], validation_csv: Union[str, Path
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8]
     candidate = output_root / f"pdf-{run_id}"
     candidate.mkdir(exist_ok=False)
-    with (candidate / "meta_classifier.pkl").open("wb") as handle:
-        pickle.dump(estimator, handle)
-    with (candidate / "scaler.pkl").open("wb") as handle:
-        pickle.dump(scaler, handle)
+    from src.core.linear_artifacts import save_linear_artifacts
+    from src.core.artifacts import FILES_V2, POLICY_FILES
+    save_linear_artifacts(estimator, scaler, candidate / "linear_model.json")
     (candidate / "thresholds.json").write_text(json.dumps({
         "mod_a_threshold": a_threshold,
         "mod_c_variance_threshold": c_threshold,
@@ -224,16 +222,14 @@ def train_candidate(train_csv: Union[str, Path], validation_csv: Union[str, Path
         "feature_order": list(FEATURE_ORDER),
         "model_type": "LogisticRegression",
     }, indent=2), encoding="utf-8")
-    artifact_names = ("meta_classifier.pkl", "scaler.pkl", "thresholds.json", "model_config.json")
+    artifact_names = FILES_V2
     manifest = {
-        "schema_version": "1.0", "kind": "real_pdf_candidate", "input_mode": "pdf",
+        "schema_version": "2.0", "kind": "real_pdf_candidate", "input_mode": "pdf",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "feature_order": list(FEATURE_ORDER),
         "model": {"type": "LogisticRegression", "calibrated": False},
         "policy": {"version": POLICY_VERSION, "code_hashes": {
-            name: sha256_file(ROOT / name) for name in (
-                "src/core/review_policy.py", "src/core/analysis_service.py",
-                "src/modules/module_a.py", "src/modules/module_b.py", "src/modules/module_c.py")}},
+            name: sha256_file(ROOT / name) for name in POLICY_FILES}},
         "sources": {
             "train_manifest_sha256": sha256_file(train.attrs["manifest_path"]),
             "validation_manifest_sha256": sha256_file(validation.attrs["manifest_path"]),

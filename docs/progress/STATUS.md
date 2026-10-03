@@ -1,5 +1,17 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 3 precision continuation: generic technical cues no longer independently
+recommend review, even in hiring prose; score/outcome commands require an applicant
+target. Authored text and visible/white-on-white PDF controls pass. Population false
+positives and unseen recall remain unverified. See [change and tradeoffs](APPLICANT_INTENT_PRECISION_2026-10-03.md).
+
+October 2 precision continuation: narrowed ambiguous technical cue context and
+covered known candidate-directed score/eligibility overrides. Thirteen authored
+lexical regressions changed from three missed attacks/four benign flags to zero/zero;
+this is not independent accuracy or downstream benefit. Normal inference now requires
+data-only V2 JSON. V1 migration is explicit offline and drops validation/approval claims.
+See [changes and compatibility](PRECISION_AND_DATA_ONLY_2026-10-02.md).
+
 October 2 artifact continuation: bounded manifests/named model reads, streamed
 hash verification and evidence-source policy pins added. Existing candidate byte
 integrity passes unchanged, while its stale policy freeze remains rejected.

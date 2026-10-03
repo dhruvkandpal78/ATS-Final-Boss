@@ -126,20 +126,25 @@ class SemanticCoherenceScorer:
             "truncated": scores.get("truncated", False)
         }
 
+    # Role markers, system/admin labels, output-format guidance and score
+    # labels are not actionable by themselves, even in hiring-related prose.
+    # Couple review cues to an explicit instruction or applicant target.
+    SCORE_ALLOCATION_PATTERN = '\\b(?:assign|give|award|set|return|output|print)\\s+(?:the\\s+)?(?:highest|maximum|top|perfect|full)\\s+(?:possible\\s+)?(?:score|rank|ranking|eligibility|rating)(?:\\s+score)?\\s+(?:to|for)\\s+(?:(?:this|the|my)\\s+)?(?:resume|candidate|applicant|application)\\b'
+    SCORE_DIRECTIVE_PREFIX = re.compile(
+        r"\s*(?:[-*•]\s*)?(?:(?:please|you\s+must)\s+|(?:system\s+override|ats\s+(?:scoring\s+)?instruction|screening\s+instruction|for\s+(?:hiring|screening))\s*[:,]\s*)?"
+    )
     INJECTION_PATTERNS = [
-        r"ignore\s+(all\s+)?previous\s+instructions?",
-        r"disregard\s+(all\s+)?previous",
-        r"system\s+override",
-        r"\[system\]",
-        r"<!--\s*system",
-        r"you\s+must\s+(output|print|return)",
-        r"rank\s+(this\s+candidate\s+)?(as\s+)?#?1",
-        r"hire\s+immediately",
-        r"match\s+score:\s*100",
+        r"\bignore\s+(all\s+)?previous\s+instructions?\b",
+        r"\bdisregard\s+(all\s+)?previous\s+(?:instructions?|rules?|guidance|directives?)\b",
+        r"\brank\s+me\s+(as\s+)?#?1\b",
+        r"\brank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?#?1\b",
         r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
-        r"do\s+not\s+reject",
-        r"administrator\s+instructions?",
-        r"override\s+the\s+screening"
+        r"\b(?:treat|consider|mark)\s+(?:this|the)\s+(?:resume|candidate|applicant)\s+as\s+(?:a\s+)?(?:perfect|ideal|top|best)\s+match\b",
+        SCORE_ALLOCATION_PATTERN,
+        r"\b(?:mark|make|deem)\s+(?:this|the)\s+(?:candidate|applicant|resume)\s+(?:eligible|qualified|a\s+perfect\s+match)\b",
+        r"\byou\s+must\s+(?:return|output|print)\s+(?:a\s+)?decision\s+that\s+makes?\s+(?:this|the)\s+(?:candidate|applicant)\s+(?:eligible|qualified)\b",
+        r"\bdo\s+not\s+reject\s+(?:me|(?:this|the|my)\s+(?:candidate|applicant|application|resume))\b",
+        r"\bhire\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+immediately\b",
     ]
 
     BENIGN_PATTERNS = [
@@ -177,7 +182,7 @@ class SemanticCoherenceScorer:
 
     @classmethod
     def _is_benign_cue_context(cls, text: str, start: int, end: int, *, boundaries=None) -> bool:
-        """Ignore a cue only when its own nearby sentence presents it as an example."""
+        """Exclude local quoted/descriptive examples from applicant-directed cues."""
         ends, starts = boundaries if boundaries is not None else cls._cue_context_boundaries(text)
         left_index = bisect_right(ends, start) - 1
         right_index = bisect_left(starts, end)
@@ -186,6 +191,13 @@ class SemanticCoherenceScorer:
         clause = text[left_boundary:right_boundary]
         local_start = start - left_boundary
         local_end = end - left_boundary
+
+        # Descriptions of a rubric/API allocating scores are not directives.
+        # Check the exact local prefix, not a broad document-level whitelist.
+        if (re.fullmatch(cls.SCORE_ALLOCATION_PATTERN, text[start:end]) is not None
+                and cls.SCORE_DIRECTIVE_PREFIX.fullmatch(clause[:local_start]) is None):
+            return True
+
         # A quote is local to this cue; quoted material elsewhere cannot suppress it.
         quote_pairs = (("\"", "\""), ("'", "'"), ("`", "`"), ("“", "”"), ("‘", "’"))
         for opening, closing in quote_pairs:

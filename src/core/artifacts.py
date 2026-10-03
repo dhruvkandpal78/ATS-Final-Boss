@@ -1,4 +1,4 @@
-"""Verify candidate bundle integrity before deserializing trusted local weights."""
+"""Verify bounded candidate bundle integrity before loading model parameters."""
 import hashlib
 import json
 import hmac
@@ -10,10 +10,13 @@ from pathlib import Path
 
 FEATURE_ORDER = ["Module_A_Score", "Module_B_Score", "Module_C_Score"]
 FILES = ("meta_classifier.pkl", "scaler.pkl", "thresholds.json", "model_config.json")
+FILES_V2 = ("linear_model.json", "thresholds.json", "model_config.json")
 POLICY_FILES = ("src/core/review_policy.py", "src/core/analysis_service.py", "src/core/evidence.py",
-                "src/modules/module_a.py", "src/modules/module_b.py", "src/modules/module_c.py")
+                "src/modules/module_a.py", "src/modules/module_b.py", "src/modules/module_c.py",
+                "src/core/linear_artifacts.py")
 MAX_MANIFEST_BYTES = 256 * 1024
 ARTIFACT_LIMITS = {name: 64 * 1024 * 1024 if name.endswith(".pkl") else 1024 * 1024 for name in FILES}
+ARTIFACT_LIMITS["linear_model.json"] = 16 * 1024
 SHA256_RE = re.compile(r"[0-9a-fA-F]{64}\Z")
 
 
@@ -55,10 +58,10 @@ def _read_bounded(root, name, limit):
 
 
 def read_candidate_artifact(directory, name):
-    """Bound the exact bytes later hashed and deserialized by the loader.
+    """Bound the exact bytes later hashed and parsed by the loader.
 
-    This is not a safe-pickle sandbox; independently approved immutable files
-    remain required. Unapproved names and linked/special files are rejected.
+    Runtime uses data-only V2. V1 bytes are allowed for explicit offline
+    migration/integrity inspection only. Unapproved and linked names are refused.
     """
     if name not in ARTIFACT_LIMITS:
         raise ValueError("Unknown candidate artifact name")
@@ -118,15 +121,26 @@ def verify_candidate(directory, expected_manifest_sha256=None):
         manifest = json.loads(raw_manifest, object_pairs_hook=_unique_object, parse_constant=_invalid_constant)
     except (UnicodeError, ValueError, RecursionError):
         raise ValueError("Candidate manifest must be unambiguous valid bounded JSON") from None
-    if (not isinstance(manifest, dict) or manifest.get("schema_version") != "1.0" or manifest.get("kind") != "real_pdf_candidate"
+    if (not isinstance(manifest, dict) or manifest.get("schema_version") not in ("1.0", "2.0") or manifest.get("kind") != "real_pdf_candidate"
             or manifest.get("input_mode") != "pdf" or manifest.get("feature_order") != FEATURE_ORDER):
         raise ValueError("Incompatible candidate feature contract")
+    files = candidate_files(manifest)
     artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, dict) or set(artifacts) != set(FILES) or any(
+    if not isinstance(artifacts, dict) or set(artifacts) != set(files) or any(
             not isinstance(value, str) or not SHA256_RE.fullmatch(value) for value in artifacts.values()):
         raise ValueError("Candidate artifact hashes have an invalid contract")
-    for name in FILES:
+    for name in files:
         actual = _hash_artifact(directory, name)
         if not hmac.compare_digest(artifacts[name].lower(), actual):
             raise ValueError("Candidate artifact integrity mismatch: " + name)
     return manifest
+
+
+def candidate_files(manifest):
+    """V1 supports integrity inspection only; serving requires data-only V2."""
+    version = manifest.get("schema_version")
+    if version == "1.0":
+        return FILES
+    if version == "2.0":
+        return FILES_V2
+    raise ValueError("Unsupported candidate artifact version")

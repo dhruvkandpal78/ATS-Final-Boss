@@ -64,9 +64,8 @@ jobs:
         if: matrix.python-version == '3.12'
         run: python scripts/audit_runtime.py --verify-installed --output installed-runtime-audit.json
       - name: Scan application Python for high severity findings
-        # B301 is excluded because the runtime intentionally loads trusted,
-        # locally provisioned pickle artifacts; see SECURITY.md.
-        run: python -m bandit -r src/app src/core src/inference.py -lll -s B301
+        # Serving uses data-only model parameters; no pickle suppression.
+        run: python -m bandit -r src/app src/core src/inference.py -lll
 
   container-smoke:
     runs-on: ubuntu-latest

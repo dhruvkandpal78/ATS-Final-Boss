@@ -1,8 +1,15 @@
 # Issue Ledger
 
+- [x] Applicant-targeted instruction precision and paired ATS engineering/PDF controls implemented.
+- [ ] Independent population false-positive, unseen recall and downstream benefit evidence remain open. See [record](APPLICANT_INTENT_PRECISION_2026-10-03.md).
+
+- [x] Normal inference never deserializes pickle; strict V2 data-only parameters preserve prediction parity. Explicit offline migration does not inherit deployment/validation approval.
+- [x] Ambiguous technical phrases require local hiring context; paired controls cover known score/eligibility instructions.
+- [ ] Population false positives, unseen attack recall and post-fix downstream benefit remain unverified. See [regression scope](PRECISION_AND_DATA_ONLY_2026-10-02.md).
+
 - [x] Candidate manifest/hash and exact-byte model reads have size/path bounds and reject ambiguous JSON or linked/special entries.
 - [x] Evidence source code is required in policy freezes; old pin sets fail closed rather than being silently upgraded.
-- [ ] Trusted pickle, immutable mounts, independent provenance, native-memory containment and real pinned-model customer deployment remain required/unverified; see [artifact record](CANDIDATE_BOUNDS_2026-10-02.md).
+- [ ] Immutable mounts, independent provenance, native-memory containment and real pinned-model customer deployment remain required/unverified; see [artifact record](CANDIDATE_BOUNDS_2026-10-02.md).
 
 - [x] Instruction explanation helper now finds actionable later matches after a benign quoted first match.
 - [x] Detection/explanation/source evidence share per-invocation sentence indexing, avoiding repeated document-prefix scans for dense example cues; see [record](CUE_CONTEXT_2026-10-01.md).
@@ -34,7 +41,7 @@
 - [x] Deployment configuration weakening is detected by mutation-tested offline checks; this does not verify runtime isolation.
 
 - [x] Local network binding, Host/Origin validation and private-route authentication implemented with regression coverage.
-- [x] Private model loading requires independently pinned manifest and verified artifact bytes; executable pickle remains trusted-only.
+- [x] Private model loading requires independently pinned manifest and verified artifact bytes; runtime now uses data-only V2 JSON.
 - [x] Locked Linux CPU installation and non-root/offline container smoke verified by hosted CI; this smoke does not load a real approved model or establish containment under attack.
 - [ ] Real model/resource stress containment, customer gateway integration and external penetration testing still require release evidence.
 - [x] Reviewed source-only publication merged in PR #2; all Python/container CI checks passed. No new personal PDFs were included. Older public Git history is not erased.
