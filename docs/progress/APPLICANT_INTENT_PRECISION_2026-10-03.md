@@ -26,7 +26,7 @@ Frozen policy hashes change; existing approved bundles require explicit review.
 
 ## Fixed authored comparison
 
-Diagnostic version 1.1 (`python scripts/check_instruction_regressions.py`) contains
+At frozen implementation 704385f, diagnostic version 1.1 contains
 26 fixed same-team probes: 16 benign descriptions/examples and 10 directed attacks.
 The identical cases were evaluated against preceding implementation cf4f2ac and the
 working patch, without initializing an embedding model:

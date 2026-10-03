@@ -1,8 +1,8 @@
 # ATS Final Boss
 
-The [latest precision revision](docs/progress/APPLICANT_INTENT_PRECISION_2026-10-03.md)
-reduces false flags on ordinary ATS engineering descriptions using applicant-directed
-cues and paired PDF controls. Results are authored regressions; representative
+The [latest pre-commit precision review](docs/progress/QUALITY_REVIEW_2026-10-03.md)
+reduces known false flags on ATS engineering descriptions and qualification-dependent
+workflow instructions, with paired bypass and PDF controls. Results are authored regressions; representative
 real-world false-positive rates remain unverified.
 
 Normal inference requires a verified **data-only V2 candidate**. V1 pickle bundles fail closed and need explicit offline migration or new training. See [provisioning changes and regression scope](docs/progress/PRECISION_AND_DATA_ONLY_2026-10-02.md). Real-world false-positive and recall targets remain unverified.

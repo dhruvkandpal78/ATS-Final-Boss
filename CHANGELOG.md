@@ -2,6 +2,15 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-03: pre-commit qualification and bypass review
+
+Reviewed before committing: added local positive-qualification conditions for outcome
+cues, with explicit bypass taking precedence. Grouped override/outcome patterns and
+named PDF fixture groups; detector, explanation and source evidence share the same
+scope. On 40 authored development strings, preceding 704385f flags 6/22 benign strings
+versus 0/22 in the patch, with 18/18 directed attack cues in both. These are known
+regressions, not independent accuracy. See [quality review and limits](docs/progress/QUALITY_REVIEW_2026-10-03.md).
+
 ## 2026-10-03: applicant-targeted instruction precision
 
 Removed generic role/system/admin/output-format cues as standalone review triggers.

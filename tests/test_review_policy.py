@@ -3,7 +3,7 @@ import fitz
 import numpy as np
 import pytest
 
-from scripts.check_instruction_regressions import CASES
+from scripts.check_instruction_regressions import PDF_REGRESSION_CASES
 from src.core.analysis_service import AnalysisService
 from src.core.review_policy import keyword_repetition
 from src.modules.module_a import KeywordDensityDetector
@@ -104,7 +104,7 @@ def test_repeated_benign_prose_is_not_keyword_stuffing():
     assert keyword_repetition("Customer support and data documentation. " * 40, KeywordDensityDetector()) is None
 
 
-@pytest.mark.parametrize("case_id,text,attack", CASES[13:])
+@pytest.mark.parametrize("case_id,text,attack", PDF_REGRESSION_CASES)
 @pytest.mark.parametrize("hidden", [False, True])
 def test_ats_engineering_prose_and_directive_controls_route_consistently(tmp_path, case_id, text, attack, hidden):
     path=tmp_path / "authored.pdf"

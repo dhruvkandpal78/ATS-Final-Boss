@@ -1,5 +1,10 @@
 # Documentation map
 
+Pre-commit quality review: qualification-dependent workflow controls are scoped
+locally, with explicit bypass taking precedence; source/explanation/PDF controls
+and named pattern groups verify the change. Independent accuracy remains open.
+See [review and verification](progress/QUALITY_REVIEW_2026-10-03.md).
+
 October 3 precision continuation: generic technical cues no longer independently
 recommend review, even in hiring prose; score/outcome commands require an applicant
 target. Authored text and visible/white-on-white PDF controls pass. Population false

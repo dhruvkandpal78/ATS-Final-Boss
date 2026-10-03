@@ -1,5 +1,8 @@
 # Issue Ledger
 
+- [x] Pre-commit review found and fixed qualification-dependent procedural false flags; explicit bypass wins over conditions, with shared source/PDF checks and explicit pattern groups.
+- [ ] Conditional mimicry and unseen attacks remain unverified; authored zero flags are not population accuracy. See [quality review](QUALITY_REVIEW_2026-10-03.md).
+
 - [x] Applicant-targeted instruction precision and paired ATS engineering/PDF controls implemented.
 - [ ] Independent population false-positive, unseen recall and downstream benefit evidence remain open. See [record](APPLICANT_INTENT_PRECISION_2026-10-03.md).
 
