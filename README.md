@@ -1,5 +1,7 @@
 # ATS Final Boss
 
+A further [targeted paraphrase review](docs/progress/PARAPHRASE_REDTEAM_2026-10-03.md) fixes 11 authored directed commands missed by the prior cues, preserving 14 benign controls and paired visible/hidden PDF routing. JSON references, URL encoding and letter-spaced words still evade the authored diagnostic; no unseen zero-error claim is made.
+
 The [known-case replay](results/reports/kaggle-recovery-development-20261003.md) recovered all 182 previous completed misses: 454 completed and five partial attack reviews, zero completed misses. Unmodified controls remain zero flags with 23 insufficient analyses. This reuses observed attacks and does not establish independent zero error.
 
 The [known-miss recovery record](docs/progress/CUE_RECOVERY_2026-10-03.md) adds bounded passive Base64 views, mixed-token lookalike normalization, narrow Spanish cues and explicit qualification-fabrication checks. The follow-up reuses observed cases and is a development regression, not new independent accuracy. Original results below remain historical.

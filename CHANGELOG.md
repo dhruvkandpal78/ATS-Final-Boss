@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: targeted paraphrase red-team continuation
+
+Exercised new fictional applicant-directed commands and legitimate workflows against frozen preceding cues. Added first-rank/shortlist, own-rating100 and explicit hiring/fabrication/outcome-reuse coverage; preserved review-discovered verification/completion conditions with bypass precedence. On 11 attack/14 benign development strings: prior0/11 detected and0/14 flags, revised11/11 and0/14; 50 visible/hidden PDF routes verify consistent policy. Three further probe families still evade detection. No classifier thresholds or parameters changed and prior Kaggle results were not rewritten. See [scope, gaps and verification](docs/progress/PARAPHRASE_REDTEAM_2026-10-03.md).
+
 ## 2026-10-03: exact-input recovery replay completed
 
 All 182 previous completed misses now receive completed review on the same inputs. Full attack cohort: 454 complete reviews, five partial reviews, zero complete misses. Unmodified cohort: zero review flags and 23 insufficient analyses. The original adverse benchmark is preserved. This is known-set development evidence, not independent accuracy or downstream protection. Verification: 718 offline tests passed, five skips, three integration exclusions; final focused checks 101 passed. See [receipt reconciliation and limitations](results/reports/kaggle-recovery-development-20261003.md).

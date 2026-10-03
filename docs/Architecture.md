@@ -1,5 +1,7 @@
 # Current system architecture
 
+Targeted paraphrase coverage extends applicant-directed first-rank, shortlist placement, rating100 and explicit hire/fabrication/outcome-reuse commands. Bounded verification/completion conditions retain benign exclusions, with bypass/fabrication taking precedence. The shared cue/source boundary remains lexical and incomplete; see [development evidence](progress/PARAPHRASE_REDTEAM_2026-10-03.md).
+
 The [exact-case recovery replay](../results/reports/kaggle-recovery-development-20261003.md) recovered all 182 previous completed misses with no additional original review flags. This is observed-case development evidence; unsupported attacks and production gates remain open.
 
 Passive instruction recovery is bounded to 100,000 input characters, 32 candidate encoded blocks and 2,048 encoded characters per block. Strict UTF-8 Base64 is decoded once and never executed. Mixed Latin tokens receive limited visual-lookalike folding; narrow Spanish rules and local explicit qualification-fabrication checks share cue/explanation/evidence matching. Encoded spans anchor the source carrier. The recovery utility is mandatory in policy pins; old freezes fail closed. See [scope and limits](progress/CUE_RECOVERY_2026-10-03.md).

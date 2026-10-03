@@ -1,5 +1,7 @@
 # Documentation map
 
+The [paraphrase red-team record](progress/PARAPHRASE_REDTEAM_2026-10-03.md) describes new directed rank/rating/outcome commands, paired qualification/bypass guards, measured development comparisons and explicit remaining misses.
+
 The [known-case replay](../results/reports/kaggle-recovery-development-20261003.md) records 454 completed/five partial attack reviews and zero completed misses, with zero original review flags and 23 original insufficient analyses. It preserves the original adverse result and explicitly limits follow-up claims.
 
 The [known-miss recovery record](progress/CUE_RECOVERY_2026-10-03.md) explains the four missed families, bounded passive recovery, original-source evidence, paired benign controls and the new unapproved policy freeze. Original benchmark counts are preserved; replay results are development evidence.

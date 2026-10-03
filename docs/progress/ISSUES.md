@@ -1,5 +1,8 @@
 # Issue Ledger
 
+- [x] Added targeted rank/rating/outcome paraphrases and review-discovered qualification gates with explicit bypass/fabrication controls; 11 authored commands and14 benign strings have consistent source/PDF behavior.
+- [ ] JSON outcome references, URL encoding, letter-spaced instructions, Hindi and split-sentence authored examples still evade the cue layer. This remains a bounded lexical defense, not comprehensive security. See [record](PARAPHRASE_REDTEAM_2026-10-03.md).
+
 - [x] Replayed all frozen cases: recovered 182/182 previous completed misses, 454 complete and five partial attack reviews, zero complete misses; zero original review flags and 23 insufficient originals remain.
 - [ ] Independent unseen-family accuracy, natural labels and downstream protection remain open; known-set recovery is not population zero error. See [result](../../results/reports/kaggle-recovery-development-20261003.md).
 

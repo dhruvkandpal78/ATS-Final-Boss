@@ -141,9 +141,16 @@ class SemanticCoherenceScorer:
     SPANISH_TARGET = r"(?:este|esta|el|la)\s+(?:candidat[oa]|solicitante|curr[ií]culum)"
     SPANISH_SCORE = r"(?:la\s+)?(?:puntuaci[oó]n|calificaci[oó]n)\s+(?:m[aá]xima|perfecta|de\s+100)"
     OUTCOME_DIRECTIVE_PATTERNS = (
-        r"\brank\s+me\s+(as\s+)?#?1\b",
-        r"\brank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?#?1\b",
-        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
+        r"\brank\s+me\s+(as\s+)?(?:#?1|first|number\s+one)\b",
+        r"\brank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?(?:#?1|first|number\s+one)\b",
+        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+(?:score|rating)\s+(?:to|of)\s+100\b",
+        r"\b(?:place|put)\s+(?:me|(?:this|the)\s+(?:candidate|applicant|resume))\s+at\s+(?:the\s+)?(?:very\s+)?top\s+of\s+(?:the\s+)?(?:shortlist|ranking|list)\b",
+        r"\bchoose\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+as\s+(?:the\s+)?first[-\s]choice\s+candidate\b",
+        r"\byou\s+must\s+hire\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+(?:today|now|immediately)\b",
+        r"\btreat\s+my\s+missing\s+(?:clearance|credential|certification|qualification|licen[cs]e)\s+as\s+(?:satisfied|verified|present|met)\b",
+        r"\bmake\s+(?:the\s+)?final\s+disposition\s+for\s+my\s+application\s+[\"'“‘]?advance\s+to\s+interview[,\"'”’]{0,3}\s+(?:even\s+if|regardless\s+of)\b",
+        r"\buse\s+(?:that|this)\s+exact\s+outcome\s+for\s+my\s+application\s+(?:even\s+)?without\b",
+        r"\bwrite\s+[\"'“‘]?hire[\"'”’]?\s+for\s+me\s+and\s+(?:leave|set)\s+(?:the\s+)?score\s+at\s+full\s+marks\b",
         r"\b(?:treat|consider|mark)\s+(?:this|the)\s+(?:resume|candidate|applicant)\s+as\s+(?:a\s+)?(?:perfect|ideal|top|best)\s+match\b",
         SCORE_ALLOCATION_PATTERN,
         r"\b(?:mark|make|deem)\s+(?:this|the)\s+(?:candidate|applicant|resume)\s+(?:eligible|qualified|a\s+perfect\s+match)\b",
@@ -161,6 +168,9 @@ class SemanticCoherenceScorer:
         r"[^.!?;\n]{0,48}\b(?:met|present|verified|complete|clear|highest)\b"
         r"|\bwho\s+meets?\s+(?:all\s+)?(?:the\s+)?(?:listed\s+|required\s+|mandatory\s+)?"
         r"(?:rubric\s+)?(?:criteria|requirements|qualifications)\b"
+        r"|\b(?:following\s+(?:the\s+)?completion|subject\s+to\s+(?:the\s+)?verification)\s+of\s+"
+        r"(?:(?:all|the|required|mandatory|listed)\s+){0,5}"
+        r"(?:checks|qualifications|requirements|credentials|certifications|licen[cs]es)\b"
         r"|\b(?:solo\s+|s[oó]lo\s+)?(?:si|cuando)\s+[^.!?;\n]{0,96}\b"
         r"(?:requisitos|cualificaciones|credenciales)\b[^.!?;\n]{0,48}\b(?:cumplid[oa]s?|verificad[oa]s?|presentes)\b"
         r"|\b(?:solo\s+|s[oó]lo\s+)?(?:si|cuando)\s+[^.!?;\n]{0,48}\b(?:cumple|cumplen)\b"
