@@ -38,7 +38,6 @@ class _DisablePreviewControls(HTMLParser):
     DISABLED_IDS = {
         "resume-text", "resume-file", "sample-select", "tab-text", "tab-pdf",
         "submit-analysis", "cancel-analysis", "clear-input", "remove-file",
-        "analyze-sample", "explore-sample",
     }
 
     def __init__(self, source: str):
@@ -55,10 +54,7 @@ class _DisablePreviewControls(HTMLParser):
     def _start_tag(self, tag: str):
         raw = self.get_starttag_text()
         attrs = dict(self.get_starttag_text_attrs())
-        should_disable = (
-            attrs.get("id") in self.DISABLED_IDS
-            or "data-sample-line" in attrs
-        ) and tag in {"input", "textarea", "select", "button"}
+        should_disable = attrs.get("id") in self.DISABLED_IDS and tag in {"input", "textarea", "select", "button"}
         if should_disable and "disabled" not in attrs:
             line, column = self.getpos()
             start = self.line_offsets[line - 1] + column

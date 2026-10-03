@@ -116,10 +116,5 @@
     analysis.querySelectorAll('.input-panel, .guidance-panel').forEach(panel => { panel.hidden = true; });
     analysis.querySelectorAll('button').forEach(button => { button.disabled = true; });
   }
-  document.querySelectorAll('[data-sample-line], #analyze-sample, #explore-sample').forEach(control => {
-    if ('disabled' in control) control.disabled = true;
-    control.setAttribute('aria-disabled', 'true');
-  });
-
   renderRoute();
 })();

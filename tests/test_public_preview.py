@@ -78,17 +78,16 @@ class PublicPreviewTests(unittest.TestCase):
             for control_id in (
                 "resume-file", "resume-text", "sample-select", "tab-text", "tab-pdf",
                 "submit-analysis", "cancel-analysis", "clear-input", "remove-file",
-                "analyze-sample", "explore-sample",
             ):
                 self.assertIn("disabled", reader.controls[control_id][1], control_id)
-            self.assertTrue(reader.sample_controls)
-            self.assertTrue(all("disabled" in attrs for attrs in reader.sample_controls))
+            self.assertFalse(reader.sample_controls)
+            self.assertNotIn("analyze-sample", reader.controls)
+            self.assertNotIn("explore-sample", reader.controls)
             self.assertNotIn("disabled", reader.controls["theme-toggle"][1])
             self.assertNotIn("disabled", reader.controls["menu-toggle"][1])
             self.assertTrue(reader.banner_seen)
             self.assertTrue(reader.header_after_banner)
             self.assertIn("disabled = true", script)
-            self.assertIn("#analyze-sample", script)
             self.assertIn("addEventListener('submit'", script)
             self.assertFalse(any(path.suffix.lower() == ".pdf" for path in output.rglob("*")))
             self.assertFalse(any("models" in path.parts or "results" in path.parts
