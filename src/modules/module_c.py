@@ -126,39 +126,26 @@ class SemanticCoherenceScorer:
             "truncated": scores.get("truncated", False)
         }
 
-    INJECTION_PATTERNS = [
-        r"ignore\s+(all\s+)?previous\s+instructions?",
-        r"disregard\s+(all\s+)?previous",
-        r"system\s+override",
-        r"\[system\]",
-        r"<!--\s*system",
-        r"you\s+must\s+(output|print|return)",
-        r"rank\s+me\s+(as\s+)?#?1\b",
-        r"rank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?#?1\b",
-        r"hire\s+immediately",
-        r"match\s+score:\s*100",
-        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
-        r"do\s+not\s+reject",
-        r"administrator\s+instructions?",
-        r"override\s+the\s+screening",
-        r"(?:treat|consider|mark)\s+(?:this|the)\s+(?:resume|candidate|applicant)\s+as\s+(?:a\s+)?(?:perfect|ideal|top|best)\s+match",
-        r"(?:assign|give|award|set)\s+(?:the\s+)?(?:highest|maximum|top|perfect|full)\s+(?:possible\s+)?(?:score|rank|ranking|eligibility|rating)",
-        r"(?:mark|make|deem)\s+(?:this|the)\s+(?:candidate|applicant|resume)\s+(?:eligible|qualified|a\s+perfect\s+match)"
-    ]
-
-    # These phrases appear in ordinary technical and security writing. Treat
-    # them as cues only when their own sentence also refers to hiring or a
-    # candidate document. Direct instruction overrides remain actionable alone.
-    CONTEXT_REQUIRED_PATTERNS = {
-        r"system\s+override", r"\[system\]", r"<!--\s*system",
-        r"you\s+must\s+(output|print|return)", r"hire\s+immediately",
-        r"match\s+score:\s*100", r"do\s+not\s+reject",
-        r"administrator\s+instructions?", r"override\s+the\s+screening",
-        r"(?:assign|give|award|set)\s+(?:the\s+)?(?:highest|maximum|top|perfect|full)\s+(?:possible\s+)?(?:score|rank|ranking|eligibility|rating)",
-    }
-    SCREENING_CONTEXT_PATTERN = re.compile(
-        r"\b(?:candidate|applicant|resume|screening|hiring|employment)\b"
+    # Role markers, system/admin labels, output-format guidance and score
+    # labels are not actionable by themselves, even in hiring-related prose.
+    # Couple review cues to an explicit instruction or applicant target.
+    SCORE_ALLOCATION_PATTERN = '\\b(?:assign|give|award|set|return|output|print)\\s+(?:the\\s+)?(?:highest|maximum|top|perfect|full)\\s+(?:possible\\s+)?(?:score|rank|ranking|eligibility|rating)(?:\\s+score)?\\s+(?:to|for)\\s+(?:(?:this|the|my)\\s+)?(?:resume|candidate|applicant|application)\\b'
+    SCORE_DIRECTIVE_PREFIX = re.compile(
+        r"\s*(?:[-*•]\s*)?(?:(?:please|you\s+must)\s+|(?:system\s+override|ats\s+(?:scoring\s+)?instruction|screening\s+instruction|for\s+(?:hiring|screening))\s*[:,]\s*)?"
     )
+    INJECTION_PATTERNS = [
+        r"\bignore\s+(all\s+)?previous\s+instructions?\b",
+        r"\bdisregard\s+(all\s+)?previous\s+(?:instructions?|rules?|guidance|directives?)\b",
+        r"\brank\s+me\s+(as\s+)?#?1\b",
+        r"\brank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?#?1\b",
+        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
+        r"\b(?:treat|consider|mark)\s+(?:this|the)\s+(?:resume|candidate|applicant)\s+as\s+(?:a\s+)?(?:perfect|ideal|top|best)\s+match\b",
+        SCORE_ALLOCATION_PATTERN,
+        r"\b(?:mark|make|deem)\s+(?:this|the)\s+(?:candidate|applicant|resume)\s+(?:eligible|qualified|a\s+perfect\s+match)\b",
+        r"\byou\s+must\s+(?:return|output|print)\s+(?:a\s+)?decision\s+that\s+makes?\s+(?:this|the)\s+(?:candidate|applicant)\s+(?:eligible|qualified)\b",
+        r"\bdo\s+not\s+reject\s+(?:me|(?:this|the|my)\s+(?:candidate|applicant|application|resume))\b",
+        r"\bhire\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+immediately\b",
+    ]
 
     BENIGN_PATTERNS = [
         r"researching\s+prompt\s+injection",
@@ -195,7 +182,7 @@ class SemanticCoherenceScorer:
 
     @classmethod
     def _is_benign_cue_context(cls, text: str, start: int, end: int, *, boundaries=None) -> bool:
-        """Ignore local examples and ambiguous cues lacking hiring context."""
+        """Exclude local quoted/descriptive examples from applicant-directed cues."""
         ends, starts = boundaries if boundaries is not None else cls._cue_context_boundaries(text)
         left_index = bisect_right(ends, start) - 1
         right_index = bisect_left(starts, end)
@@ -205,10 +192,10 @@ class SemanticCoherenceScorer:
         local_start = start - left_boundary
         local_end = end - left_boundary
 
-        cue_text = text[start:end]
-        requires_context = any(re.fullmatch(pattern, cue_text) is not None
-                               for pattern in cls.CONTEXT_REQUIRED_PATTERNS)
-        if requires_context and not cls.SCREENING_CONTEXT_PATTERN.search(clause):
+        # Descriptions of a rubric/API allocating scores are not directives.
+        # Check the exact local prefix, not a broad document-level whitelist.
+        if (re.fullmatch(cls.SCORE_ALLOCATION_PATTERN, text[start:end]) is not None
+                and cls.SCORE_DIRECTIVE_PREFIX.fullmatch(clause[:local_start]) is None):
             return True
 
         # A quote is local to this cue; quoted material elsewhere cannot suppress it.

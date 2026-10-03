@@ -1,5 +1,8 @@
 # Issue Ledger
 
+- [x] Applicant-targeted instruction precision and paired ATS engineering/PDF controls implemented.
+- [ ] Independent population false-positive, unseen recall and downstream benefit evidence remain open. See [record](APPLICANT_INTENT_PRECISION_2026-10-03.md).
+
 - [x] Normal inference never deserializes pickle; strict V2 data-only parameters preserve prediction parity. Explicit offline migration does not inherit deployment/validation approval.
 - [x] Ambiguous technical phrases require local hiring context; paired controls cover known score/eligibility instructions.
 - [ ] Population false positives, unseen attack recall and post-fix downstream benefit remain unverified. See [regression scope](PRECISION_AND_DATA_ONLY_2026-10-02.md).

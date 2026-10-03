@@ -14,7 +14,7 @@ def test_diagnostic_uses_fixed_cases_without_initializing_model(monkeypatch):
     assert result["label_basis"] == "fixed internally authored regression examples; not dataset labels"
     assert result["scope"] == "current Module C lexical instruction cues only"
     assert len(result["cases"]) == len(CASES)
-    assert result["metrics"] == {"tp": 6, "fp": 0, "tn": 7, "fn": 0}
+    assert result["metrics"] == {"tp": 10, "fp": 0, "tn": 16, "fn": 0}
     assert all(set(case) == {
         "case_id", "expected_instruction", "observed_cue_count", "detected", "outcome"
     } for case in result["cases"])

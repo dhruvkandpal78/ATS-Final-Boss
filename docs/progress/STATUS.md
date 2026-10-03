@@ -1,5 +1,10 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+October 3 precision continuation: generic technical cues no longer independently
+recommend review, even in hiring prose; score/outcome commands require an applicant
+target. Authored text and visible/white-on-white PDF controls pass. Population false
+positives and unseen recall remain unverified. See [change and tradeoffs](APPLICANT_INTENT_PRECISION_2026-10-03.md).
+
 October 2 precision continuation: narrowed ambiguous technical cue context and
 covered known candidate-directed score/eligibility overrides. Thirteen authored
 lexical regressions changed from three missed attacks/four benign flags to zero/zero;

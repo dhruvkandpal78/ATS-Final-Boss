@@ -1,6 +1,6 @@
 # Current system architecture
 
-Updated October 2, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
+Updated October 3, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
 
 ## Runtime and trust boundaries
 
@@ -12,6 +12,13 @@ examples remain excluded and later actionable matches remain eligible. Source
 anchors retain original offsets and abstain on unmappable Unicode composition.
 This improves consistency and avoids repeated sentence-prefix scans; it does
 not make lexical instruction detection comprehensive.
+
+Generic role markers, system/admin labels and API-format guidance do not independently
+trigger review, even alongside hiring terminology. Actionable score/rank/eligibility,
+rejection and hiring commands target an applicant or candidate document. Existing
+instruction overrides remain cues. This reduces known ATS engineering false flags
+while allowing vague/remote-target attacks to evade the lexical layer; never equate
+no cues with a safe document. See [precision change](progress/APPLICANT_INTENT_PRECISION_2026-10-03.md).
 
 ```mermaid
 flowchart TD

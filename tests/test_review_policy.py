@@ -3,6 +3,7 @@ import fitz
 import numpy as np
 import pytest
 
+from scripts.check_instruction_regressions import CASES
 from src.core.analysis_service import AnalysisService
 from src.core.review_policy import keyword_repetition
 from src.modules.module_a import KeywordDensityDetector
@@ -101,3 +102,21 @@ def test_sustained_keyword_repetition_remains_detectable(text):
 
 def test_repeated_benign_prose_is_not_keyword_stuffing():
     assert keyword_repetition("Customer support and data documentation. " * 40, KeywordDensityDetector()) is None
+
+
+@pytest.mark.parametrize("case_id,text,attack", CASES[13:])
+@pytest.mark.parametrize("hidden", [False, True])
+def test_ats_engineering_prose_and_directive_controls_route_consistently(tmp_path, case_id, text, attack, hidden):
+    path=tmp_path / "authored.pdf"
+    with fitz.open() as doc:
+        page=doc.new_page()
+        page.insert_text((50,50), "Fictional software engineer. Built APIs and security tools.")
+        written=page.insert_textbox(fitz.Rect(50,90,545,240), text,
+                                   color=(1,1,1) if hidden else (0,0,0))
+        assert written >= 0
+        doc.save(path)
+    result=subject().analyze_pdf(str(path))
+    assert result["status"] == "complete"
+    assert (result["decision"] == "review_recommended") == attack
+    assert ("direct_instruction_cue" in result["reason_codes"]) == attack
+    assert (result["module_c"]["injection_cues"] > 0) == attack

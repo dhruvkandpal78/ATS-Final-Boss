@@ -2,6 +2,15 @@
 
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
+## 2026-10-03: applicant-targeted instruction precision
+
+Removed generic role/system/admin/output-format cues as standalone review triggers.
+Narrowed score, output-decision and rejection/hiring instructions to applicant targets.
+On 26 fixed authored probes, benign flags changed from 9/16 to 0/16 while attack cues
+changed from 9/10 to 10/10. Added visible/white-on-white PDF routing controls; this is
+regression evidence, not population accuracy or a safe-document guarantee.
+See [policy change, verification and recall tradeoffs](docs/progress/APPLICANT_INTENT_PRECISION_2026-10-03.md).
+
 ## 2026-10-02: narrower cues and data-only model runtime
 
 October 2 precision continuation: narrowed ambiguous technical cue context and
