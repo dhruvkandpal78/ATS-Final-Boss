@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: reusable connected-timeline guidance
+
+Recorded the final agreed interaction in [the animation contract](docs/CONNECTED_PIPELINE_ANIMATION.md): always-visible steps and guide paths, with connected horizontal fill and vertical branch growth. Saved a separate local Codex skill with a reference implementation for future reuse. The skill is not a runtime dependency or published personal configuration.
+
 ## 2026-10-03: readable milestones with connected line animation
 
 Added a permanent faint vertical track behind each animated orange branch, matching the horizontal base track. Unreached steps retain their text, dot and visible branch path. The static/mobile layout omits these decorative tracks.
