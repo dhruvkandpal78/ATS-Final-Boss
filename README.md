@@ -1,8 +1,23 @@
 # ATS Final Boss
 
-The [latest precision revision](docs/progress/APPLICANT_INTENT_PRECISION_2026-10-03.md)
-reduces false flags on ordinary ATS engineering descriptions using applicant-directed
-cues and paired PDF controls. Results are authored regressions; representative
+A further [targeted paraphrase review](docs/progress/PARAPHRASE_REDTEAM_2026-10-03.md) fixes 11 authored directed commands missed by the prior cues, preserving 14 benign controls and paired visible/hidden PDF routing. JSON references, URL encoding and letter-spaced words still evade the authored diagnostic; no unseen zero-error claim is made.
+
+The [known-case replay](results/reports/kaggle-recovery-development-20261003.md) recovered all 182 previous completed misses: 454 completed and five partial attack reviews, zero completed misses. Unmodified controls remain zero flags with 23 insufficient analyses. This reuses observed attacks and does not establish independent zero error.
+
+The [known-miss recovery record](docs/progress/CUE_RECOVERY_2026-10-03.md) adds bounded passive Base64 views, mixed-token lookalike normalization, narrow Spanish cues and explicit qualification-fabrication checks. The follow-up reuses observed cases and is a development regression, not new independent accuracy. Original results below remain historical.
+
+The [frozen 2,295-PDF Kaggle stress test](results/reports/kaggle-stress-20pct-20261003.md)
+used 1,836 unmodified resumes and 459 injected attempts (20%). It recorded zero
+unmodified flags, 23 incomplete originals, 272 complete attack reviews, three partial
+attack reviews, **182 complete no-signal outcomes on injected documents** and two
+insufficient attack analyses. Encoded, Spanish, homoglyph and conditional-mimicry
+interventions received no review. Original manipulation labels are unreviewed: zero
+flags is a control-burden result, not a proven zero population false-positive rate
+or comprehensive injection protection. These edits were not tested for downstream success.
+
+The [latest pre-commit precision review](docs/progress/QUALITY_REVIEW_2026-10-03.md)
+reduces known false flags on ATS engineering descriptions and qualification-dependent
+workflow instructions, with paired bypass and PDF controls. Results are authored regressions; representative
 real-world false-positive rates remain unverified.
 
 Normal inference requires a verified **data-only V2 candidate**. V1 pickle bundles fail closed and need explicit offline migration or new training. See [provisioning changes and regression scope](docs/progress/PRECISION_AND_DATA_ONLY_2026-10-02.md). Real-world false-positive and recall targets remain unverified.

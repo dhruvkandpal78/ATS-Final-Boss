@@ -1,43 +1,40 @@
-# Documentation map
+# Documentation
 
-October 3 precision continuation: generic technical cues no longer independently
-recommend review, even in hiring prose; score/outcome commands require an applicant
-target. Authored text and visible/white-on-white PDF controls pass. Population false
-positives and unseen recall remain unverified. See [change and tradeoffs](progress/APPLICANT_INTENT_PRECISION_2026-10-03.md).
+Start with the [project README](../README.md). It describes supported commands and
+current limitations. The repository is a research prototype, not a production or
+accuracy certification.
 
-The [precision and data-only record](progress/PRECISION_AND_DATA_ONLY_2026-10-02.md) documents authored cue improvements and the breaking V2 provisioning change. Runtime never loads pickle; explicit offline migration does not establish accuracy or deployment approval.
+## Product and implementation
 
-The [candidate artifact record](progress/CANDIDATE_BOUNDS_2026-10-02.md) documents
-bounded integrity/loading, strict manifest parsing, link rejection and the
-evidence-source policy-pin migration without implying safe pickle or deployment
-approval.
+| Document | Purpose |
+| --- | --- |
+| [Architecture](Architecture.md) | Runtime, evidence, policy and trust boundaries |
+| [Integration](INTEGRATION.md) | Versioned API, SDK and downstream privileges |
+| [Security](../SECURITY.md) and [Ethics](ethics.md) | Security policy and human-review limits |
+| [Ownership](OWNERSHIP.md) | License and attribution context |
+| [Project rules](rules.md) | Methodology and change constraints |
 
-The [cue-context record](progress/CUE_CONTEXT_2026-10-01.md) documents consistent
-instruction explanations and shared sentence indexing with limited local timing
-evidence; it adds no downstream efficacy claim.
+## Deployment and evaluation
 
-The [review-routing study](progress/REVIEW_ROUTING_STUDY_2026-10-01.md) separates
-the reference screener's baseline review requests from detector-added holds,
-preserving the original failed protocol and conditional efficacy limits.
+| Document | Purpose |
+| --- | --- |
+| [Private pilot](PRIVATE_PILOT.md) and [release gate](COMPANY_RELEASE_GATE.md) | Provisioning and acceptance evidence |
+| [Operations metrics](OPERATIONS_METRICS.md) | Authenticated telemetry and its limits |
+| [Customer strategy](CUSTOMER_PILOT_STRATEGY.md) | Proposed customer and pilot scope |
+| [Public preview](PUBLIC_PREVIEW.md) | Preview behavior and deployment constraints |
+| [Downstream benchmark](DOWNSTREAM_BENCHMARK.md) | Paired comparison and outcome denominators |
+| [Reference study](REFERENCE_STUDY.md) and [consistency](SCREENER_CONSISTENCY.md) | Reference screener identity and repeatability |
+| [Kaggle protocol](research/KAGGLE_STRESS_PROTOCOL.md) | Frozen 20% intervention experiment |
 
-The [pinned local reference record](progress/PINNED_LOCAL_REFERENCE_2026-10-01.md) documents model-file integrity, actual local controls and the model-review qualification failure separately from hosted fingerprints and detector decisions.
+## Evidence and history
 
-[Screener consistency](SCREENER_CONSISTENCY.md) defines the clean-repeat stop rules and separate score, eligibility and four-candidate ranking endpoints required before an interpretable reference efficacy experiment.
+[Research guide](../RESEARCH.md) distinguishes controlled edits from natural labels.
+[Results index](../results/reports/README.md) separates current measured studies from
+legacy proxy experiments. [Status](progress/STATUS.md), [issues](progress/ISSUES.md)
+and [changelog](../CHANGELOG.md) track verified work and open gaps. Dated records in
+`progress/` preserve implementation, failed experiments and validation evidence.
 
-The [consistency execution record](progress/CONSISTENCY_AND_RANKING_2026-10-01.md) reports actual clean repeat results and the failed backend-identity condition; its attack phase was not run.
-
-The opt-in [reference screener study](REFERENCE_STUDY.md) runs fictional PDFs through an actual hosted model. Its [dated execution record](progress/REFERENCE_STUDY_2026-10-01.md) distinguishes descriptive findings from independent customer evidence.
-
-[Runtime metrics](OPERATIONS_METRICS.md) describes authenticated telemetry, collection limits and customer monitoring responsibilities.
-
-The [paired downstream harness](DOWNSTREAM_BENCHMARK.md) defines comparison inputs and denominators; [mentor implementation record](progress/MENTOR_REVIEW_IMPLEMENTATION_2026-10-01.md) lists what is implemented and what still requires real evidence.
-
-Start with the root [README](../README.md). The current maintained system is documented in [Architecture](Architecture.md), [Security](../SECURITY.md), and [Ethics](ethics.md). Deployment instructions are in [Private pilot](PRIVATE_PILOT.md), and customer acceptance evidence belongs in [Company release gate](COMPANY_RELEASE_GATE.md).
-
-The versioned review API and downstream privilege boundaries are documented in [Integration](INTEGRATION.md). The [product-gap response](progress/PRODUCT_GAP_REVIEW_2026-10-01.md) distinguishes current implementation from stale review claims and still-open commercial/scientific requirements.
-
-[CHANGELOG](../CHANGELOG.md) summarizes shipped work. [Status](progress/STATUS.md) and [Issue ledger](progress/ISSUES.md) distinguish tested implementation from unresolved operational and accuracy gates. Detailed dated records under progress preserve evidence and research reproducibility; they are not separate product specifications.
-
-Historical planning and review records are preserved under [archive](archive/README.md). Statements in those files do not override the current README, architecture, security policy or frozen evaluation records. Duplicate specifications and obsolete migration scaffolding have been removed; the retained rebuild specification is historical. Local assistant launch configuration and generated frontend bundles are excluded from the maintained publication tree.
-
-The downloaded public corpus contains real PDF layouts with unreviewed manipulation labels. Acquire it with the pinned, bounded [dataset script](../scripts/acquire_resume_dataset.py). Synthetic injection and paired edits are separate controlled experiments. Neither corpus download nor controlled-attack accuracy establishes natural manipulation accuracy or a cheating probability. See [Precision policy evidence](progress/PRECISION_POLICY_2026-09-30.md).
+[Historical rationale](archive/README.md) retains the original PRD and design
+rationale. Obsolete duplicate plans, assistant memory files and presentation
+scripts were removed from the maintained tree; earlier revisions remain in Git.
+See [cleanup inventory](progress/REPO_CLEANUP_2026-10-03.md).

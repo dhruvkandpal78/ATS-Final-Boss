@@ -1,4 +1,4 @@
-> Historical planning document. Current behavior and limits are defined by [README](../README.md), [Architecture](Architecture.md), [Security](../SECURITY.md) and [Ethics](ethics.md). See [documentation map](README.md). This record is retained for provenance and does not establish current performance or deployment readiness.
+> Historical planning document. Current behavior and limits are defined by [README](../../README.md), [Architecture](../Architecture.md), [Security](../../SECURITY.md) and [Ethics](../ethics.md). Retained for rationale, not current performance claims.
 
 # Design Rationale — How & Why We Built the Adversarial Defense Shield
 

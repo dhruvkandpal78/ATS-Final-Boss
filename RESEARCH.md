@@ -13,7 +13,7 @@ Rules and model scores are separate. The deployed review policy does not jitter 
 
 ## Data and evaluation
 
-Historical synthetic text-marker experiments and their plots/reports are retained in `results/`. They are historical outputs, not current accuracy claims or real-PDF hidden-text validation. The removed external API injector was not part of the maintained pipeline or supported evaluation; its existence never established generalization, human ground truth or permission to transmit resumes.
+Historical synthetic text-marker aggregate reports are retained in [the results index](results/reports/README.md). Unmaintained plots and per-row exports were removed from the current tree; their prior revision is recorded in the cleanup inventory. They are historical outputs, not current accuracy claims or real-PDF hidden-text validation. The removed external API injector was not part of the maintained pipeline or supported evaluation; its existence never established generalization, human ground truth or permission to transmit resumes.
 
 The [dataset acquisition script](scripts/acquire_resume_dataset.py) retrieves a pinned public PDF corpus with hashes into ignored local storage. These are real layouts with unreviewed manipulation labels. Public availability does not establish natural attack ground truth or permission for every subsequent use.
 

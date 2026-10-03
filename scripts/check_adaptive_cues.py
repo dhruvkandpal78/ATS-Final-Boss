@@ -17,7 +17,7 @@ from src.core.review_policy import POLICY_VERSION
 from src.modules.module_c import SemanticCoherenceScorer
 
 
-DIAGNOSTIC_VERSION = "1.0"
+DIAGNOSTIC_VERSION = "1.2"
 
 # Synthetic probes intentionally cover representations and phrasings outside
 # the current narrow lexical patterns. Keep expected outcomes explicit.

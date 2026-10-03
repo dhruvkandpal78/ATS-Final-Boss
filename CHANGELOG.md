@@ -1,6 +1,44 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: publication tree cleanup
+
+Removed 14 unused or obsolete files: unsupported Streamlit dashboard/encoder, duplicate UI proposals and assistant plans, presentation script, stale plots/per-row output, misleading architecture diagram and empty report placeholder. Retained measured reports, original adverse counts, tests, license notices and dated research records. Replaced the docs preamble with a current index, added a results index, removed resume excerpts/sample IDs from legacy error analysis and strengthened generated/scratch ignore rules. No history rewrite or detector changes. See [inventory and verification](docs/progress/REPO_CLEANUP_2026-10-03.md).
+
+## 2026-10-03: targeted paraphrase red-team continuation
+
+Exercised new fictional applicant-directed commands and legitimate workflows against frozen preceding cues. Added first-rank/shortlist, own-rating100 and explicit hiring/fabrication/outcome-reuse coverage; preserved review-discovered verification/completion conditions with bypass precedence. On 11 attack/14 benign development strings: prior0/11 detected and0/14 flags, revised11/11 and0/14; 50 visible/hidden PDF routes verify consistent policy. Three further probe families still evade detection. No classifier thresholds or parameters changed and prior Kaggle results were not rewritten. See [scope, gaps and verification](docs/progress/PARAPHRASE_REDTEAM_2026-10-03.md).
+
+## 2026-10-03: exact-input recovery replay completed
+
+All 182 previous completed misses now receive completed review on the same inputs. Full attack cohort: 454 complete reviews, five partial reviews, zero complete misses. Unmodified cohort: zero review flags and 23 insufficient analyses. The original adverse benchmark is preserved. This is known-set development evidence, not independent accuracy or downstream protection. Verification: 718 offline tests passed, five skips, three integration exclusions; final focused checks 101 passed. See [receipt reconciliation and limitations](results/reports/kaggle-recovery-development-20261003.md).
+
+## 2026-10-03: bounded recovery of observed instruction misses
+
+Diagnosed the four families behind 182 complete stress-test misses; added passive single-layer Base64 recovery, mixed-token lookalike folding, narrow Spanish directives and qualification-fabrication checks. Detection, explanation and source spans share matching; encoded evidence anchors the original carrier. Paired benign and PDF controls cover context/wrapping and explicit fixture/apply precedence. Recovery code joins mandatory policy pins; old freezes fail closed and new study candidates remain unapproved. Original adverse results stay intact. See [change and evaluation record](docs/progress/CUE_RECOVERY_2026-10-03.md).
+
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
+
+## 2026-10-03: large frozen Kaggle PDF stress test
+
+Added a source-excluded, byte/text-deduplicated offline benchmark with exactly 20%
+verified authored PDF interventions and explicit incomplete/error accounting.
+Downloaded 2,484 PDFs; used 2,295 previously unused unique sources (1,836 unmodified,
+459 injected). Actual results: zero original flags, 23 insufficient originals;
+272 complete and three partial attack reviews, 182 complete no-signals and two
+insufficient attacks. Oblique authored families received no review. These are
+controlled labels, not true natural manipulation labels or downstream outcomes.
+No detector rules, thresholds or parameters were tuned after measurement. Raw data,
+model weights and receipts stay local. See [result](results/reports/kaggle-stress-20pct-20261003.md)
+and [verification/change record](docs/progress/KAGGLE_STRESS_2026-10-03.md).
+
+## 2026-10-03: pre-commit qualification and bypass review
+
+Reviewed before committing: added local positive-qualification conditions for outcome
+cues, with explicit bypass taking precedence. Grouped override/outcome patterns and
+named PDF fixture groups; detector, explanation and source evidence share the same
+scope. On 40 authored development strings, preceding 704385f flags 6/22 benign strings
+versus 0/22 in the patch, with 18/18 directed attack cues in both. These are known
+regressions, not independent accuracy. See [quality review and limits](docs/progress/QUALITY_REVIEW_2026-10-03.md).
 
 ## 2026-10-03: applicant-targeted instruction precision
 

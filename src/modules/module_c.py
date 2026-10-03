@@ -1,11 +1,11 @@
 import numpy as np
 import logging
 import re
-import unicodedata
 from bisect import bisect_left, bisect_right
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from src.modules.calibration import clean_validation_threshold
+from src.modules.cue_recovery import cue_views, normalize_cue_text
 import pandas as pd
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -133,46 +133,120 @@ class SemanticCoherenceScorer:
     SCORE_DIRECTIVE_PREFIX = re.compile(
         r"\s*(?:[-*•]\s*)?(?:(?:please|you\s+must)\s+|(?:system\s+override|ats\s+(?:scoring\s+)?instruction|screening\s+instruction|for\s+(?:hiring|screening))\s*[:,]\s*)?"
     )
-    INJECTION_PATTERNS = [
+    INSTRUCTION_OVERRIDE_PATTERNS = (
         r"\bignore\s+(all\s+)?previous\s+instructions?\b",
         r"\bdisregard\s+(all\s+)?previous\s+(?:instructions?|rules?|guidance|directives?)\b",
-        r"\brank\s+me\s+(as\s+)?#?1\b",
-        r"\brank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?#?1\b",
-        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
+        r"\b(?:ignora|ignore|omite|omita|descarta|descarte)\s+(?:(?:todas|las|los)\s+){0,3}instrucciones\s+(?:anteriores|previas)\b",
+    )
+    SPANISH_TARGET = r"(?:este|esta|el|la)\s+(?:candidat[oa]|solicitante|curr[ií]culum)"
+    SPANISH_SCORE = r"(?:la\s+)?(?:puntuaci[oó]n|calificaci[oó]n)\s+(?:m[aá]xima|perfecta|de\s+100)"
+    OUTCOME_DIRECTIVE_PATTERNS = (
+        r"\brank\s+me\s+(as\s+)?(?:#?1|first|number\s+one)\b",
+        r"\brank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?(?:#?1|first|number\s+one)\b",
+        r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+(?:score|rating)\s+(?:to|of)\s+100\b",
+        r"\b(?:place|put)\s+(?:me|(?:this|the)\s+(?:candidate|applicant|resume))\s+at\s+(?:the\s+)?(?:very\s+)?top\s+of\s+(?:the\s+)?(?:shortlist|ranking|list)\b",
+        r"\bchoose\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+as\s+(?:the\s+)?first[-\s]choice\s+candidate\b",
+        r"\byou\s+must\s+hire\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+(?:today|now|immediately)\b",
+        r"\btreat\s+my\s+missing\s+(?:clearance|credential|certification|qualification|licen[cs]e)\s+as\s+(?:satisfied|verified|present|met)\b",
+        r"\bmake\s+(?:the\s+)?final\s+disposition\s+for\s+my\s+application\s+[\"'“‘]?advance\s+to\s+interview[,\"'”’]{0,3}\s+(?:even\s+if|regardless\s+of)\b",
+        r"\buse\s+(?:that|this)\s+exact\s+outcome\s+for\s+my\s+application\s+(?:even\s+)?without\b",
+        r"\bwrite\s+[\"'“‘]?hire[\"'”’]?\s+for\s+me\s+and\s+(?:leave|set)\s+(?:the\s+)?score\s+at\s+full\s+marks\b",
         r"\b(?:treat|consider|mark)\s+(?:this|the)\s+(?:resume|candidate|applicant)\s+as\s+(?:a\s+)?(?:perfect|ideal|top|best)\s+match\b",
         SCORE_ALLOCATION_PATTERN,
         r"\b(?:mark|make|deem)\s+(?:this|the)\s+(?:candidate|applicant|resume)\s+(?:eligible|qualified|a\s+perfect\s+match)\b",
         r"\byou\s+must\s+(?:return|output|print)\s+(?:a\s+)?decision\s+that\s+makes?\s+(?:this|the)\s+(?:candidate|applicant)\s+(?:eligible|qualified)\b",
         r"\bdo\s+not\s+reject\s+(?:me|(?:this|the|my)\s+(?:candidate|applicant|application|resume))\b",
         r"\bhire\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+immediately\b",
-    ]
+        rf"\b(?:asigna|asigne|otorga|otorgue|establece|establezca)\s+(?:(?:a|para)\s+{SPANISH_TARGET}\s+{SPANISH_SCORE}|{SPANISH_SCORE}\s+(?:a|para)\s+{SPANISH_TARGET})\b",
+        rf"\b(?:marca|marque|considera|considere|declara|declare)\s+(?:a\s+)?{SPANISH_TARGET}\s+(?:como\s+)?(?:apt[oa]|elegible|calificad[oa]|id[oó]ne[oa])\b",
+    )
+    INJECTION_PATTERNS = INSTRUCTION_OVERRIDE_PATTERNS + OUTCOME_DIRECTIVE_PATTERNS
+
+    QUALIFICATION_CONDITION = re.compile(
+        r"\b(?:only\s+)?(?:when|if|after|until)\s+[^.!?;\n]{0,96}\b"
+        r"(?:criteria|qualifications|credentials?|checks|requirements|licen[cs]es?|certifications?|interview\s+score)\b"
+        r"[^.!?;\n]{0,48}\b(?:met|present|verified|complete|clear|highest)\b"
+        r"|\bwho\s+meets?\s+(?:all\s+)?(?:the\s+)?(?:listed\s+|required\s+|mandatory\s+)?"
+        r"(?:rubric\s+)?(?:criteria|requirements|qualifications)\b"
+        r"|\b(?:following\s+(?:the\s+)?completion|subject\s+to\s+(?:the\s+)?verification)\s+of\s+"
+        r"(?:(?:all|the|required|mandatory|listed)\s+){0,5}"
+        r"(?:checks|qualifications|requirements|credentials|certifications|licen[cs]es)\b"
+        r"|\b(?:solo\s+|s[oó]lo\s+)?(?:si|cuando)\s+[^.!?;\n]{0,96}\b"
+        r"(?:requisitos|cualificaciones|credenciales)\b[^.!?;\n]{0,48}\b(?:cumplid[oa]s?|verificad[oa]s?|presentes)\b"
+        r"|\b(?:solo\s+|s[oó]lo\s+)?(?:si|cuando)\s+[^.!?;\n]{0,48}\b(?:cumple|cumplen)\b"
+        r"[^.!?;\n]{0,48}\b(?:requisitos|cualificaciones|credenciales)\b"
+    )
+    QUALIFICATION_FABRICATION = re.compile(
+        r"\b(?:assume|pretend|fabricate|act\s+as\s+if)\s+(?:that\s+)?"
+        r"(?:(?:all|the|those|these|their|required|mandatory|listed|missing|relevant)\s+){0,6}"
+        r"(?:qualifications|requirements|credentials|certifications|licen[cs]es?)\s+"
+        r"(?:(?:are|is|were|have\s+been|has\s+been)\s+)?(?:met|present|verified|complete|cleared|satisfied)\b"
+    )
+    EXPLICIT_BYPASS = re.compile(
+        r"\b(?:regardless\s+of|irrespective\s+of|despite|even\s+if|whether\s+or\s+not)\b"
+        r"|\b(?:ignore|disregard|override|bypass|skip)\b"
+        r"|\b(?:independientemente\s+de|sin\s+(?:considerar|cumplir|verificar)|aunque\s+no\s+cumpl[ae])\b"
+    )
 
     BENIGN_PATTERNS = [
         r"researching\s+prompt\s+injection",
         r"legitimate\s+instruction",
         r"quoted\s+from",
-        r"example\s+of"
+        r"example\s+of",
     ]
 
     def _injection_signal(self, text: str) -> int:
         if not isinstance(text, str):
             return 0
 
-        normalized = self._normalize_cue_text(text)
-        boundaries = self._cue_context_boundaries(normalized)
-        count = 0
-        for pattern in self.INJECTION_PATTERNS:
-            matches = re.finditer(pattern, normalized)
-            if any(not self._is_benign_cue_context(normalized, match.start(), match.end(),
-                                                 boundaries=boundaries) for match in matches):
-                count += 1
-        return count
+        return len({pattern for _, pattern, _ in self._actionable_cue_matches(text)})
+
+    @classmethod
+    def _actionable_cue_matches(cls, text):
+        """Share bounded recovery, local exclusions and source identity everywhere."""
+        views = cue_views(text)
+        original = views[0]
+        original_boundaries = cls._cue_context_boundaries(original.text)
+        for view in views:
+            if view.carrier_span is not None:
+                start, end = view.carrier_span
+                if original.offsets is not None:
+                    start = bisect_left(original.offsets, start)
+                    end = bisect_left(original.offsets, end)
+                else:
+                    start = len(cls._normalize_cue_text(text[:start]))
+                    end = len(cls._normalize_cue_text(text[:end]))
+                prefix = original.text[max(0, start - 160):start]
+                fixture_label = re.search(
+                    r"\b(?:fixture|example|test\s+(?:sample|case))\b"
+                    r"[^.!?;]{0,100}\b(?:base64|encoded)\b[\s:=-]*$", prefix)
+                apply_command = re.search(
+                    r"\b(?:decode|apply|execute|obey|follow)\b", prefix)
+                if fixture_label and not apply_command:
+                    continue
+                if cls._is_benign_cue_context(original.text, start, end,
+                                              boundaries=original_boundaries):
+                    continue
+            boundaries = original_boundaries if view.kind == "plain" else cls._cue_context_boundaries(view.text)
+            for pattern in cls.INJECTION_PATTERNS:
+                for match in re.finditer(pattern, view.text):
+                    if not cls._is_benign_cue_context(view.text, match.start(), match.end(), boundaries=boundaries):
+                        yield view, pattern, match
+
+    @classmethod
+    def _source_instruction_spans(cls, text, limit=20):
+        spans = set()
+        for view, _, match in cls._actionable_cue_matches(text):
+            if view.carrier_span is not None:
+                spans.add(view.carrier_span)
+            elif view.offsets is not None and match.end() > match.start():
+                spans.add((view.offsets[match.start()], view.offsets[match.end() - 1] + 1))
+        return [{"char_start": start, "char_end": end} for start, end in sorted(spans)[:limit]]
 
     @staticmethod
     def _normalize_cue_text(text: str) -> str:
         """Normalize compatibility characters and remove invisible format controls."""
-        normalized = unicodedata.normalize("NFKC", text).casefold()
-        return "".join(char for char in normalized if unicodedata.category(char) != "Cf")
+        return normalize_cue_text(text)
 
     @staticmethod
     def _cue_context_boundaries(text: str):
@@ -188,13 +262,39 @@ class SemanticCoherenceScorer:
         right_index = bisect_left(starts, end)
         left_boundary = ends[left_index] if left_index >= 0 else 0
         right_boundary = starts[right_index] if right_index < len(starts) else len(text)
+        # A closing quote immediately after terminal punctuation belongs to
+        # this example, rather than the next statement's instruction.
+        terminal_quote = re.match(r"[.!?;]+[ \t]{0,8}[\"'’”`]", text[right_boundary:])
+        if terminal_quote:
+            right_boundary += terminal_quote.end()
         clause = text[left_boundary:right_boundary]
         local_start = start - left_boundary
         local_end = end - left_boundary
 
-        # Descriptions of a rubric/API allocating scores are not directives.
-        # Check the exact local prefix, not a broad document-level whitelist.
-        if (re.fullmatch(cls.SCORE_ALLOCATION_PATTERN, text[start:end]) is not None
+        cue_text = text[start:end]
+        bypass = cls.EXPLICIT_BYPASS.search(clause) is not None
+        # A local qualification-dependent outcome is not an unconditional
+        # instruction to manipulate screening. Explicit bypass wins over it.
+        is_outcome = any(re.fullmatch(pattern, cue_text) is not None
+                         for pattern in cls.OUTCOME_DIRECTIVE_PATTERNS)
+        fabricated = False
+        if is_outcome:
+            # Include only the current and immediately following statement,
+            # allowing PDF line wrapping inside the bounded instruction block.
+            window_end = min(len(text), end + 320)
+            next_period = re.search(r"[.!?;]", text[right_boundary + 1:window_end])
+            if next_period:
+                window_end = right_boundary + 1 + next_period.end()
+            for assertion in cls.QUALIFICATION_FABRICATION.finditer(text, end, window_end):
+                if not cls._is_benign_cue_context(text, assertion.start(), assertion.end(), boundaries=boundaries):
+                    fabricated = True
+                    break
+        if is_outcome and not bypass and not fabricated and cls.QUALIFICATION_CONDITION.search(clause[local_end:]):
+            return True
+        # Unknown descriptive prefixes remain non-actionable for allocation;
+        # explicit bypass language cannot use that exclusion to evade review.
+        if (re.fullmatch(cls.SCORE_ALLOCATION_PATTERN, cue_text) is not None
+                and not bypass
                 and cls.SCORE_DIRECTIVE_PREFIX.fullmatch(clause[:local_start]) is None):
             return True
 
@@ -222,14 +322,7 @@ class SemanticCoherenceScorer:
     @classmethod
     def _injection_cue_for_sentence(cls, text: str):
         """Return the first actionable cue for explanation, with the same scope as scoring."""
-        normalized = cls._normalize_cue_text(text)
-        boundaries = cls._cue_context_boundaries(normalized)
-        for pattern in cls.INJECTION_PATTERNS:
-            for match in re.finditer(pattern, normalized):
-                if not cls._is_benign_cue_context(normalized, match.start(), match.end(),
-                                                boundaries=boundaries):
-                    return pattern
-        return None
+        return next((pattern for _, pattern, _ in cls._actionable_cue_matches(text)), None)
 
     def _variance_from_unit_emb(self, unit_emb) -> float:
         n = len(unit_emb)

@@ -13,7 +13,7 @@ FILES = ("meta_classifier.pkl", "scaler.pkl", "thresholds.json", "model_config.j
 FILES_V2 = ("linear_model.json", "thresholds.json", "model_config.json")
 POLICY_FILES = ("src/core/review_policy.py", "src/core/analysis_service.py", "src/core/evidence.py",
                 "src/modules/module_a.py", "src/modules/module_b.py", "src/modules/module_c.py",
-                "src/core/linear_artifacts.py")
+                "src/core/linear_artifacts.py", "src/modules/cue_recovery.py")
 MAX_MANIFEST_BYTES = 256 * 1024
 ARTIFACT_LIMITS = {name: 64 * 1024 * 1024 if name.endswith(".pkl") else 1024 * 1024 for name in FILES}
 ARTIFACT_LIMITS["linear_model.json"] = 16 * 1024

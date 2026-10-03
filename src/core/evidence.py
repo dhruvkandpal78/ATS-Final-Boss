@@ -4,6 +4,9 @@ import unicodedata
 
 
 def instruction_spans(text, detector, limit=20):
+    recovered = getattr(detector, "_source_instruction_spans", None)
+    if callable(recovered):
+        return recovered(text, limit=limit)
     normalize = getattr(detector, "_normalize_cue_text", None)
     benign = getattr(detector, "_is_benign_cue_context", None)
     patterns = getattr(detector, "INJECTION_PATTERNS", ())

@@ -1,5 +1,26 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+Publication cleanup removes 14 unused/obsolete files while retaining runtime, tests and dated measured research evidence. Documentation/results indexes separate current guidance from historical metrics; generated local outputs remain excluded. See [inventory](REPO_CLEANUP_2026-10-03.md).
+
+New targeted paraphrase controls: 11/11 authored directed commands recovered versus 0/11 previously, with 0/14 benign flags and paired PDF checks. Independent accuracy remains unverified; JSON references, URL encoding, spaced letters, Hindi and split-sentence examples remain uncovered. See [record](PARAPHRASE_REDTEAM_2026-10-03.md).
+
+The [completed development replay](../../results/reports/kaggle-recovery-development-20261003.md) recovered 182/182 previous completed misses. Attack dispositions: 454 complete review, five partial review, zero complete misses; originals: zero review flags, 23 insufficient. These are known-case results, not independent accuracy.
+
+Known-miss recovery adds bounded encoded/mixed-script views, limited Spanish directives and conditional-fabrication checks. Paired fixture/apply precedence, benign workflow and real PDF wrapping regressions verify scope; independent accuracy and downstream benefit remain open. See [implementation record](CUE_RECOVERY_2026-10-03.md).
+
+October 3 large Kaggle stress run completed: 2,295 PDFs with exactly 459 (20%)
+injected attempts. Unmodified originals: zero review flags, 23 insufficient analyses.
+Added edits: 272 complete reviews, three partial reviews, 182 complete no-signals and
+two insufficient analyses. No runtime errors. Four authored oblique families received
+no review. This is controlled edit evidence, not independent ground truth or customer
+protection. See [measured result](../../results/reports/kaggle-stress-20pct-20261003.md)
+and [change record](KAGGLE_STRESS_2026-10-03.md).
+
+Pre-commit quality review: qualification-dependent workflow controls are scoped
+locally, with explicit bypass taking precedence; source/explanation/PDF controls
+and named pattern groups verify the change. Independent accuracy remains open.
+See [review and verification](QUALITY_REVIEW_2026-10-03.md).
+
 October 3 precision continuation: generic technical cues no longer independently
 recommend review, even in hiring prose; score/outcome commands require an applicant
 target. Authored text and visible/white-on-white PDF controls pass. Population false

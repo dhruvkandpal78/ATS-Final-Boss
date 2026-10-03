@@ -1,5 +1,24 @@
 # Issue Ledger
 
+- [x] Removed unsupported/dead UI utility code and obsolete duplicate plans, generated proxy outputs and inaccurate architecture diagram; preserved aggregate evidence and all required license/runtime/test assets.
+- [x] Current docs/results indexes and publication ignore rules refreshed; cleanup does not purge prior published history. See [record](REPO_CLEANUP_2026-10-03.md).
+
+- [x] Added targeted rank/rating/outcome paraphrases and review-discovered qualification gates with explicit bypass/fabrication controls; 11 authored commands and14 benign strings have consistent source/PDF behavior.
+- [ ] JSON outcome references, URL encoding, letter-spaced instructions, Hindi and split-sentence authored examples still evade the cue layer. This remains a bounded lexical defense, not comprehensive security. See [record](PARAPHRASE_REDTEAM_2026-10-03.md).
+
+- [x] Replayed all frozen cases: recovered 182/182 previous completed misses, 454 complete and five partial attack reviews, zero complete misses; zero original review flags and 23 insufficient originals remain.
+- [ ] Independent unseen-family accuracy, natural labels and downstream protection remain open; known-set recovery is not population zero error. See [result](../../results/reports/kaggle-recovery-development-20261003.md).
+
+- [x] Implemented bounded recovery for four observed missed families with source-anchored evidence, paired benign controls and independently reviewed fixture/apply precedence.
+- [ ] General oblique/multilingual/encoded recall, independently labeled false positives and downstream protection remain unverified; the replay is known-case development evidence. See [record](CUE_RECOVERY_2026-10-03.md).
+
+- [x] Ran a frozen source-excluded 2,295-PDF Kaggle stress test with exactly 20% verified authored interventions, real offline models and explicit abstention accounting; receipts and family totals reconciled.
+- [ ] Encoded, Spanish, homoglyph and conditional-mimicry interventions received no review: 182 complete no-signals and two insufficient cases. Fixes must not rewrite this known-set evidence; downstream effects remain unmeasured. See [result](../../results/reports/kaggle-stress-20pct-20261003.md).
+- [ ] Zero flags on 1,836 unmodified originals does not establish a zero population false-positive rate; 23 original analyses were insufficient and natural labels remain unreviewed.
+
+- [x] Pre-commit review found and fixed qualification-dependent procedural false flags; explicit bypass wins over conditions, with shared source/PDF checks and explicit pattern groups.
+- [ ] Conditional mimicry failed in the subsequent controlled stress run; unseen attacks remain unverified and authored zero flags are not population accuracy. See [quality review](QUALITY_REVIEW_2026-10-03.md).
+
 - [x] Applicant-targeted instruction precision and paired ATS engineering/PDF controls implemented.
 - [ ] Independent population false-positive, unseen recall and downstream benefit evidence remain open. See [record](APPLICANT_INTENT_PRECISION_2026-10-03.md).
 

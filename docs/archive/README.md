@@ -1,7 +1,14 @@
-# Historical planning and review records
+# Historical rationale
 
-These files preserve dated planning, design, capstone, and implementation context. They are retained for research provenance and do not define current product behavior, supported workflows, or performance claims. Use the root [README](../../README.md), [current architecture](../Architecture.md), and [documentation map](../README.md) for maintained guidance.
+Retained for methodology provenance:
 
-The original files retain their historical text; the UI rebuild specification was converted from UTF-16 to UTF-8 for Markdown/tool compatibility. References inside them may describe old paths, scripts, metrics, or designs; interpret those statements in their historical context.
+- [Original PRD](PRD.md)
+- [Original design rationale](DESIGN_RATIONALE.md)
 
-The retained [UI rebuild specification](ATS_Final_Boss_Review_and_UI_Rebuild.md) is the canonical historical copy. Its equivalent TXT export and the obsolete migration map were removed from the current tree. Old referenced paths remain available in Git history and are not supported workflows.
+These are past proposals, not current behavior or accuracy claims. Maintained
+specifications are in the [documentation index](../README.md).
+
+Duplicate UI implementation plans, the obsolete terminal design, assistant memory,
+six-week schedule and capstone slide script were removed from the publication tree.
+Their last retained snapshot is commit `21d1fa2676d2cad16aeda05ce81a578e27090d3b`.
+The [cleanup record](../progress/REPO_CLEANUP_2026-10-03.md) lists removed paths.

@@ -1,6 +1,20 @@
 # Current system architecture
 
+Targeted paraphrase coverage extends applicant-directed first-rank, shortlist placement, rating100 and explicit hire/fabrication/outcome-reuse commands. Bounded verification/completion conditions retain benign exclusions, with bypass/fabrication taking precedence. The shared cue/source boundary remains lexical and incomplete; see [development evidence](progress/PARAPHRASE_REDTEAM_2026-10-03.md).
+
+The [exact-case recovery replay](../results/reports/kaggle-recovery-development-20261003.md) recovered all 182 previous completed misses with no additional original review flags. This is observed-case development evidence; unsupported attacks and production gates remain open.
+
+Passive instruction recovery is bounded to 100,000 input characters, 32 candidate encoded blocks and 2,048 encoded characters per block. Strict UTF-8 Base64 is decoded once and never executed. Mixed Latin tokens receive limited visual-lookalike folding; narrow Spanish rules and local explicit qualification-fabrication checks share cue/explanation/evidence matching. Encoded spans anchor the source carrier. The recovery utility is mandatory in policy pins; old freezes fail closed. See [scope and limits](progress/CUE_RECOVERY_2026-10-03.md).
+
 Updated October 3, 2026. This describes the maintained implementation; older plans and experimental reports are historical.
+
+The [large controlled stress runner](research/KAGGLE_STRESS_PROTOCOL.md) freezes
+source selection, exact 20% authored intervention assignment, policy/model bytes and
+offline CPU embedding identity before invoking this same PDF service. It partitions
+complete review, partial review, complete no-signals and insufficient/error outcomes.
+Its [measured result](../results/reports/kaggle-stress-20pct-20261003.md) includes 182
+injected documents with complete no-signals; it establishes neither natural-world
+accuracy nor downstream protection. The research candidate remains unapproved.
 
 ## Runtime and trust boundaries
 
@@ -19,6 +33,12 @@ rejection and hiring commands target an applicant or candidate document. Existin
 instruction overrides remain cues. This reduces known ATS engineering false flags
 while allowing vague/remote-target attacks to evade the lexical layer; never equate
 no cues with a safe document. See [precision change](progress/APPLICANT_INTENT_PRECISION_2026-10-03.md).
+
+Outcome cues distinguish bounded positive qualification conditions from explicit
+bypass language in the same clause; bypass takes precedence. Strong instruction
+overrides are a separate pattern group. This is a lexical precision heuristic, not
+trust in resume conditions or a complete prompt-injection defense. See the
+[pre-commit quality review](progress/QUALITY_REVIEW_2026-10-03.md).
 
 ```mermaid
 flowchart TD
@@ -123,7 +143,7 @@ Regular wheels include src/app/index.html, maintained CSS/JavaScript assets, the
 
 Both maintained HTTP adapters use one strict body-header validator before reading JSON. Transfer-Encoding is unsupported; Content-Length must occur once, contain decimal digits and stay within the body limit; Content-Type must occur once and be application/json. Malformed deeply nested JSON returns 400. Worker crash events record exception type and exit code rather than raw exception text. Synthetic transport tests exercise rejection before inference.
 
-The historical Streamlit dashboard is a separate proxy experiment; it uses local font fallbacks and explicitly labels its uncalibrated scores. It is not a supported company deployment. The [customer release gate](COMPANY_RELEASE_GATE.md) records the operational evidence still required for the single-organization pilot. See [the change record](progress/COMPANY_HTTP_HARDENING_2026-09-30.md).
+The unused historical Streamlit proxy dashboard was removed from the maintained tree; the supported interfaces are the server and ASGI adapters. The [customer release gate](COMPANY_RELEASE_GATE.md) records the operational evidence still required for the single-organization pilot. See [the change record](progress/COMPANY_HTTP_HARDENING_2026-09-30.md).
 
 ## Data-minimized review boundary
 
