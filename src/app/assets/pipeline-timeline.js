@@ -46,18 +46,18 @@
     const position = focus - x;
     const fill = Math.max(0, Math.min(1, (position - first) / Math.max(1, last - first)));
     milestones.style.setProperty('--pipeline-progress', fill);
-    let nearest = 0;
+    let reachedStep = 0;
     steps.forEach((step, index) => {
-      const left = milestones.offsetLeft + step.offsetLeft + x;
-      if (Math.abs(position - (milestones.offsetLeft + step.offsetLeft)) <
-          Math.abs(position - (milestones.offsetLeft + steps[nearest].offsetLeft))) nearest = index;
-      const reveal = Math.max(0, Math.min(1,
-        (viewport.clientWidth * 0.94 - left) / (viewport.clientWidth * 0.24)));
+      const node = milestones.offsetLeft + step.offsetLeft;
+      // Entering the viewport is not reaching the milestone: reveal only when
+      // the rendered progress line arrives at this dot (allow subpixel rounding).
+      const reveal = position >= node - 0.5 ? 1 : 0;
+      if (reveal) reachedStep = index;
       gsap.set(step.querySelector('.pipeline-stem'), { scaleY: reveal });
       gsap.set(step.querySelector('.pipeline-dot'), { scale: reveal });
       gsap.set(step.querySelector('.pipeline-copy'), { opacity: reveal, y: (1 - reveal) * 16 });
     });
-    activate(nearest);
+    activate(reachedStep);
   }
 
   function activate(index) {

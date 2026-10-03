@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: milestone reveal waits for line arrival
+
+Corrected premature step reveals in the horizontal pipeline. Viewport entry previously made upcoming text visible before the progress line reached its dot. Text, stem and dot now reveal only at line arrival, and selected navigation follows the last reached milestone instead of the nearest one. Verified steps 1–3, backward navigation, final-step completion and ordinary scrolling in the live browser. JavaScript syntax and preview export checks passed. See the [motion repair follow-up](docs/progress/RUNTIME_AND_MOTION_REPAIR_2026-10-03.md).
+
 ## 2026-10-03: clear review results, synchronized pipeline and working local analysis
 
 Put the policy result first: Needs review, No review triggers found, or Inconclusive, with one reason and a next action. Removed module percentage bars that could be mistaken for fraud probability; moved model output, coverage and module status into collapsed details below findings. Experimental model output uses its raw 0–1 scale. Added decision-copy regression tests so numeric signals cannot override the policy result. No detector accuracy or binary authenticity claim is introduced.

@@ -24,6 +24,12 @@ Four copy regressions verify that a maximum numeric signal cannot promote insuff
 
 ## Runtime and motion checks
 
+### Follow-up: premature milestone reveal
+
+Further user review identified that steps 2 and 3 were visible before the line reached them. Although all states shared the rendered pan, the copy reveal still used viewport-entry geometry, and selection used the nearest dot. The earlier button checks verified legibility, not this ordering requirement. Replaced both with line-arrival gating: a milestone's text, dot and stem remain hidden until the rendered fill reaches its dot; selection follows the last reached dot. A 0.5 px tolerance handles rounding at exact button targets.
+
+Live browser observations at 1440 × 900: step 1 had copy opacity [1,0,0]; ordinary scrolling before step 2 retained [1,0,0]; step 2 had [1,1,0]; step 3 had [1,1,1,0,0,0,0]. Returning to step 1 hid all later steps, and step 7 revealed all seven. This is a presentation timing correction; backend behavior is unchanged. JavaScript syntax and four preview tests passed for this follow-up; the full 837-test result below belongs to the preceding runtime/result patch.
+
 Browser checks at 1814 × 702 exercised all seven step buttons: each selected its matching label and showed fully opaque, unclipped text. Additional 1280 × 650 and 1440 × 900 resize checks verified geometry-based navigation. Desktop themes, mobile/static fallback and analysis-route cleanup were inspected. JavaScript syntax checks passed.
 
 The actual localhost service completed a fictional pasted-text instruction case and a separately generated fictional PDF. Both returned findings for human review; text kept its partial coverage/no combined-score behavior, and PDF displayed its experimental score with limitations. These are runtime smoke checks, not an accuracy benchmark. A separate port-8001 smoke observed cold health, HTTP 200 analysis and then model readiness. No real applicant data was used or published.
