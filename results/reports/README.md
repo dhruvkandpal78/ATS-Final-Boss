@@ -2,6 +2,10 @@
 
 ## Controlled PDF evidence
 
+- [External HiringAudit challenge](external-hiringaudit-20261003.md): adverse
+  externally authored synthetic result, 100/1,000 attack flags, 900 complete
+  unflagged assignments; six shadow comparators and grouped uncertainty.
+
 - [Frozen 2,295-PDF stress test](kaggle-stress-20pct-20261003.md): original adverse
   result, including 182 completed misses and unreviewed original labels.
 - [Exact-case recovery replay](kaggle-recovery-development-20261003.md): development

@@ -78,17 +78,16 @@ class PublicPreviewTests(unittest.TestCase):
             for control_id in (
                 "resume-file", "resume-text", "sample-select", "tab-text", "tab-pdf",
                 "submit-analysis", "cancel-analysis", "clear-input", "remove-file",
-                "analyze-sample", "explore-sample",
             ):
                 self.assertIn("disabled", reader.controls[control_id][1], control_id)
-            self.assertTrue(reader.sample_controls)
-            self.assertTrue(all("disabled" in attrs for attrs in reader.sample_controls))
+            self.assertFalse(reader.sample_controls)
+            self.assertNotIn("analyze-sample", reader.controls)
+            self.assertNotIn("explore-sample", reader.controls)
             self.assertNotIn("disabled", reader.controls["theme-toggle"][1])
             self.assertNotIn("disabled", reader.controls["menu-toggle"][1])
             self.assertTrue(reader.banner_seen)
             self.assertTrue(reader.header_after_banner)
             self.assertIn("disabled = true", script)
-            self.assertIn("#analyze-sample", script)
             self.assertIn("addEventListener('submit'", script)
             self.assertFalse(any(path.suffix.lower() == ".pdf" for path in output.rglob("*")))
             self.assertFalse(any("models" in path.parts or "results" in path.parts
@@ -96,17 +95,20 @@ class PublicPreviewTests(unittest.TestCase):
         finally:
             cleanup_output(output)
 
-    def test_flat_export_places_seven_files_at_root_with_relative_assets(self):
+    def test_flat_export_places_allowlisted_files_at_root_with_relative_assets(self):
         output = export_preview(ROOT / ".test-tmp" / "preview-test-flat", flat=True)
         try:
             expected = {"README.md", *(Path(name).name for name in COPY_MAP.values())}
             actual = {path.name for path in output.iterdir() if path.is_file()}
             self.assertEqual(actual, expected)
-            self.assertEqual(len(actual), 7)
+            self.assertEqual(len(actual), len(COPY_MAP) + 1)
             html = (output / "index.html").read_text(encoding="utf-8")
             self.assertIn('href="style.css"', html)
             self.assertIn('src="theme.js"', html)
             self.assertIn('src="preview.js"', html)
+            for name in ("gsap.min.js", "ScrollTrigger.min.js", "SplitText.min.js", "pipeline-timeline.js"):
+                self.assertIn(f'src="{name}"', html)
+                self.assertTrue((output / name).is_file())
             self.assertFalse((output / "assets").exists())
         finally:
             cleanup_output(output, flat=True)

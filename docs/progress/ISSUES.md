@@ -1,5 +1,17 @@
 # Issue Ledger
 
+- [ ] External HiringAudit generalization fails: only A5 receives review (100/1,000
+  supplied attacks overall). Score/rubric wording, hidden/footer policy routing,
+  metadata and disclosure requests remain gaps. Factual verification is outside
+  document-pattern detection. Preserve these outcomes; any fixes/replay use a
+  consumed development cohort. See [report](../../results/reports/external-hiringaudit-20261003.md).
+- [ ] Natural manipulation labels, independent adjudication, more independent
+  controls/templates and downstream impact remain unestablished; 100 zero-event
+  controls cannot certify below-2% burden.
+- [x] External challenge acquisition is pinned, bounded and lineage checked;
+  paired source uncertainty, shadow comparators and explicit unknown-decision
+  regression are implemented. No dataset or model files enter publication.
+
 - [x] Removed unsupported/dead UI utility code and obsolete duplicate plans, generated proxy outputs and inaccurate architecture diagram; preserved aggregate evidence and all required license/runtime/test assets.
 - [x] Current docs/results indexes and publication ignore rules refreshed; cleanup does not purge prior published history. See [record](REPO_CLEANUP_2026-10-03.md).
 

@@ -1,5 +1,55 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: remove empty Lab page
+
+Removed the unpublished-experiments placeholder and its navigation item. Existing `/lab` links open Methodology in the live app, and static-preview `#/lab` links resolve to Methodology. Research reports and evaluation tooling remain available in the repository. JavaScript syntax, four preview export tests and live legacy-route navigation passed.
+
+## 2026-10-03: reusable connected-timeline guidance
+
+Recorded the final agreed interaction in [the animation contract](docs/CONNECTED_PIPELINE_ANIMATION.md): always-visible steps and guide paths, with connected horizontal fill and vertical branch growth. Saved a separate local Codex skill with a reference implementation for future reuse. The skill is not a runtime dependency or published personal configuration.
+
+## 2026-10-03: readable milestones with connected line animation
+
+Added a permanent faint vertical track behind each animated orange branch, matching the horizontal base track. Unreached steps retain their text, dot and visible branch path. The static/mobile layout omits these decorative tracks.
+
+Corrected the interpretation of the requested animation: all step titles and descriptions remain visible throughout horizontal scrolling. Only the horizontal fill and vertical branches animate. Each vertical branch grows from its dot when the horizontal line arrives, and retracts on backward navigation. Removed copy/dot hiding from the preceding follow-up. Branch tweens are cancelled on route teardown. Checked against the brief supplied in “Assess Claude skill compatibility”; syntax and four preview tests passed.
+
+## 2026-10-03: milestone reveal waits for line arrival
+
+Corrected premature step reveals in the horizontal pipeline. Viewport entry previously made upcoming text visible before the progress line reached its dot. Text, stem and dot now reveal only at line arrival, and selected navigation follows the last reached milestone instead of the nearest one. Verified steps 1–3, backward navigation, final-step completion and ordinary scrolling in the live browser. JavaScript syntax and preview export checks passed. See the [motion repair follow-up](docs/progress/RUNTIME_AND_MOTION_REPAIR_2026-10-03.md).
+
+## 2026-10-03: clear review results, synchronized pipeline and working local analysis
+
+Put the policy result first: Needs review, No review triggers found, or Inconclusive, with one reason and a next action. Removed module percentage bars that could be mistaken for fraud probability; moved model output, coverage and module status into collapsed details below findings. Experimental model output uses its raw 0–1 scale. Added decision-copy regression tests so numeric signals cannot override the policy result. No detector accuracy or binary authenticity claim is introduced.
+
+Fixed the animation's separate timing calculations: text, stems, progress and selected step now follow the rendered horizontal position. Step buttons use measured geometry, the final step can fully enter the reading area, and short/mobile viewports retain a readable static sequence. Removed line masks that could hide the last paragraph. Fixed local analysis startup by verifying an offline data-only candidate and embedding and preflighting writable temporary storage. Cold status no longer claims readiness; status refreshes after analysis. Private startup rejects unapproved research candidates. Fictional text and PDF requests completed through the actual localhost service. See [change and validation record](docs/progress/RUNTIME_AND_MOTION_REPAIR_2026-10-03.md).
+
+## 2026-10-03: concise product copy and removal of redundant demo
+
+Replaced filler landing copy and implementation-focused animation text with the customer workflow and the purpose of each review step. Removed the three-button phrase-switching demo and its obsolete JavaScript/CSS; retained real workspace samples. Added a concise API/SDK section linked to the supported contract. Preserved animation behavior and honest evaluation limits. Updated static-preview handling and regression checks; four preview tests and JavaScript syntax checks passed. See [UI change record](docs/progress/UI_REDESIGN_2026-10-03.md).
+
+## 2026-10-03: MagicPath analysis-workspace refinement
+
+Built a private fictional-content design prototype with the installed MagicPath integration, then adapted its review flow and evidence hierarchy to the existing HTML/CSS analysis page. Added a responsive three-stage guide and score-limit explanation; refined inspection-panel typography. Preserved input/result hooks and the pipeline animation without adding a frontend framework or runtime service dependency. Checked desktop/mobile, light/dark, empty-input feedback and sample reset. This is a UI change, not an accuracy improvement. See [UI record](docs/progress/UI_REDESIGN_2026-10-03.md).
+
+## 2026-10-03: external challenge and UI redesign
+
+Ran an unchanged detector against 1,100 publisher-rendered HiringAudit PDFs:
+100/1,000 supplied attacks flagged, 900 complete unflagged, 0/100 original flags,
+no incomplete/runtime errors. The detection target failed; 100 controls cannot
+establish a below-2% burden bound. Preserve this adverse external result alongside
+known-case Kaggle recovery. Added pinned bounded acquisition, six paired shadow
+comparators, source-group bootstrap, family sensitivity and an unknown-decision
+projection regression. No corpus, model bundle or personal PDF is published.
+See [report](results/reports/external-hiringaudit-20261003.md).
+
+Redesigned the existing frontend's hero, document/evidence preview, workspace,
+controls, light/dark surfaces and mobile navigation. Preserved the existing
+pipeline animation source and hooks, and included its previously local dependency
+assets plus static-preview export coverage. Third-party GSAP headers/terms remain.
+No calibrated probability or high-accuracy claim was added. See
+[UI record](docs/progress/UI_REDESIGN_2026-10-03.md).
+
 ## 2026-10-03: publication tree cleanup
 
 Removed 14 unused or obsolete files: unsupported Streamlit dashboard/encoder, duplicate UI proposals and assistant plans, presentation script, stale plots/per-row output, misleading architecture diagram and empty report placeholder. Retained measured reports, original adverse counts, tests, license notices and dated research records. Replaced the docs preamble with a current index, added a results index, removed resume excerpts/sample IDs from legacy error analysis and strengthened generated/scratch ignore rules. No history rewrite or detector changes. See [inventory and verification](docs/progress/REPO_CLEANUP_2026-10-03.md).

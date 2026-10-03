@@ -1,5 +1,13 @@
 # ATS Final Boss
 
+**Latest external evidence is adverse:** a frozen challenge of 1,100
+publisher-rendered HiringAudit PDFs flagged **100/1,000 supplied attacks**, leaving
+**900 unflagged after complete analysis**, with **0/100 original flags** and no
+incomplete/errors. The control sample does not establish below-2% false-positive
+burden; these are synthetic publisher assignments, not natural manipulation
+labels. Earlier known-attack recovery does not establish generalization. See the
+[full result, comparisons and uncertainty](results/reports/external-hiringaudit-20261003.md).
+
 A further [targeted paraphrase review](docs/progress/PARAPHRASE_REDTEAM_2026-10-03.md) fixes 11 authored directed commands missed by the prior cues, preserving 14 benign controls and paired visible/hidden PDF routing. JSON references, URL encoding and letter-spaced words still evade the authored diagnostic; no unseen zero-error claim is made.
 
 The [known-case replay](results/reports/kaggle-recovery-development-20261003.md) recovered all 182 previous completed misses: 454 completed and five partial attack reviews, zero completed misses. Unmodified controls remain zero flags with 23 insufficient analyses. This reuses observed attacks and does not establish independent zero error.
@@ -21,6 +29,9 @@ workflow instructions, with paired bypass and PDF controls. Results are authored
 real-world false-positive rates remain unverified.
 
 Normal inference requires a verified **data-only V2 candidate**. V1 pickle bundles fail closed and need explicit offline migration or new training. See [provisioning changes and regression scope](docs/progress/PRECISION_AND_DATA_ONLY_2026-10-02.md). Real-world false-positive and recall targets remain unverified.
+
+For a local demo using a pinned candidate and offline embedding export, see the
+[local analysis setup](docs/LOCAL_DEMO.md).
 
 A research security layer for AI hiring pipelines: document-level forensic inspection and conservative human-review gating before an existing screener. It combines keyword analysis, PDF text-trace heuristics and MiniLM coherence evidence. It does **not** determine honesty or suitability for employment, sanitize a resume, or guarantee that a downstream AI system is protected.
 

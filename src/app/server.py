@@ -61,18 +61,23 @@ def get_service():
             os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
         from src.core.analysis_service import AnalysisService
         models = models_directory()
-        if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
-            from src.core.artifacts import verify_policy, verify_candidate
+        candidate_pin = os.environ.get("ATS_CANDIDATE_MANIFEST_SHA256")
+        embedding_pin = os.environ.get("ATS_EMBEDDING_MANIFEST_SHA256")
+        if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private" or candidate_pin or embedding_pin:
+            from src.core.artifacts import verify_policy, verify_candidate, require_deployment_approval
             from src.inference import load_pipeline
-            pin = os.environ["ATS_CANDIDATE_MANIFEST_SHA256"]
-            manifest = verify_candidate(models, pin)
+            if not candidate_pin or not embedding_pin:
+                raise ValueError("Pinned local analysis requires both candidate and embedding manifest hashes")
+            manifest = verify_candidate(models, candidate_pin)
             verify_policy(manifest)
-            clf, scaler, a, b, c = load_pipeline(models, expected_manifest_sha256=pin,
+            if os.environ.get("ATS_DEPLOYMENT_MODE", "local") == "private":
+                require_deployment_approval(manifest)
+            clf, scaler, a, b, c = load_pipeline(models, expected_manifest_sha256=candidate_pin,
                 embedding_dir=os.environ.get("ATS_EMBEDDING_DIR", str(models / "embedding")),
-                expected_embedding_manifest_sha256=os.environ["ATS_EMBEDDING_MANIFEST_SHA256"])
+                expected_embedding_manifest_sha256=embedding_pin)
             _SERVICE = AnalysisService(mod_a=a, mod_b=b, mod_c=c, meta_clf=clf, scaler=scaler)
             _SERVICE.candidate_model = True
-            _SERVICE.model_id = "candidate-" + pin.lower()[:16]
+            _SERVICE.model_id = "candidate-" + candidate_pin.lower()[:16]
         else:
             _SERVICE = AnalysisService(str(models))
     return _SERVICE
@@ -596,9 +601,11 @@ def main():
     if settings.mode == "private" and sys.platform != "linux":
         raise ValueError("Private mode requires a resource-limited Linux container; native demo mode stays local")
     if settings.mode == "private":
-        from src.core.artifacts import verify_candidate, verify_policy
+        from src.core.artifacts import verify_candidate, verify_policy, require_deployment_approval
         bundle = Path(os.environ.get("ATS_MODELS_DIR", str(MODELS_DIR)))
-        verify_policy(verify_candidate(bundle, os.environ["ATS_CANDIDATE_MANIFEST_SHA256"]))
+        manifest = verify_candidate(bundle, os.environ["ATS_CANDIDATE_MANIFEST_SHA256"])
+        verify_policy(manifest)
+        require_deployment_approval(manifest)
     server = BoundedHTTPServer((host, port), Handler, settings)
     def stop(signum, frame):
         raise KeyboardInterrupt

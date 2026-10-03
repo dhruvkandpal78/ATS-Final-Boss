@@ -19,12 +19,14 @@ accuracy certification.
 | Document | Purpose |
 | --- | --- |
 | [Private pilot](PRIVATE_PILOT.md) and [release gate](COMPANY_RELEASE_GATE.md) | Provisioning and acceptance evidence |
+| [Local demo](LOCAL_DEMO.md) | Pinned offline startup, temporary storage and cold-model status |
 | [Operations metrics](OPERATIONS_METRICS.md) | Authenticated telemetry and its limits |
 | [Customer strategy](CUSTOMER_PILOT_STRATEGY.md) | Proposed customer and pilot scope |
 | [Public preview](PUBLIC_PREVIEW.md) | Preview behavior and deployment constraints |
 | [Downstream benchmark](DOWNSTREAM_BENCHMARK.md) | Paired comparison and outcome denominators |
 | [Reference study](REFERENCE_STUDY.md) and [consistency](SCREENER_CONSISTENCY.md) | Reference screener identity and repeatability |
 | [Kaggle protocol](research/KAGGLE_STRESS_PROTOCOL.md) | Frozen 20% intervention experiment |
+| [External challenge](research/EXTERNAL_CHALLENGE_PROTOCOL.md) | Pre-outcome protocol, paired comparators and grouped uncertainty |
 
 ## Evidence and history
 
