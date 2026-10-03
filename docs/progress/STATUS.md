@@ -1,5 +1,9 @@
 # Status: enhancement implementation verified; research release gates remain open
 
+The [completed development replay](../../results/reports/kaggle-recovery-development-20261003.md) recovered 182/182 previous completed misses. Attack dispositions: 454 complete review, five partial review, zero complete misses; originals: zero review flags, 23 insufficient. These are known-case results, not independent accuracy.
+
+Known-miss recovery adds bounded encoded/mixed-script views, limited Spanish directives and conditional-fabrication checks. Paired fixture/apply precedence, benign workflow and real PDF wrapping regressions verify scope; independent accuracy and downstream benefit remain open. See [implementation record](CUE_RECOVERY_2026-10-03.md).
+
 October 3 large Kaggle stress run completed: 2,295 PDFs with exactly 459 (20%)
 injected attempts. Unmodified originals: zero review flags, 23 insufficient analyses.
 Added edits: 272 complete reviews, three partial reviews, 182 complete no-signals and

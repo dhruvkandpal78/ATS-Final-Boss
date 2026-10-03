@@ -1,5 +1,9 @@
 # ATS Final Boss
 
+The [known-case replay](results/reports/kaggle-recovery-development-20261003.md) recovered all 182 previous completed misses: 454 completed and five partial attack reviews, zero completed misses. Unmodified controls remain zero flags with 23 insufficient analyses. This reuses observed attacks and does not establish independent zero error.
+
+The [known-miss recovery record](docs/progress/CUE_RECOVERY_2026-10-03.md) adds bounded passive Base64 views, mixed-token lookalike normalization, narrow Spanish cues and explicit qualification-fabrication checks. The follow-up reuses observed cases and is a development regression, not new independent accuracy. Original results below remain historical.
+
 The [frozen 2,295-PDF Kaggle stress test](results/reports/kaggle-stress-20pct-20261003.md)
 used 1,836 unmodified resumes and 459 injected attempts (20%). It recorded zero
 unmodified flags, 23 incomplete originals, 272 complete attack reviews, three partial

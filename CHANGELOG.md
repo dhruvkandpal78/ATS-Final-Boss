@@ -1,5 +1,13 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: exact-input recovery replay completed
+
+All 182 previous completed misses now receive completed review on the same inputs. Full attack cohort: 454 complete reviews, five partial reviews, zero complete misses. Unmodified cohort: zero review flags and 23 insufficient analyses. The original adverse benchmark is preserved. This is known-set development evidence, not independent accuracy or downstream protection. Verification: 718 offline tests passed, five skips, three integration exclusions; final focused checks 101 passed. See [receipt reconciliation and limitations](results/reports/kaggle-recovery-development-20261003.md).
+
+## 2026-10-03: bounded recovery of observed instruction misses
+
+Diagnosed the four families behind 182 complete stress-test misses; added passive single-layer Base64 recovery, mixed-token lookalike folding, narrow Spanish directives and qualification-fabrication checks. Detection, explanation and source spans share matching; encoded evidence anchors the original carrier. Paired benign and PDF controls cover context/wrapping and explicit fixture/apply precedence. Recovery code joins mandatory policy pins; old freezes fail closed and new study candidates remain unapproved. Original adverse results stay intact. See [change and evaluation record](docs/progress/CUE_RECOVERY_2026-10-03.md).
+
 Entries below record work at their dated revisions. Old script names, running-state notes and performance claims are historical; current supported commands and empirical limits are defined in README and docs/README.md.
 
 ## 2026-10-03: large frozen Kaggle PDF stress test

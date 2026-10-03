@@ -1,5 +1,9 @@
 # Documentation map
 
+The [known-case replay](../results/reports/kaggle-recovery-development-20261003.md) records 454 completed/five partial attack reviews and zero completed misses, with zero original review flags and 23 original insufficient analyses. It preserves the original adverse result and explicitly limits follow-up claims.
+
+The [known-miss recovery record](progress/CUE_RECOVERY_2026-10-03.md) explains the four missed families, bounded passive recovery, original-source evidence, paired benign controls and the new unapproved policy freeze. Original benchmark counts are preserved; replay results are development evidence.
+
 The [large controlled Kaggle result](../results/reports/kaggle-stress-20pct-20261003.md)
 records all 2,295 outcomes, including zero unmodified flags and 182 injected documents
 with complete no-signals. [Protocol](research/KAGGLE_STRESS_PROTOCOL.md) explains exact

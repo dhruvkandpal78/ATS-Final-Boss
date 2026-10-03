@@ -14,8 +14,7 @@ def test_adaptive_cue_diagnostic_is_lexical_only_and_does_not_initialize_model(m
     assert len(result["cases"]) == len(CASES)
     assert result["policy_version"] == POLICY_VERSION
     assert result["misses"] == [
-        "rank_first_paraphrase", "hire_paraphrase", "mixed_cyrillic_homoglyph",
-        "spanish_instruction", "hindi_instruction", "base64_instruction",
+        "rank_first_paraphrase", "hire_paraphrase", "hindi_instruction",
         "split_across_sentence",
     ]
     assert result["benign_false_positives"] == []

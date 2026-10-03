@@ -1,5 +1,11 @@
 # Issue Ledger
 
+- [x] Replayed all frozen cases: recovered 182/182 previous completed misses, 454 complete and five partial attack reviews, zero complete misses; zero original review flags and 23 insufficient originals remain.
+- [ ] Independent unseen-family accuracy, natural labels and downstream protection remain open; known-set recovery is not population zero error. See [result](../../results/reports/kaggle-recovery-development-20261003.md).
+
+- [x] Implemented bounded recovery for four observed missed families with source-anchored evidence, paired benign controls and independently reviewed fixture/apply precedence.
+- [ ] General oblique/multilingual/encoded recall, independently labeled false positives and downstream protection remain unverified; the replay is known-case development evidence. See [record](CUE_RECOVERY_2026-10-03.md).
+
 - [x] Ran a frozen source-excluded 2,295-PDF Kaggle stress test with exactly 20% verified authored interventions, real offline models and explicit abstention accounting; receipts and family totals reconciled.
 - [ ] Encoded, Spanish, homoglyph and conditional-mimicry interventions received no review: 182 complete no-signals and two insufficient cases. Fixes must not rewrite this known-set evidence; downstream effects remain unmeasured. See [result](../../results/reports/kaggle-stress-20pct-20261003.md).
 - [ ] Zero flags on 1,836 unmodified originals does not establish a zero population false-positive rate; 23 original analyses were insufficient and natural labels remain unreviewed.
