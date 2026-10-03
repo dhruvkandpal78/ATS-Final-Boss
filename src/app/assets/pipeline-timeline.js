@@ -16,6 +16,7 @@
   let panTrigger = null;
   let pan = null;
   let targets = [];
+  let stemStates = [];
   let active = -1;
   let running = false;
 
@@ -49,13 +50,15 @@
     let reachedStep = 0;
     steps.forEach((step, index) => {
       const node = milestones.offsetLeft + step.offsetLeft;
-      // Entering the viewport is not reaching the milestone: reveal only when
-      // the rendered progress line arrives at this dot (allow subpixel rounding).
-      const reveal = position >= node - 0.5 ? 1 : 0;
-      if (reveal) reachedStep = index;
-      gsap.set(step.querySelector('.pipeline-stem'), { scaleY: reveal });
-      gsap.set(step.querySelector('.pipeline-dot'), { scale: reveal });
-      gsap.set(step.querySelector('.pipeline-copy'), { opacity: reveal, y: (1 - reveal) * 16 });
+      // Text and dots remain visible; branches grow when the main line arrives.
+      const reached = position >= node - 0.5;
+      if (reached) reachedStep = index;
+      if (stemStates[index] !== reached) {
+        stemStates[index] = reached;
+        gsap.to(step.querySelector('.pipeline-stem'), {
+          scaleY: reached ? 1 : 0, duration: 0.35, ease: 'power2.out', overwrite: true
+        });
+      }
     });
     activate(reachedStep);
   }
@@ -72,6 +75,7 @@
     next.disabled = index >= steps.length - 1;
   }
   function teardown() {
+    gsap.killTweensOf(steps.map(step => step.querySelector('.pipeline-stem')));
     context?.revert();
     steps.forEach(step => {
       gsap.set(step.querySelector('.pipeline-copy'), { clearProps: 'opacity,transform' });
@@ -80,6 +84,7 @@
     context = null;
     pan = null;
     targets = [];
+    stemStates = [];
     milestones.style.removeProperty('--pipeline-tail');
     milestones.style.removeProperty('--pipeline-line-end');
     milestones.style.removeProperty('--pipeline-progress');
@@ -95,6 +100,7 @@
     section.classList.remove('pipeline-static');
     activate(0);
     context = gsap.context(() => {
+      gsap.set(steps.map(step => step.querySelector('.pipeline-stem')), { scaleY: 0 });
       measure();
       pan = gsap.to(track, {
         x: () => -measure(), ease: 'none', onUpdate: render,

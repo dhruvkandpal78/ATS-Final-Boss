@@ -1,5 +1,9 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: readable milestones with connected line animation
+
+Corrected the interpretation of the requested animation: all step titles and descriptions remain visible throughout horizontal scrolling. Only the horizontal fill and vertical branches animate. Each vertical branch grows from its dot when the horizontal line arrives, and retracts on backward navigation. Removed copy/dot hiding from the preceding follow-up. Branch tweens are cancelled on route teardown. Checked against the brief supplied in “Assess Claude skill compatibility”; syntax and four preview tests passed.
+
 ## 2026-10-03: milestone reveal waits for line arrival
 
 Corrected premature step reveals in the horizontal pipeline. Viewport entry previously made upcoming text visible before the progress line reached its dot. Text, stem and dot now reveal only at line arrival, and selected navigation follows the last reached milestone instead of the nearest one. Verified steps 1–3, backward navigation, final-step completion and ordinary scrolling in the live browser. JavaScript syntax and preview export checks passed. See the [motion repair follow-up](docs/progress/RUNTIME_AND_MOTION_REPAIR_2026-10-03.md).
