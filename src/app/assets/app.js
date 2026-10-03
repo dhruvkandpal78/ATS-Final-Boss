@@ -46,6 +46,7 @@
     $('site-nav').classList.remove('open');
     document.title = normalized === '/' ? 'ATS Final Boss — Resume integrity analysis' :
       ({ '/analyze': 'Analyze a resume', '/methodology': 'Methodology', '/lab': 'Lab', '/ownership': 'Ownership and reuse' }[normalized] + ' — ATS Final Boss');
+    document.dispatchEvent(new CustomEvent('ats:routechange'));
     if (anchor) requestAnimationFrame(() => $(anchor)?.scrollIntoView({ behavior: motion() }));
     else window.scrollTo({ top: 0, behavior: 'instant' });
     if (normalized === '/analyze') checkHealth();
@@ -67,26 +68,6 @@
   });
   window.addEventListener('scroll', () => $('site-header').classList.toggle('scrolled', scrollY > 24), { passive: true });
   route(location.pathname, location.hash.slice(1));
-
-  const previewNotes = {
-    context: 'A resume statement provides context for the highlighted phrase.',
-    instruction: 'Instruction-like wording asks a downstream system to change its behavior.',
-    surrounding: 'Surrounding ordinary experience matters when a reviewer interprets a phrase.'
-  };
-  document.querySelectorAll('[data-sample-line]').forEach(button => button.addEventListener('click', () => {
-    const selected = button.dataset.sampleLine;
-    document.querySelectorAll('[data-sample-line]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-    document.querySelectorAll('.sample-line').forEach(line => line.classList.toggle('active', line.id === 'sample-line-' + selected));
-    $('sample-explanation').textContent = previewNotes[selected];
-  }));
-  function selectSample() {
-    history.pushState({}, '', '/analyze');
-    route('/analyze');
-    $('sample-select').value = 'instruction';
-    $('sample-select').dispatchEvent(new Event('change'));
-  }
-  $('explore-sample').addEventListener('click', selectSample);
-  $('analyze-sample').addEventListener('click', selectSample);
 
   function clearError() {
     $('input-error').hidden = true;

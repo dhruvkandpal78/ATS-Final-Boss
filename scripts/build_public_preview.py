@@ -14,6 +14,10 @@ COPY_MAP = {
     "src/app/index.html": "index.html",
     "src/app/assets/style.css": "assets/style.css",
     "src/app/assets/theme.js": "assets/theme.js",
+    "src/app/assets/gsap.min.js": "assets/gsap.min.js",
+    "src/app/assets/ScrollTrigger.min.js": "assets/ScrollTrigger.min.js",
+    "src/app/assets/SplitText.min.js": "assets/SplitText.min.js",
+    "src/app/assets/pipeline-timeline.js": "assets/pipeline-timeline.js",
     "deploy/public-preview/preview.js": "assets/preview.js",
     "LICENSE": "LICENSE",
     "LICENSE-MIT-LEGACY.txt": "LICENSE-MIT-LEGACY.txt",
@@ -34,7 +38,6 @@ class _DisablePreviewControls(HTMLParser):
     DISABLED_IDS = {
         "resume-text", "resume-file", "sample-select", "tab-text", "tab-pdf",
         "submit-analysis", "cancel-analysis", "clear-input", "remove-file",
-        "analyze-sample", "explore-sample",
     }
 
     def __init__(self, source: str):
@@ -51,10 +54,7 @@ class _DisablePreviewControls(HTMLParser):
     def _start_tag(self, tag: str):
         raw = self.get_starttag_text()
         attrs = dict(self.get_starttag_text_attrs())
-        should_disable = (
-            attrs.get("id") in self.DISABLED_IDS
-            or "data-sample-line" in attrs
-        ) and tag in {"input", "textarea", "select", "button"}
+        should_disable = attrs.get("id") in self.DISABLED_IDS and tag in {"input", "textarea", "select", "button"}
         if should_disable and "disabled" not in attrs:
             line, column = self.getpos()
             start = self.line_offsets[line - 1] + column
@@ -127,6 +127,9 @@ def export_preview(output: Path, *, flat: bool = False) -> Path:
                 html = html.replace(STATIC_SCRIPT, f'<script defer src="{preview_path}"></script>')
                 html = html.replace('href="/assets/style.css"', f'href="{style_path}"')
                 html = html.replace('src="/assets/theme.js"', f'src="{theme_path}"')
+                for name in ("gsap.min.js", "ScrollTrigger.min.js", "SplitText.min.js", "pipeline-timeline.js"):
+                    asset_path = name if flat else f"assets/{name}"
+                    html = html.replace(f'src="/assets/{name}"', f'src="{asset_path}"')
                 html = html.replace('href="/license"', 'href="LICENSE"')
                 html = html.replace('href="/license-legacy"', 'href="LICENSE-MIT-LEGACY.txt"')
                 html = html.replace(

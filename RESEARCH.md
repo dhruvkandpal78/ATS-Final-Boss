@@ -13,6 +13,14 @@ Rules and model scores are separate. The deployed review policy does not jitter 
 
 ## Data and evaluation
 
+The [external HiringAudit challenge](results/reports/external-hiringaudit-20261003.md)
+is a frozen test of independently authored synthetic interventions on 100 source
+groups. Full policy flags 100/1,000 attack assignments, leaving 900 complete
+unflagged outcomes; originals receive 0/100 flags. This demonstrates substantial
+controlled-challenge failure, not high accuracy. The templates are shared, the
+legacy classifier thresholds remain unverified, natural labels are absent, and
+the 100-control zero-event bound is 2.95%. The cohort is now consumed for development.
+
 Historical synthetic text-marker aggregate reports are retained in [the results index](results/reports/README.md). Unmaintained plots and per-row exports were removed from the current tree; their prior revision is recorded in the cleanup inventory. They are historical outputs, not current accuracy claims or real-PDF hidden-text validation. The removed external API injector was not part of the maintained pipeline or supported evaluation; its existence never established generalization, human ground truth or permission to transmit resumes.
 
 The [dataset acquisition script](scripts/acquire_resume_dataset.py) retrieves a pinned public PDF corpus with hashes into ignored local storage. These are real layouts with unreviewed manipulation labels. Public availability does not establish natural attack ground truth or permission for every subsequent use.

@@ -1,6 +1,6 @@
 try {
   document.documentElement.dataset.theme = localStorage.getItem('atsfb-theme') ||
-    (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    'dark';
 } catch {
-  document.documentElement.dataset.theme = 'light';
+  document.documentElement.dataset.theme = 'dark';
 }

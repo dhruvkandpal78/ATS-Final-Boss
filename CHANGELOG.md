@@ -1,5 +1,31 @@
 # ATS Final Boss - Development Journey & Iterations
 
+## 2026-10-03: concise product copy and removal of redundant demo
+
+Replaced filler landing copy and implementation-focused animation text with the customer workflow and the purpose of each review step. Removed the three-button phrase-switching demo and its obsolete JavaScript/CSS; retained real workspace samples. Added a concise API/SDK section linked to the supported contract. Preserved animation behavior and honest evaluation limits. Updated static-preview handling and regression checks; four preview tests and JavaScript syntax checks passed. See [UI change record](docs/progress/UI_REDESIGN_2026-10-03.md).
+
+## 2026-10-03: MagicPath analysis-workspace refinement
+
+Built a private fictional-content design prototype with the installed MagicPath integration, then adapted its review flow and evidence hierarchy to the existing HTML/CSS analysis page. Added a responsive three-stage guide and score-limit explanation; refined inspection-panel typography. Preserved input/result hooks and the pipeline animation without adding a frontend framework or runtime service dependency. Checked desktop/mobile, light/dark, empty-input feedback and sample reset. This is a UI change, not an accuracy improvement. See [UI record](docs/progress/UI_REDESIGN_2026-10-03.md).
+
+## 2026-10-03: external challenge and UI redesign
+
+Ran an unchanged detector against 1,100 publisher-rendered HiringAudit PDFs:
+100/1,000 supplied attacks flagged, 900 complete unflagged, 0/100 original flags,
+no incomplete/runtime errors. The detection target failed; 100 controls cannot
+establish a below-2% burden bound. Preserve this adverse external result alongside
+known-case Kaggle recovery. Added pinned bounded acquisition, six paired shadow
+comparators, source-group bootstrap, family sensitivity and an unknown-decision
+projection regression. No corpus, model bundle or personal PDF is published.
+See [report](results/reports/external-hiringaudit-20261003.md).
+
+Redesigned the existing frontend's hero, document/evidence preview, workspace,
+controls, light/dark surfaces and mobile navigation. Preserved the existing
+pipeline animation source and hooks, and included its previously local dependency
+assets plus static-preview export coverage. Third-party GSAP headers/terms remain.
+No calibrated probability or high-accuracy claim was added. See
+[UI record](docs/progress/UI_REDESIGN_2026-10-03.md).
+
 ## 2026-10-03: publication tree cleanup
 
 Removed 14 unused or obsolete files: unsupported Streamlit dashboard/encoder, duplicate UI proposals and assistant plans, presentation script, stale plots/per-row output, misleading architecture diagram and empty report placeholder. Retained measured reports, original adverse counts, tests, license notices and dated research records. Replaced the docs preamble with a current index, added a results index, removed resume excerpts/sample IDs from legacy error analysis and strengthened generated/scratch ignore rules. No history rewrite or detector changes. See [inventory and verification](docs/progress/REPO_CLEANUP_2026-10-03.md).
