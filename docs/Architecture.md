@@ -20,6 +20,12 @@ instruction overrides remain cues. This reduces known ATS engineering false flag
 while allowing vague/remote-target attacks to evade the lexical layer; never equate
 no cues with a safe document. See [precision change](progress/APPLICANT_INTENT_PRECISION_2026-10-03.md).
 
+Outcome cues distinguish bounded positive qualification conditions from explicit
+bypass language in the same clause; bypass takes precedence. Strong instruction
+overrides are a separate pattern group. This is a lexical precision heuristic, not
+trust in resume conditions or a complete prompt-injection defense. See the
+[pre-commit quality review](progress/QUALITY_REVIEW_2026-10-03.md).
+
 ```mermaid
 flowchart TD
     UI[Maintained browser UI: src/app] --> Gateway[Customer TLS and SSO gateway: private deployment]

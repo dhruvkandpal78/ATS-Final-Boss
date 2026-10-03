@@ -133,9 +133,11 @@ class SemanticCoherenceScorer:
     SCORE_DIRECTIVE_PREFIX = re.compile(
         r"\s*(?:[-*•]\s*)?(?:(?:please|you\s+must)\s+|(?:system\s+override|ats\s+(?:scoring\s+)?instruction|screening\s+instruction|for\s+(?:hiring|screening))\s*[:,]\s*)?"
     )
-    INJECTION_PATTERNS = [
+    INSTRUCTION_OVERRIDE_PATTERNS = (
         r"\bignore\s+(all\s+)?previous\s+instructions?\b",
         r"\bdisregard\s+(all\s+)?previous\s+(?:instructions?|rules?|guidance|directives?)\b",
+    )
+    OUTCOME_DIRECTIVE_PATTERNS = (
         r"\brank\s+me\s+(as\s+)?#?1\b",
         r"\brank\s+(this|the)\s+(candidate|applicant|resume)\s+(as\s+)?#?1\b",
         r"\b(?:set|assign)\s+my\s+(?:fit|match|screening)\s+score\s+(?:to|of)\s+100\b",
@@ -145,7 +147,20 @@ class SemanticCoherenceScorer:
         r"\byou\s+must\s+(?:return|output|print)\s+(?:a\s+)?decision\s+that\s+makes?\s+(?:this|the)\s+(?:candidate|applicant)\s+(?:eligible|qualified)\b",
         r"\bdo\s+not\s+reject\s+(?:me|(?:this|the|my)\s+(?:candidate|applicant|application|resume))\b",
         r"\bhire\s+(?:me|(?:this|the)\s+(?:candidate|applicant))\s+immediately\b",
-    ]
+    )
+    INJECTION_PATTERNS = INSTRUCTION_OVERRIDE_PATTERNS + OUTCOME_DIRECTIVE_PATTERNS
+
+    QUALIFICATION_CONDITION = re.compile(
+        r"\b(?:only\s+)?(?:when|if|after|until)\s+[^.!?;\n]{0,96}\b"
+        r"(?:criteria|qualifications|credentials?|checks|requirements|interview\s+score)\b"
+        r"[^.!?;\n]{0,48}\b(?:met|present|verified|complete|clear|highest)\b"
+        r"|\bwho\s+meets?\s+(?:all\s+)?(?:the\s+)?(?:listed\s+|required\s+|mandatory\s+)?"
+        r"(?:rubric\s+)?(?:criteria|requirements|qualifications)\b"
+    )
+    EXPLICIT_BYPASS = re.compile(
+        r"\b(?:regardless\s+of|irrespective\s+of|despite|even\s+if|whether\s+or\s+not)\b"
+        r"|\b(?:ignore|disregard|override|bypass|skip)\b"
+    )
 
     BENIGN_PATTERNS = [
         r"researching\s+prompt\s+injection",
@@ -192,9 +207,18 @@ class SemanticCoherenceScorer:
         local_start = start - left_boundary
         local_end = end - left_boundary
 
-        # Descriptions of a rubric/API allocating scores are not directives.
-        # Check the exact local prefix, not a broad document-level whitelist.
-        if (re.fullmatch(cls.SCORE_ALLOCATION_PATTERN, text[start:end]) is not None
+        cue_text = text[start:end]
+        bypass = cls.EXPLICIT_BYPASS.search(clause) is not None
+        # A local qualification-dependent outcome is not an unconditional
+        # instruction to manipulate screening. Explicit bypass wins over it.
+        is_outcome = any(re.fullmatch(pattern, cue_text) is not None
+                         for pattern in cls.OUTCOME_DIRECTIVE_PATTERNS)
+        if is_outcome and not bypass and cls.QUALIFICATION_CONDITION.search(clause[local_end:]):
+            return True
+        # Unknown descriptive prefixes remain non-actionable for allocation;
+        # explicit bypass language cannot use that exclusion to evade review.
+        if (re.fullmatch(cls.SCORE_ALLOCATION_PATTERN, cue_text) is not None
+                and not bypass
                 and cls.SCORE_DIRECTIVE_PREFIX.fullmatch(clause[:local_start]) is None):
             return True
 
