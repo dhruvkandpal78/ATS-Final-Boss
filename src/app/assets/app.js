@@ -34,13 +34,24 @@
     syncThemeControl();
   });
 
+  let currentUser = null;
+  let authMode = 'login';
+  let historySubmissions = [];
+
   function route(path, anchor) {
     if (path === '/lab') {
       path = '/methodology';
       history.replaceState({}, '', path);
     }
-    const normalized = ['/', '/analyze', '/methodology', '/ownership'].includes(path) ? path : '/';
-    const viewId = { '/': 'home-view', '/analyze': 'analyze-view', '/methodology': 'methodology-view', '/ownership': 'ownership-view' }[normalized];
+    const normalized = ['/', '/analyze', '/methodology', '/ownership', '/auth', '/history'].includes(path) ? path : '/';
+    const viewId = {
+      '/': 'home-view',
+      '/analyze': 'analyze-view',
+      '/methodology': 'methodology-view',
+      '/ownership': 'ownership-view',
+      '/auth': 'auth-view',
+      '/history': 'history-view'
+    }[normalized];
     document.querySelectorAll('.view').forEach(view => { view.hidden = view.id !== viewId; });
     document.querySelectorAll('.site-nav [data-route]').forEach(link => {
       if (link.dataset.route === normalized) link.setAttribute('aria-current', 'page');
@@ -49,11 +60,22 @@
     $('menu-toggle').setAttribute('aria-expanded', 'false');
     $('site-nav').classList.remove('open');
     document.title = normalized === '/' ? 'ATS Final Boss — Resume integrity analysis' :
-      ({ '/analyze': 'Analyze a resume', '/methodology': 'Methodology', '/ownership': 'Ownership and reuse' }[normalized] + ' — ATS Final Boss');
+      ({
+        '/analyze': 'Analyze a resume',
+        '/methodology': 'Methodology',
+        '/ownership': 'Ownership and reuse',
+        '/auth': 'Sign in / Sign up',
+        '/history': 'My CV History'
+      }[normalized] + ' — ATS Final Boss');
     document.dispatchEvent(new CustomEvent('ats:routechange'));
     if (anchor) requestAnimationFrame(() => $(anchor)?.scrollIntoView({ behavior: motion() }));
     else window.scrollTo({ top: 0, behavior: 'instant' });
     if (normalized === '/analyze') checkHealth();
+    if (normalized === '/history') loadHistory();
+    if (normalized === '/auth' && currentUser) {
+      history.replaceState({}, '', '/history');
+      route('/history');
+    }
   }
   document.addEventListener('click', event => {
     const link = event.target.closest('a[data-route], a[data-home-anchor]');
@@ -266,6 +288,10 @@
       if (localId !== requestId) return;
       result = data;
       sourceSnapshot = snapshot;
+      if (data.saved_submission_id && currentUser) {
+        currentUser.submission_count = (currentUser.submission_count || 0) + 1;
+        updateAuthUI();
+      }
       renderResult(data, snapshot);
       $('results').hidden = false;
       $('results-title').focus();
@@ -366,7 +392,8 @@
       const image = append(frame, 'img', 'pdf-preview-image');
       image.src = preview.image_url;
       image.alt = 'Rendered original PDF page ' + (page + 1) + '. Highlight locates the selected detector observation.';
-      const region = (preview.regions || []).find(value => value.finding_id === finding.id);
+      const allIds = finding._ids || [finding.id];
+      const region = (preview.regions || []).find(value => allIds.includes(value.finding_id));
       if (region && Array.isArray(region.box) && region.box.length === 4 &&
           region.box.every(value => Number.isFinite(value) && value >= 0 && value <= 100)) {
         const overlay = append(frame, 'span', 'pdf-preview-region');
@@ -390,6 +417,41 @@
     clearSourceSelection();
     $('source-panel').scrollIntoView({ behavior: motion(), block: 'nearest' });
   });
+  function deduplicateFindings(findings) {
+    const grouped = [];
+    for (const f of findings) {
+      const baseExplanation = (f.explanation || '')
+        .replace(/\s*\(\d+\s+traces?\s+clustered\)/gi, '')
+        .replace(/\s*\(\d+\s+occurrences?\s+grouped\)/gi, '')
+        .trim();
+      const page = pdfPage(f);
+      const key = `${f.detector || ''}::${f.category || ''}::${baseExplanation}::${page}`;
+      const existing = grouped.find(g => g._key === key);
+      if (existing) {
+        existing._occurrences = (existing._occurrences || 1) + 1;
+        existing._ids = existing._ids || [existing.id];
+        if (f.id && !existing._ids.includes(f.id)) existing._ids.push(f.id);
+        const b1 = existing.anchor?.bbox;
+        const b2 = f.anchor?.bbox;
+        if (Array.isArray(b1) && Array.isArray(b2) && b1.length === 4 && b2.length === 4) {
+          existing.anchor.bbox = [
+            Math.min(b1[0], b2[0]),
+            Math.min(b1[1], b2[1]),
+            Math.max(b1[2], b2[2]),
+            Math.max(b1[3], b2[3])
+          ];
+        }
+      } else {
+        const copy = JSON.parse(JSON.stringify(f));
+        copy._key = key;
+        copy._occurrences = 1;
+        copy._ids = [f.id];
+        grouped.push(copy);
+      }
+    }
+    return grouped;
+  }
+
   function renderFindings() {
     const detector = $('finding-detector').value;
     const severity = $('finding-severity').value;
@@ -416,7 +478,15 @@
         append(item, 'p', 'mono', finding.review_trigger ? 'Supports the review recommendation' : 'Advisory finding — does not trigger review by itself');
       }
       append(item, 'p', 'finding-title', finding.title || finding.reason || readable(finding.category) || 'Document finding');
-      append(item, 'p', '', finding.explanation || finding.description || finding.message || 'No further explanation was returned.');
+      let explanation = finding.explanation || finding.description || finding.message || 'No further explanation was returned.';
+      explanation = explanation
+        .replace(/\s*\(\d+\s+traces?\s+clustered\)/gi, '')
+        .replace(/\s*\(\d+\s+occurrences?\s+grouped\)/gi, '')
+        .trim();
+      if (finding._occurrences > 1) {
+        explanation += ` (${finding._occurrences} occurrences grouped)`;
+      }
+      append(item, 'p', '', explanation);
       const page = pdfPage(finding);
       if (page !== null) append(item, 'p', 'mono', 'Page ' + (page + 1));
       if (finding.uncertainty) append(item, 'p', 'mono', 'Limit: ' + finding.uncertainty);
@@ -456,7 +526,8 @@
     document.querySelector('.analysis-details').open = false;
     const created = data.created_at && !Number.isNaN(Date.parse(data.created_at)) ?
       ' · ' + new Date(data.created_at).toLocaleString() : '';
-    $('result-meta').textContent = snapshot.name + ' · ' + (data.input_mode || snapshot.mode).toUpperCase() + created;
+    const savedNote = data.saved_submission_id ? ' · Saved to account (#' + data.saved_submission_id + ')' : '';
+    $('result-meta').textContent = snapshot.name + ' · ' + (data.input_mode || snapshot.mode).toUpperCase() + created + savedNote;
 
     const rawScore = Object.prototype.hasOwnProperty.call(data, 'score') ?
       data.score : (data.model_proba ?? data.proba);
@@ -529,7 +600,8 @@
     const reasons = Array.isArray(data.reason_codes) ? data.reason_codes : [];
     $('policy-reasons').textContent = reasons.length ? reasons.map(readable).join(' · ') : 'No policy reason code was returned.';
 
-    const findings = Array.isArray(data.findings) ? data.findings : [];
+    const rawFindings = Array.isArray(data.findings) ? data.findings : [];
+    const findings = deduplicateFindings(rawFindings);
     $('finding-count').textContent = '(' + findings.length + ')';
     $('findings-intro').textContent = findings.length ?
       'Inspect each observation alongside its uncertainty and source context.' :
@@ -628,6 +700,340 @@
       status.textContent = 'Service unavailable';
     }
   }
+
+  /* --- Authentication & History Module --- */
+  async function checkAuth() {
+    try {
+      const res = await fetch('/api/auth/me', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        currentUser = data.user || null;
+      } else {
+        currentUser = null;
+      }
+    } catch {
+      currentUser = null;
+    }
+    updateAuthUI();
+  }
+
+  function updateAuthUI() {
+    const loggedIn = Boolean(currentUser);
+    const loginLink = $('nav-login-link');
+    const historyLink = $('nav-history-link');
+    const userPill = $('nav-user-pill');
+    const signoutBtn = $('nav-signout-btn');
+    const accountPill = $('analyze-account-pill');
+
+    if (loginLink) loginLink.hidden = loggedIn;
+    if (historyLink) historyLink.hidden = !loggedIn;
+    if (userPill) userPill.hidden = !loggedIn;
+    if (signoutBtn) signoutBtn.hidden = !loggedIn;
+
+    if (loggedIn) {
+      if ($('nav-username')) $('nav-username').textContent = '@' + currentUser.username;
+      if ($('nav-history-count')) $('nav-history-count').textContent = String(currentUser.submission_count ?? 0);
+      if (accountPill) {
+        accountPill.textContent = 'Signed in as @' + currentUser.username + ' · Auto-saves to your database';
+        accountPill.className = 'account-badge-pill active';
+      }
+    } else {
+      if (accountPill) {
+        accountPill.innerHTML = 'Guest mode · <a href="/auth" data-route="/auth">Sign in to save CVs</a>';
+        accountPill.className = 'account-badge-pill';
+      }
+    }
+  }
+
+  function setAuthMode(next) {
+    authMode = next;
+    const isSignup = authMode === 'signup';
+    $('auth-tab-login').classList.toggle('active', !isSignup);
+    $('auth-tab-login').setAttribute('aria-selected', String(!isSignup));
+    $('auth-tab-signup').classList.toggle('active', isSignup);
+    $('auth-tab-signup').setAttribute('aria-selected', String(isSignup));
+
+    $('signup-email-group').hidden = !isSignup;
+    $('auth-email').required = isSignup;
+    $('auth-title').textContent = isSignup ? 'Create a new account' : 'Sign in to your account';
+    $('auth-subtitle').textContent = isSignup
+      ? 'Register to securely store your analyzed resumes and audit reports.'
+      : 'Store and review all your analyzed CVs and forensic audit reports.';
+    $('auth-submit-btn').textContent = isSignup ? 'Create account ↗' : 'Sign in ↗';
+    $('auth-toggle-mode').textContent = isSignup ? 'Already have an account? Sign in' : 'Need an account? Create one';
+    $('auth-error').hidden = true;
+    $('auth-success').hidden = true;
+  }
+
+  $('auth-tab-login')?.addEventListener('click', () => setAuthMode('login'));
+  $('auth-tab-signup')?.addEventListener('click', () => setAuthMode('signup'));
+  $('auth-toggle-mode')?.addEventListener('click', () => setAuthMode(authMode === 'login' ? 'signup' : 'login'));
+
+  $('auth-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorBox = $('auth-error');
+    const successBox = $('auth-success');
+    errorBox.hidden = true;
+    successBox.hidden = true;
+
+    const username = $('auth-username').value.trim();
+    const password = $('auth-password').value;
+    const email = $('auth-email').value.trim();
+
+    if (!username) {
+      errorBox.textContent = 'Please enter a username or email.';
+      errorBox.hidden = false;
+      return;
+    }
+    if (!password) {
+      errorBox.textContent = 'Please enter a password.';
+      errorBox.hidden = false;
+      return;
+    }
+
+    const isSignup = authMode === 'signup';
+    if (isSignup && !email) {
+      errorBox.textContent = 'Please enter an email address.';
+      errorBox.hidden = false;
+      return;
+    }
+
+    const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
+    const payload = isSignup ? { username, email, password } : { username, password };
+
+    try {
+      const submitBtn = $('auth-submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing…';
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      submitBtn.disabled = false;
+      submitBtn.textContent = isSignup ? 'Create account ↗' : 'Sign in ↗';
+
+      if (!res.ok || data.error) {
+        errorBox.textContent = data.error || 'Authentication failed. Please check your credentials.';
+        errorBox.hidden = false;
+        return;
+      }
+
+      currentUser = data.user;
+      updateAuthUI();
+      successBox.textContent = isSignup ? 'Account created! Loading your dashboard…' : 'Signed in! Loading your dashboard…';
+      successBox.hidden = false;
+
+      $('auth-form').reset();
+      setTimeout(() => {
+        history.pushState({}, '', '/history');
+        route('/history');
+      }, 400);
+    } catch (err) {
+      $('auth-submit-btn').disabled = false;
+      $('auth-submit-btn').textContent = isSignup ? 'Create account ↗' : 'Sign in ↗';
+      errorBox.textContent = 'Network error: ' + (err.message || 'Could not reach server.');
+      errorBox.hidden = false;
+    }
+  });
+
+  $('nav-signout-btn')?.addEventListener('click', async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    currentUser = null;
+    updateAuthUI();
+    history.pushState({}, '', '/auth');
+    route('/auth');
+  });
+
+  async function loadHistory() {
+    const loading = $('history-loading');
+    const empty = $('history-empty');
+    const list = $('history-list');
+    const stats = $('history-stats');
+    const countLabel = $('history-count-label');
+
+    loading.hidden = false;
+    empty.hidden = true;
+    list.hidden = true;
+    stats.hidden = true;
+    countLabel.textContent = 'Loading history…';
+
+    try {
+      const res = await fetch('/api/history', { cache: 'no-store' });
+      if (res.status === 401) {
+        loading.hidden = true;
+        history.replaceState({}, '', '/auth');
+        route('/auth');
+        return;
+      }
+      if (!res.ok) throw new Error('Failed to load history');
+      const data = await res.json();
+      historySubmissions = data.submissions || [];
+      renderHistoryList(historySubmissions);
+    } catch (err) {
+      loading.hidden = true;
+      countLabel.textContent = 'Error loading history: ' + err.message;
+    }
+  }
+
+  function renderHistoryList(items) {
+    const loading = $('history-loading');
+    const empty = $('history-empty');
+    const list = $('history-list');
+    const stats = $('history-stats');
+    const countLabel = $('history-count-label');
+
+    loading.hidden = true;
+
+    const total = historySubmissions.length;
+    const flagged = historySubmissions.filter(s => ['review', 'review_recommended'].includes(s.decision)).length;
+    const clean = historySubmissions.filter(s => ['pass', 'no_signals', 'clear'].includes(s.decision)).length;
+    $('stat-total-cvs').textContent = String(total);
+    $('stat-flagged-cvs').textContent = String(flagged);
+    $('stat-clean-cvs').textContent = String(clean);
+    stats.hidden = false;
+
+    if ($('nav-history-count')) $('nav-history-count').textContent = String(total);
+
+    countLabel.textContent = items.length === total
+      ? (total === 1 ? '1 CV stored' : total + ' CVs stored')
+      : ('Showing ' + items.length + ' of ' + total + ' CVs');
+
+    if (items.length === 0) {
+      empty.hidden = false;
+      list.hidden = true;
+      list.replaceChildren();
+      return;
+    }
+
+    empty.hidden = true;
+    list.hidden = false;
+    list.replaceChildren();
+
+    for (const item of items) {
+      const li = document.createElement('li');
+      li.className = 'history-item';
+      li.dataset.id = item.id;
+
+      const header = append(li, 'div', 'history-item-header');
+      const titleGroup = append(header, 'div', 'history-title-group');
+      append(titleGroup, 'strong', 'history-doc-name', item.document_name || 'Untitled Document');
+
+      const meta = append(titleGroup, 'span', 'history-item-meta');
+      const dateStr = item.created_at ? new Date(item.created_at).toLocaleString() : 'Recently';
+      meta.textContent = dateStr + ' · Mode: ' + (item.mode?.toUpperCase() || 'TEXT');
+
+      const badgeGroup = append(header, 'div', 'history-badge-group');
+      const decisionBadge = append(badgeGroup, 'span', 'badge');
+      if (['review', 'review_recommended'].includes(item.decision)) {
+        decisionBadge.className = 'badge badge-flagged';
+        decisionBadge.textContent = 'Review Needed';
+      } else if (['pass', 'no_signals', 'clear'].includes(item.decision)) {
+        decisionBadge.className = 'badge badge-clean';
+        decisionBadge.textContent = 'Clean / Passed';
+      } else if (item.decision === 'insufficient_evidence') {
+        decisionBadge.className = 'badge badge-neutral';
+        decisionBadge.textContent = 'Insufficient Evidence';
+      } else {
+        decisionBadge.className = 'badge badge-neutral';
+        decisionBadge.textContent = readable(item.decision || 'Complete');
+      }
+
+      if (typeof item.findings_count === 'number') {
+        const findBadge = append(badgeGroup, 'span', 'badge badge-muted');
+        findBadge.textContent = item.findings_count === 1 ? '1 finding' : item.findings_count + ' findings';
+      }
+
+      if (typeof item.score === 'number') {
+        const scoreBadge = append(badgeGroup, 'span', 'badge badge-muted');
+        scoreBadge.textContent = 'Score: ' + item.score.toFixed(2);
+      }
+
+      if (item.snippet) {
+        const body = append(li, 'div', 'history-item-body');
+        append(body, 'p', 'history-snippet', item.snippet);
+      }
+
+      const actions = append(li, 'div', 'history-item-actions');
+      const viewBtn = append(actions, 'button', 'button button-outline button-small', 'View Report ↗');
+      viewBtn.type = 'button';
+      viewBtn.addEventListener('click', () => viewHistorySubmission(item.id, item));
+
+      const delBtn = append(actions, 'button', 'text-link delete-submission-btn', 'Delete');
+      delBtn.type = 'button';
+      delBtn.addEventListener('click', () => deleteHistorySubmission(item.id, item.document_name));
+
+      list.appendChild(li);
+    }
+  }
+
+  async function viewHistorySubmission(id, summaryItem) {
+    try {
+      const res = await fetch('/api/history/' + id);
+      if (!res.ok) throw new Error('Could not load submission details');
+      const data = await res.json();
+      const sub = data.submission;
+      if (!sub || !sub.result) throw new Error('Invalid submission record');
+
+      result = sub.result;
+      sourceSnapshot = {
+        mode: sub.mode || result.input_mode || 'text',
+        name: sub.document_name || 'Stored Document',
+        text: sub.snippet || ''
+      };
+      renderResult(result, sourceSnapshot);
+      $('results').hidden = false;
+
+      history.pushState({}, '', '/analyze');
+      route('/analyze');
+      $('results-title').focus();
+      $('results').scrollIntoView({ behavior: motion(), block: 'start' });
+    } catch (err) {
+      alert('Could not view report: ' + err.message);
+    }
+  }
+
+  async function deleteHistorySubmission(id, docName) {
+    if (!confirm('Are you sure you want to delete the record for "' + (docName || 'this CV') + '"? This cannot be undone.')) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/history/' + id, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      historySubmissions = historySubmissions.filter(s => s.id !== id);
+      filterHistory();
+      if (currentUser && currentUser.submission_count > 0) {
+        currentUser.submission_count--;
+        if ($('nav-history-count')) $('nav-history-count').textContent = String(currentUser.submission_count);
+      }
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
+  }
+
+  function filterHistory() {
+    const q = ($('history-search')?.value || '').toLowerCase().trim();
+    if (!q) {
+      renderHistoryList(historySubmissions);
+      return;
+    }
+    const filtered = historySubmissions.filter(s => {
+      const name = (s.document_name || '').toLowerCase();
+      const dec = (s.decision || '').toLowerCase();
+      const snip = (s.snippet || '').toLowerCase();
+      return name.includes(q) || dec.includes(q) || snip.includes(q);
+    });
+    renderHistoryList(filtered);
+  }
+
+  $('history-search')?.addEventListener('input', filterHistory);
+  $('refresh-history-btn')?.addEventListener('click', loadHistory);
+
+  void checkAuth();
   window.addEventListener('beforeunload', () => {
     controller?.abort();
     clearInterval(elapsedTimer);

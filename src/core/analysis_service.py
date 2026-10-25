@@ -55,6 +55,50 @@ def _anchor(page_index: Optional[int] = None, bbox: Optional[list] = None) -> Di
             "char_end": None, "bbox": bbox}
 
 
+def _cluster_pdf_findings(raw_findings: list) -> list:
+    """Group duplicate or adjacent structural findings on the same page with identical flags."""
+    clusters = []
+    for item in raw_findings:
+        page = item.get("page")
+        flags = tuple(sorted(item.get("flags", [])))
+        rect = item.get("rect")
+        try:
+            bbox = [float(x) for x in rect] if rect and len(rect) == 4 and all(math.isfinite(float(x)) for x in rect) else None
+        except (TypeError, ValueError):
+            bbox = None
+
+        merged = False
+        if bbox is not None:
+            for c in clusters:
+                if c["page"] == page and c["flags"] == flags and c["bbox"] is not None:
+                    cb = c["bbox"]
+                    is_same_point = (abs(cb[0] - bbox[0]) < 1.0 and abs(cb[1] - bbox[1]) < 1.0 and
+                                     abs(cb[2] - bbox[2]) < 1.0 and abs(cb[3] - bbox[3]) < 1.0)
+                    x_overlap = min(cb[2], bbox[2]) - max(cb[0], bbox[0])
+                    y_dist = min(abs(cb[3] - bbox[1]), abs(bbox[3] - cb[1]))
+                    is_adjacent_line = (x_overlap > -5.0 and y_dist <= 3.0)
+
+                    if is_same_point or is_adjacent_line:
+                        c["bbox"] = [
+                            min(cb[0], bbox[0]),
+                            min(cb[1], bbox[1]),
+                            max(cb[2], bbox[2]),
+                            max(cb[3], bbox[3])
+                        ]
+                        c["count"] += 1
+                        merged = True
+                        break
+
+        if not merged:
+            clusters.append({
+                "page": page,
+                "flags": flags,
+                "bbox": bbox,
+                "count": 1
+            })
+    return clusters
+
+
 class AnalysisService:
     def __init__(self, models_dir: Optional[str] = None, mod_a=None, mod_b=None,
                  mod_c=None, meta_clf=None, scaler=None):
@@ -285,20 +329,20 @@ class AnalysisService:
                 modules["b"] = _module("b", "ok", score=b_score, flagged=b_score >= 0.5 or explicit_trace,
                                        details=details, coverage_status="partial" if details.get("hidden_ocg_groups", 0) > 0 else "complete")
                 modules["b"]["capabilities"].update(b_raw.get("capabilities") or {})
-                for i, item in enumerate(details.get("findings", [])[:50], 1):
+                clustered = _cluster_pdf_findings(details.get("findings", []))
+                for i, item in enumerate(clustered[:50], 1):
                     page = item.get("page")
                     page_index = page - 1 if isinstance(page, int) and page > 0 else None
-                    rect = item.get("rect")
-                    try:
-                        bbox = [float(x) for x in rect] if len(rect) == 4 and all(math.isfinite(float(x)) for x in rect) else None
-                    except (TypeError, ValueError):
-                        bbox = None
+                    bbox = item.get("bbox")
+                    flags = item.get("flags", [])
+                    count = item.get("count", 1)
+                    suffix = f" ({count} traces clustered)" if count > 1 else ""
                     findings.append({"id": f"b-structure-{i}", "detector": "b",
                         "category": "pdf_structure", "severity": "high" if b_score >= 0.9 else "medium",
-                        "explanation_method": "pdf_trace", "explanation": "PDF text trace has structural anomaly flags: " + ", ".join(item.get("flags", [])),
+                        "explanation_method": "pdf_trace", "explanation": "PDF text trace has structural anomaly flags: " + ", ".join(flags) + suffix,
                         "anchor": _anchor(page_index, bbox),
                         "uncertainty": "A structural anomaly is not proof of manipulation."})
-                if len(details.get("findings", [])) > 50:
+                if len(clustered) > 50:
                     coverage["limitations"].append("Only the first 50 structural findings are listed.")
             else:
                 coverage["limitations"].append("PDF structural score is unavailable.")

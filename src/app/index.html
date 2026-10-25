@@ -25,6 +25,11 @@
         <a href="/#how" data-home-anchor="how">How it works</a>
         <a href="/methodology" data-route="/methodology">Methodology</a>
         <a class="button button-dark button-small" href="/analyze" data-route="/analyze">Analyze a resume <span aria-hidden="true">↗</span></a>
+        <span class="nav-divider" aria-hidden="true"></span>
+        <a class="nav-link auth-nav-link" id="nav-login-link" href="/auth" data-route="/auth">Sign in</a>
+        <a class="nav-link auth-nav-link" id="nav-history-link" href="/history" data-route="/history" hidden>My CVs <span class="badge-count" id="nav-history-count">0</span></a>
+        <span class="user-pill" id="nav-user-pill" hidden><span class="user-dot"></span><span id="nav-username"></span></span>
+        <button type="button" class="text-link auth-signout-btn" id="nav-signout-btn" hidden>Sign out</button>
       </nav>
     </div>
   </header>
@@ -84,7 +89,7 @@
       <section class="final-cta"><div class="wrap"><span class="eyebrow">Try the workspace</span><h2>Review your<br>first document.</h2><p>Content is sent to this application’s analysis server. Upload personal information only when you are authorized to process it.</p><a class="button button-dark" href="/analyze" data-route="/analyze">Analyze a resume <span aria-hidden="true">↗</span></a></div></section>
     </div>
     <div class="view workspace" id="analyze-view" hidden><div class="wrap">
-      <div class="page-heading"><div><span class="eyebrow">Analysis workspace</span><h1>Analyze a resume</h1><p>Check a resume for manipulation signals. Review findings and limitations before taking action.</p></div><span class="readiness" id="readiness" role="status" aria-live="polite" data-state="checking">Checking service…</span></div>
+      <div class="page-heading"><div><span class="eyebrow">Analysis workspace</span><h1>Analyze a resume</h1><p>Check a resume for manipulation signals. Review findings and limitations before taking action.</p></div><div class="heading-status-group"><span class="account-badge-pill" id="analyze-account-pill"></span><span class="readiness" id="readiness" role="status" aria-live="polite" data-state="checking">Checking service…</span></div></div>
       <ol class="workspace-flow" aria-label="How document review works">
         <li><span aria-hidden="true">01</span><div><strong>Provide a document</strong><p>Paste permitted text or choose a PDF.</p></div></li>
         <li><span aria-hidden="true">02</span><div><strong>Check the evidence</strong><p>Read findings alongside analysis coverage.</p></div></li>
@@ -113,6 +118,77 @@
     </div></div>
     <div class="view reading-page" id="methodology-view" hidden><div class="wrap prose"><span class="eyebrow">Methodology</span><h1>How to read an analysis.</h1><p class="lede">ATS Final Boss is a research prototype for detecting document manipulation signals. It supports human review and does not determine authenticity or hiring outcomes.</p><section><h2>Three complementary signals</h2><p>Module A examines keyword patterns in text. Module B examines supported structural properties in PDF files. Module C examines semantic changes and instruction-like content. Each result reports whether a module ran, was not applicable, or could not complete.</p></section><section><h2>Score and policy</h2><p>When a compatible model is available, the interface shows its returned score. The score is uncalibrated unless the service explicitly says otherwise. Review policy can recommend attention even when no model score is available. The two are never combined into an invented probability.</p></section><section><h2>Coverage and limitations</h2><p>Text input cannot be structurally analyzed as a PDF. Some PDFs may be encrypted, image-only, partially extracted, or outside detector support. The result lists these limitations beside usable findings. No detected signals is not proof of authenticity.</p></section><section><h2>Evaluation status</h2><p>A frozen external challenge flagged 100 of 1,000 publisher-assigned attack PDFs and left 900 unflagged after complete analysis. None of 100 original synthetic PDFs was flagged; that sample does not establish a below-2% false-positive rate. These controlled results do not establish real-world accuracy or downstream protection. <a href="https://github.com/dhruvkandpal78/ATS-Final-Boss/blob/codex/external-journal-experiment/results/reports/external-hiringaudit-20261003.md">Read the full experiment and uncertainty.</a></p></section><section><h2>Privacy and responsible use</h2><p>Content is sent to the application server for analysis. Send personal data only with authorization. A finding describes a document pattern, not a person’s intent, character or suitability.</p></section></div></div>
     <div class="view reading-page" id="ownership-view" hidden><div class="wrap prose"><span class="eyebrow">Ownership and reuse</span><h1>Rights and permissions.</h1><p class="lede">Copyright © 2026 Dhruv Kandpal. Rights for new original additions are reserved to the extent held by the named owner. Written permission is required to copy, modify, redistribute, sell or reuse those additions in another product.</p><section><h2>Earlier material keeps its license</h2><p>The prior MIT license continues to apply to material already covered by it. New additions do not withdraw permissions previously granted for that material. Some files may contain both legacy material and new additions.</p></section><section><h2>Third-party rights remain separate</h2><p>Libraries, models, datasets, sample documents and reference material keep their own licenses and owners. This project does not claim exclusive rights over them or over general ideas and methods.</p></section><section><h2>What the notice can and cannot do</h2><p>The notice states permission terms for new original material. It does not technically prevent copying, impose an automatic penalty, or guarantee any legal outcome. Applicable law, prior permissions and hosting-platform terms may affect particular uses.</p></section><section><h2>Read the notices</h2><p><a class="text-link" href="/license">Current rights notice</a> · <a class="text-link" href="/license-legacy">Legacy MIT license</a></p></section></div></div>
+    <div class="view auth-page" id="auth-view" hidden><div class="wrap">
+      <div class="auth-card">
+        <div class="auth-header">
+          <span class="eyebrow"><span class="eyebrow-dot"></span> User Account</span>
+          <h1 id="auth-title">Sign in to your account</h1>
+          <p class="muted" id="auth-subtitle">Store and review all your analyzed CVs and forensic audit reports.</p>
+        </div>
+        <div class="tabs auth-tabs" role="tablist">
+          <button id="auth-tab-login" type="button" role="tab" aria-selected="true" class="auth-tab active">Sign in</button>
+          <button id="auth-tab-signup" type="button" role="tab" aria-selected="false" class="auth-tab">Create account</button>
+        </div>
+        <form class="auth-form" id="auth-form">
+          <div class="field-group" id="signup-username-group">
+            <label class="field-label" for="auth-username">Username or Email <span class="required">*</span></label>
+            <input type="text" id="auth-username" class="auth-input" placeholder="e.g. alex_recruiter" autocomplete="username" required>
+            <span class="field-help" id="auth-username-help">Your username or registered email address</span>
+          </div>
+          <div class="field-group" id="signup-email-group" hidden>
+            <label class="field-label" for="auth-email">Email address <span class="required">*</span></label>
+            <input type="email" id="auth-email" class="auth-input" placeholder="you@example.com" autocomplete="email">
+            <span class="field-help">Used for account identification</span>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="auth-password">Password <span class="required">*</span></label>
+            <input type="password" id="auth-password" class="auth-input" placeholder="••••••••" autocomplete="current-password" required>
+            <span class="field-help" id="auth-password-help">Minimum 6 characters</span>
+          </div>
+          <div class="error-box" id="auth-error" role="alert" hidden></div>
+          <div class="success-box" id="auth-success" role="status" hidden></div>
+          <div class="form-actions auth-actions">
+            <button class="button button-dark" id="auth-submit-btn" type="submit">Sign in ↗</button>
+            <button type="button" class="text-link" id="auth-toggle-mode">Need an account? Create one</button>
+          </div>
+        </form>
+      </div>
+    </div></div>
+    <div class="view workspace history-page" id="history-view" hidden><div class="wrap">
+      <div class="page-heading">
+        <div>
+          <span class="eyebrow"><span class="eyebrow-dot"></span> User Database</span>
+          <h1>My Analyzed CVs</h1>
+          <p>All resumes and forensic findings analyzed under your account. Click any CV to inspect its full forensic report.</p>
+        </div>
+        <div class="history-header-actions">
+          <a class="button button-dark button-small" href="/analyze" data-route="/analyze">Analyze a new CV ↗</a>
+          <button type="button" class="button button-outline button-small" id="refresh-history-btn">Refresh</button>
+        </div>
+      </div>
+      <div class="history-stats-bar" id="history-stats" hidden>
+        <div class="history-stat"><span class="stat-num" id="stat-total-cvs">0</span><span class="stat-lbl">Stored CVs</span></div>
+        <div class="history-stat"><span class="stat-num" id="stat-flagged-cvs">0</span><span class="stat-lbl">Flagged for Review</span></div>
+        <div class="history-stat"><span class="stat-num" id="stat-clean-cvs">0</span><span class="stat-lbl">Clean / No Signals</span></div>
+      </div>
+      <div class="panel history-panel">
+        <div class="history-toolbar">
+          <input type="search" id="history-search" class="history-search-input" placeholder="Search stored CVs by document name or decision…">
+          <span class="muted" id="history-count-label">Loading history…</span>
+        </div>
+        <div id="history-empty" class="history-empty-state" hidden>
+          <div class="empty-icon" aria-hidden="true">📄</div>
+          <h3>No CVs stored yet</h3>
+          <p class="muted">Any resume you analyze while signed in will automatically be saved here with its complete forensic breakdown.</p>
+          <a class="button button-dark" href="/analyze" data-route="/analyze">Analyze your first CV ↗</a>
+        </div>
+        <div id="history-loading" class="history-loading">
+          <div class="progress" aria-hidden="true"></div>
+          <p class="muted">Loading your stored CV records…</p>
+        </div>
+        <ul id="history-list" class="history-list" hidden></ul>
+      </div>
+    </div></div>
   </main>
   <footer><div class="wrap footer-row"><span>Copyright © 2026 Dhruv Kandpal · ATS Final Boss</span><span><a href="/methodology" data-route="/methodology">Methodology</a> · <a href="/ownership" data-route="/ownership">Ownership and reuse</a> · Research prototype · Human review required</span></div></footer>
 </body>

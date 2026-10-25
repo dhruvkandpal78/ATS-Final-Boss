@@ -473,7 +473,7 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
 
-    def _send(self, code, body, ctype="application/json; charset=utf-8", *, retry_after=None):
+    def _send(self, code, body, ctype="application/json; charset=utf-8", *, retry_after=None, extra_headers=None):
         if isinstance(body, dict):
             body = json.dumps(body, allow_nan=False)
         data = body.encode("utf-8") if isinstance(body, str) else body
@@ -489,6 +489,9 @@ class Handler(BaseHTTPRequestHandler):
         self.close_connection = True
         for name, value in SECURITY_HEADERS.items():
             self.send_header(name, value)
+        if extra_headers:
+            for name, value in extra_headers:
+                self.send_header(name, value)
         if code == 401:
             self.send_header("WWW-Authenticate", 'Bearer realm="resume-inspection"')
         if retry_after is not None or code in (429, 503):
@@ -500,16 +503,38 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         known_routes = {"/", "/analyze", "/health", "/health/live", "/health/ready",
                         "/api/capabilities", "/methodology", "/lab", "/ownership", REVIEW_ROUTE,
-                        METRICS_JSON_ROUTE, METRICS_TEXT_ROUTE}
+                        METRICS_JSON_ROUTE, METRICS_TEXT_ROUTE, "/auth", "/history",
+                        "/api/auth/me", "/api/auth/signup", "/api/auth/login", "/api/auth/logout",
+                        "/api/history"}
         duration = monotonic() - self.started_at
         logger.info(json.dumps({"event": "http_response", "request_id": self.request_id,
-            "method": getattr(self, "command", None) if getattr(self, "command", None) in ("GET", "POST") else "other",
+            "method": getattr(self, "command", None) if getattr(self, "command", None) in ("GET", "POST", "DELETE") else "other",
             "route": route if route in known_routes else "other", "status": code,
             "duration_ms": round(duration * 1000, 2)}))
         try:
             self.wfile.write(data)
         except (BrokenPipeError, ConnectionResetError, socket.timeout):
             pass
+
+    def _get_session_token(self):
+        cookie_header = self.headers.get("Cookie", "")
+        for part in cookie_header.split(";"):
+            part = part.strip()
+            if part.startswith("ats_session="):
+                return part[len("ats_session="):]
+        auth_header = self.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            return auth_header[7:].strip()
+        if self.headers.get("X-Session-Token"):
+            return self.headers.get("X-Session-Token").strip()
+        return None
+
+    def _get_current_user(self):
+        token = self._get_session_token()
+        if token:
+            from src.app.db import get_db
+            return get_db().get_user_by_session(token)
+        return None
 
     def do_GET(self):
         path = urlsplit(self.path).path
@@ -519,7 +544,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, self.server.metrics.snapshot())
         elif path == METRICS_TEXT_ROUTE:
             self._send(200, self.server.metrics.prometheus(), "text/plain; version=0.0.4; charset=utf-8")
-        elif path in ("/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership"):
+        elif path in ("/", "/index.html", "/analyze", "/methodology", "/lab", "/ownership", "/auth", "/history"):
             try:
                 self._send(200, INDEX_PATH.read_text(encoding="utf-8"), "text/html; charset=utf-8")
             except FileNotFoundError:
@@ -552,15 +577,116 @@ class Handler(BaseHTTPRequestHandler):
                 "deadline_seconds": INFERENCE_TIMEOUT, "concurrent_analyses": 1,
                 "lab_enabled": False, "retention": "temporary files deleted after processing",
                 "cancellation": "Client cancellation stops waiting; worker finishes or reaches deadline."})
+        elif path == "/api/auth/me":
+            user = self._get_current_user()
+            if user:
+                from src.app.db import get_db
+                cv_count = get_db().get_user_submission_count(user["id"])
+                self._send(200, {
+                    "authenticated": True,
+                    "user": {"id": user["id"], "username": user["username"], "email": user["email"], "cv_count": cv_count}
+                })
+            else:
+                self._send(200, {"authenticated": False, "user": None})
+        elif path == "/api/history":
+            user = self._get_current_user()
+            if not user:
+                self._send(401, {"error": "Please sign in to view your CV history."})
+                return
+            from src.app.db import get_db
+            submissions = get_db().get_user_submissions(user["id"])
+            self._send(200, {"submissions": submissions})
+        elif path.startswith("/api/history/"):
+            sub_id_str = path[len("/api/history/"):].split("/")[0]
+            if sub_id_str.isdigit():
+                user = self._get_current_user()
+                if not user:
+                    self._send(401, {"error": "Please sign in to view this submission."})
+                    return
+                from src.app.db import get_db
+                sub = get_db().get_submission_detail(int(sub_id_str), user["id"])
+                if not sub:
+                    self._send(404, {"error": "Submission not found."})
+                    return
+                try:
+                    sub["result"] = json.loads(sub["result_json"])
+                except Exception:
+                    sub["result"] = {}
+                del sub["result_json"]
+                self._send(200, {"submission": sub})
+                return
+            self._send(404, {"error": "Not found."})
         else:
             self._send(404, {"error": "Not found."})
 
     def do_POST(self):
         # Begin after headers are parsed, matching the ASGI dispatch boundary.
         self.metrics_started_at = monotonic()
-        if not self._guard(urlsplit(self.path).path):
-            return
         path = urlsplit(self.path).path
+        if not self._guard(path):
+            return
+
+        if path == "/api/auth/logout":
+            token = self._get_session_token()
+            if token:
+                from src.app.db import get_db
+                get_db().delete_session(token)
+            cookie = "ats_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+            self._send(200, {"ok": True}, extra_headers=[("Set-Cookie", cookie)])
+            return
+
+        if path in ("/api/auth/signup", "/api/auth/login"):
+            try:
+                length = json_request_length(self.headers, MAX_BODY_BYTES)
+                raw = self.rfile.read(length) if length > 0 else b"{}"
+                payload = decode_json_body(raw) if length > 0 else {}
+            except Exception:
+                self._send(400, {"error": "Invalid JSON payload."})
+                return
+
+            from src.app.db import get_db
+            db = get_db()
+
+            if path == "/api/auth/signup":
+                username = payload.get("username", "")
+                email = payload.get("email", "")
+                password = payload.get("password", "")
+                try:
+                    user = db.register_user(username, email, password)
+                    token = db.create_session(user["id"])
+                    cookie = f"ats_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000"
+                    self._send(201, {"ok": True, "user": user, "token": token}, extra_headers=[("Set-Cookie", cookie)])
+                except ValueError as exc:
+                    self._send(400, {"error": str(exc)})
+                return
+
+            if path == "/api/auth/login":
+                username_or_email = payload.get("username_or_email") or payload.get("username") or payload.get("email", "")
+                password = payload.get("password", "")
+                try:
+                    user = db.authenticate_user(username_or_email, password)
+                    token = db.create_session(user["id"])
+                    cookie = f"ats_session={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000"
+                    self._send(200, {"ok": True, "user": user, "token": token}, extra_headers=[("Set-Cookie", cookie)])
+                except ValueError as exc:
+                    self._send(401, {"error": str(exc)})
+                return
+
+        if path.startswith("/api/history/") and path.endswith("/delete"):
+            sub_id_str = path[len("/api/history/"):][:-len("/delete")].split("/")[0]
+            if sub_id_str.isdigit():
+                user = self._get_current_user()
+                if not user:
+                    self._send(401, {"error": "Please sign in to delete this submission."})
+                    return
+                from src.app.db import get_db
+                deleted = get_db().delete_submission(int(sub_id_str), user["id"])
+                if deleted:
+                    self._send(200, {"ok": True})
+                else:
+                    self._send(404, {"error": "Submission not found."})
+                return
+
         if path not in ("/analyze", REVIEW_ROUTE):
             self._discard_small_body()
             self._send(404, {"error": "Not found. Experimental lab endpoints are disabled."})
@@ -584,13 +710,77 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     raise APIError(422, "Review accepts only text or filename/b64 fields.") from None
             result = WORKER.run(payload)
-            self._send(200, project_review(result) if path == REVIEW_ROUTE else result)
+
+            user = self._get_current_user()
+            saved_id = None
+            if user and isinstance(result, dict) and "error" not in result:
+                try:
+                    from src.app.db import get_db
+                    doc_name = "Resume text"
+                    mode = "text"
+                    snippet = ""
+                    if "filename" in payload and payload["filename"]:
+                        doc_name = str(payload["filename"])
+                        mode = "pdf"
+                    elif "text" in payload and payload["text"]:
+                        text_val = str(payload["text"])
+                        lines = [ln.strip() for ln in text_val.split("\n") if ln.strip()]
+                        doc_name = lines[0][:60] if lines else "Resume text"
+                        snippet = text_val[:400]
+
+                    decision = result.get("decision", "unknown")
+                    score = result.get("combined_score")
+                    score_kind = result.get("score_kind", "")
+                    findings = result.get("findings", [])
+                    findings_count = len(findings) if isinstance(findings, list) else 0
+
+                    saved = get_db().save_submission(
+                        user_id=user["id"],
+                        document_name=doc_name,
+                        mode=mode,
+                        snippet=snippet,
+                        decision=decision,
+                        score=score,
+                        score_kind=score_kind,
+                        findings_count=findings_count,
+                        result_json=json.dumps(result, ensure_ascii=False)
+                    )
+                    saved_id = saved["id"]
+                except Exception as db_exc:
+                    logger.warning(f"Could not save submission to database: {db_exc}")
+
+            resp_payload = project_review(result) if path == REVIEW_ROUTE else result
+            if saved_id is not None and isinstance(resp_payload, dict):
+                resp_payload["saved_submission_id"] = saved_id
+
+            self._send(200, resp_payload)
         except APIError as exc:
             self._send(exc.status, {"error": str(exc)}, retry_after=exc.retry_after)
         except socket.timeout:
             self._send(408, {"error": "Request upload timed out."})
         except Exception:
             self._send(503, {"error": "Analysis is currently unavailable."})
+
+    def do_DELETE(self):
+        self.metrics_started_at = monotonic()
+        path = urlsplit(self.path).path
+        if not self._guard(path):
+            return
+        if path.startswith("/api/history/"):
+            sub_id_str = path[len("/api/history/"):].split("/")[0]
+            if sub_id_str.isdigit():
+                user = self._get_current_user()
+                if not user:
+                    self._send(401, {"error": "Please sign in to delete this submission."})
+                    return
+                from src.app.db import get_db
+                deleted = get_db().delete_submission(int(sub_id_str), user["id"])
+                if deleted:
+                    self._send(200, {"ok": True})
+                else:
+                    self._send(404, {"error": "Submission not found."})
+                return
+        self._send(404, {"error": "Not found."})
 
 
 def main():
